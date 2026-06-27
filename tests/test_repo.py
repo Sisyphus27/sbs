@@ -115,3 +115,22 @@ def test_append_history_and_list(tmp_path):
     assert rows[0]["week"] == 1 and rows[0]["weight"] == 95.0 and rows[0]["reps"] == 11
     assert rows[1]["week"] == 2
     conn.close()
+
+
+def test_week_log_upsert_get_clear(tmp_path):
+    conn = _fresh(tmp_path)
+    lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
+                           sets=5, max=135.0, intensity=0.7, reps=5, repout=10, start=None)
+    assert repo.get_week_logs(conn, 1) == {}
+    repo.save_log(conn, lid, 1, 11)
+    assert repo.get_week_logs(conn, 1) == {lid: 11}
+    repo.save_log(conn, lid, 1, 12)  # upsert overwrites
+    assert repo.get_week_logs(conn, 1) == {lid: 12}
+    repo.clear_one_log(conn, lid, 1)
+    assert repo.get_week_logs(conn, 1) == {}
+    repo.save_log(conn, lid, 1, 11)
+    repo.save_log(conn, lid, 2, 9)   # different week, independent
+    repo.clear_week_logs(conn, 1)
+    assert repo.get_week_logs(conn, 1) == {}
+    assert repo.get_week_logs(conn, 2) == {lid: 9}
+    conn.close()

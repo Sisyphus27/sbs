@@ -2,7 +2,7 @@
 {% block title %}Week {{ week }} plan{% endblock %}
 {% block content %}
 <h1>Week {{ week }} 计划</h1>
-<p>练完填每个动作的<b>末组次数</b>, 点 <b>提交并算下周</b>。</p>
+<p>练完填每个动作的<b>末组次数</b>(填完自动保存,关掉也不丢)。全部练完点 <b>提交并算下周</b>。</p>
 <form method="post" action="{{ url_for('plan.submit') }}">
   {% for day, items in by_day %}
     <h2>Day {{ day }}</h2>
@@ -16,7 +16,10 @@
           {% endif %}
           | est 1RM {{ it.est1rm if it.est1rm is not none else '—' }}
         </span>
-        <label>末组: <input type="number" name="log_{{ it.id }}"></label>
+        <label>末组: <input type="number" name="log_{{ it.id }}" value="{{ it.logged }}"
+               hx-post="{{ url_for('plan.save_log', lid=it.id) }}" hx-trigger="change"
+               hx-target="next .save-ok" hx-swap="innerHTML">
+          <span class="save-ok"></span></label>
       </div>
     {% endfor %}
   {% endfor %}

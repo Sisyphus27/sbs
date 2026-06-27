@@ -131,3 +131,29 @@ def list_history(conn: sqlite3.Connection, lift_id: int):
     return conn.execute(
         "SELECT * FROM history WHERE lift_id = ? ORDER BY id", (lift_id,)
     ).fetchall()
+
+
+# ---------- week_log (per-week last-set reps, saved immediately, not yet advanced) ----------
+def save_log(conn: sqlite3.Connection, lift_id: int, week: int, reps: int) -> None:
+    """Upsert this lift's logged last-set reps for the given week."""
+    conn.execute(
+        "INSERT INTO week_log (lift_id, week, reps) VALUES (?, ?, ?) "
+        "ON CONFLICT(lift_id, week) DO UPDATE SET reps=excluded.reps",
+        (lift_id, week, reps),
+    )
+    conn.commit()
+
+
+def clear_one_log(conn: sqlite3.Connection, lift_id: int, week: int) -> None:
+    conn.execute("DELETE FROM week_log WHERE lift_id = ? AND week = ?", (lift_id, week))
+    conn.commit()
+
+
+def get_week_logs(conn: sqlite3.Connection, week: int) -> dict:
+    rows = conn.execute("SELECT lift_id, reps FROM week_log WHERE week = ?", (week,)).fetchall()
+    return {r["lift_id"]: r["reps"] for r in rows}
+
+
+def clear_week_logs(conn: sqlite3.Connection, week: int) -> None:
+    conn.execute("DELETE FROM week_log WHERE week = ?", (week,))
+    conn.commit()

@@ -52,6 +52,12 @@ CREATE TABLE IF NOT EXISTS history (
     reps    INTEGER NOT NULL,
     ts      TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS week_log (
+    lift_id INTEGER NOT NULL REFERENCES lifts(id) ON DELETE CASCADE,
+    week    INTEGER NOT NULL,
+    reps    INTEGER NOT NULL,
+    PRIMARY KEY (lift_id, week)
+);
 """
 
 _DEFAULT_SETTINGS = dict(

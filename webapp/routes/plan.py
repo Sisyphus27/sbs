@@ -17,6 +17,7 @@ def _by_day(conn):
     from sbs_cli.engine.progression import round_weight
     settings = repo.get_settings(conn)
     lift_rows = repo.list_lifts(conn)
+    logged = repo.get_week_logs(conn, settings["week"])
     rows_by_day = {}
     for r in lift_rows:
         st = repo.get_lift_state(conn, r["id"])
@@ -34,6 +35,7 @@ def _by_day(conn):
             item = SimpleNamespace(id=r["id"], name=r["name"], tier="t3", weight=st["weight"],
                                    reps=settings["t3_target"], sets=r["sets"], repout=None,
                                    target=settings["t3_target"], streak=0, est1rm=est1rm)
+        item.logged = logged.get(r["id"], "")
         rows_by_day.setdefault(r["day"], []).append(item)
     by_day = [(d, rows_by_day[d]) for d in sorted(rows_by_day)
               if d <= settings["days_per_week"] and rows_by_day[d]]
@@ -47,10 +49,35 @@ def view():
     return render_template("plan.html", week=week, by_day=by_day)
 
 
+@bp.route("/log/save", methods=["POST"])
+def save_log():
+    """Autosave one lift's last-set reps for the week (HTMX, on change). No advance."""
+    conn = get_db()
+    lid = request.args.get("lid", type=int)
+    if lid is None:
+        return ("bad lift id", 400)
+    raw = (request.form.get(f"log_{lid}") or "").strip()
+    week = repo.get_settings(conn)["week"]
+    if raw == "":
+        repo.clear_one_log(conn, lid, week)
+        return ("", 204)
+    try:
+        reps = int(raw)
+    except ValueError:
+        return ("bad reps", 400)
+    if reps < 0:
+        return ("negative", 400)
+    repo.save_log(conn, lid, week, reps)
+    return "✓"  # swapped into the .save-ok span next to the input
+
+
 @bp.route("/log", methods=["POST"])
 def submit():
+    """Advance the week: merge any unsaved form entries into week_log, then run
+    the engine over all saved logs, bump week, and clear the week's log."""
     conn = get_db()
-    logs = {}
+    settings = repo.get_settings(conn)
+    week = settings["week"]
     for key, val in request.form.items():
         if key.startswith("log_") and val.strip():
             try:
@@ -62,12 +89,13 @@ def submit():
             if reps < 0:
                 flash(f"次数不能为负: {key}")
                 return redirect(url_for("plan.view"))
-            logs[lid] = reps
+            repo.save_log(conn, lid, week, reps)
+    logs = repo.get_week_logs(conn, week)
     from ..backup import snapshot
     from datetime import datetime, timezone
-    settings = repo.get_settings(conn)
     snapshot(current_app.config["DB_PATH"], dest_dir=current_app.config["BACKUP_DIR"],
-             week=settings["week"], ts=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S"))
+             week=week, ts=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S"))
     new_week = advance.advance_week(conn, logs)
+    repo.clear_week_logs(conn, week)
     flash(f"已推进到 week {new_week}")
     return redirect(url_for("plan.view"))

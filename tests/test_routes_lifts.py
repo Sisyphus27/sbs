@@ -59,3 +59,18 @@ def test_rename_lift_via_post(client, app):
         conn = connect(app.config["DB_PATH"])
         assert repo.get_lift(conn, lid)["name"] == "Back Squat"
         conn.close()
+
+
+def test_tier_preview_then_apply(client, app):
+    lid = _lift(app)
+    # build some history so est1rm exists
+    client.post("/log", data={"log_Squat": "12"})
+    rv = client.get(f"/lifts/{lid}/tier?tier=t3")
+    assert rv.status_code == 200 and b"t3" in rv.data
+    rv = client.post(f"/lifts/{lid}/tier", data={"tier": "t3"})
+    assert rv.status_code == 302
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        assert repo.get_lift(conn, lid)["tier"] == "t3"
+        conn.close()

@@ -61,3 +61,30 @@ def delete(lid):
     conn = get_db()
     repo.delete_lift(conn, lid)
     return ("", 200)
+
+
+from ..services import tier as tier_service
+
+
+@bp.route("/lifts/<int:lid>/tier")
+def tier_preview(lid):
+    conn = get_db()
+    new_tier = request.args.get("tier", "sbs")
+    preview = tier_service.derive_state(conn, lid, new_tier, repo.get_settings(conn))
+    lift = repo.get_lift(conn, lid)
+    return render_template("tier_preview.html", lift=lift, preview=preview)
+
+
+@bp.route("/lifts/<int:lid>/tier", methods=["POST"])
+def tier_apply(lid):
+    conn = get_db()
+    new_tier = request.form.get("tier", "sbs")
+    preview = tier_service.derive_state(conn, lid, new_tier, repo.get_settings(conn))
+    # user may override derived start values
+    if "weight" in request.form and request.form["weight"].strip():
+        preview["weight"] = float(request.form["weight"])
+    if "tm" in request.form and request.form["tm"].strip():
+        preview["tm"] = float(request.form["tm"])
+    tier_service.apply_switch(conn, lid, preview)
+    from flask import redirect, url_for
+    return redirect(url_for("lifts.view"))

@@ -17,6 +17,6 @@
   </form>
   <button hx-post="{{ url_for('lifts.delete', lid=lift.id) }}" hx-target="#lift-{{ lift.id }}" hx-swap="outerHTML"
           hx-confirm="删除 {{ lift.name }}?">删除</button>
-  <a class="btn" href="/lifts/{{ lift.id }}/tier">换 tier</a>
+  <a class="btn" href="{{ url_for('lifts.tier_preview', lid=lift.id) }}">换 tier</a>
 </div>
 {% endif %}

@@ -71,3 +71,20 @@ def init_schema(conn: sqlite3.Connection) -> None:
             _DEFAULT_SETTINGS,
         )
     conn.commit()
+
+
+# ---------- Flask integration ----------
+def get_db():
+    """Per-request connection stored in flask.g."""
+    from flask import g, current_app
+    if "db" not in g:
+        g.db = connect(current_app.config["DB_PATH"])
+        init_schema(g.db)
+    return g.db
+
+
+def close_db(e=None):
+    from flask import g
+    db = g.pop("db", None)
+    if db is not None:
+        db.close()

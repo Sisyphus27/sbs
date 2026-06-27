@@ -35,8 +35,10 @@ def _by_day(conn):
     by_day = []
     for d in range(1, settings["days_per_week"] + 1):
         items = week_plan(profile, ps, day=d)
+        rows_for_day = [r for r in lift_rows if r["day"] == d]
         if items:
-            by_day.append((d, items))
+            # items and rows_for_day share profile.yaml order within a day
+            by_day.append((d, list(zip(items, rows_for_day))))
     return settings["week"], by_day
 
 
@@ -53,16 +55,16 @@ def submit():
     logs = {}
     for key, val in request.form.items():
         if key.startswith("log_") and val.strip():
-            name = key[4:]
             try:
+                lid = int(key[4:])
                 reps = int(val)
             except ValueError:
-                flash(f"非法次数: {name} = {val}")
+                flash(f"非法输入: {key} = {val}")
                 return redirect(url_for("plan.view"))
             if reps < 0:
-                flash(f"次数不能为负: {name}")
+                flash(f"次数不能为负: {key}")
                 return redirect(url_for("plan.view"))
-            logs[name] = reps
+            logs[lid] = reps
     from ..backup import snapshot
     from datetime import datetime, timezone
     settings = repo.get_settings(conn)

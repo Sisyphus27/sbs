@@ -33,23 +33,26 @@ def _state_from_rows(st_row, hist_rows) -> LiftState:
 
 def advance_week(conn: sqlite3.Connection, logs: dict) -> int:
     """Run the engine for every lift using this week's logged last-set reps.
-    `logs` maps lift name -> last-set reps (lifts absent from logs are skipped)."""
+    `logs` maps lift_id -> last-set reps (lifts absent from logs are skipped).
+    Keyed by row id (not name) so the same exercise can appear on multiple days
+    as independent instances."""
     settings = repo.get_settings(conn)
     week = settings["week"]
     lift_rows = repo.list_lifts(conn)
-    profile = _profile_from_rows(settings, lift_rows)
+    profile = _profile_from_rows(settings, lift_rows)  # engine reads only globals from it
     for row in lift_rows:
-        name = row["name"]
-        actual = logs.get(name)
-        st = repo.get_lift_state(conn, row["id"])
-        ls = _state_from_rows(st, repo.list_history(conn, row["id"]))
-        advance_lift(profile, profile.lift(name), ls, actual, week=week)
-        repo.save_lift_state(conn, row["id"], tier=ls.tier, tm=ls.tm,
+        lid = row["id"]
+        actual = logs.get(lid)
+        st = repo.get_lift_state(conn, lid)
+        ls = _state_from_rows(st, repo.list_history(conn, lid))
+        lift = _lift_from_row(row)
+        advance_lift(profile, lift, ls, actual, week=week)
+        repo.save_lift_state(conn, lid, tier=ls.tier, tm=ls.tm,
                              weight=ls.weight, target=ls.target,
                              streak=ls.streak, est1rm=ls.est1rm)
         if actual is not None and ls.history:
             last = ls.history[-1]
-            repo.append_history(conn, row["id"], week=week, weight=last.weight, reps=last.reps)
+            repo.append_history(conn, lid, week=week, weight=last.weight, reps=last.reps)
     new_week = week + 1
     repo.set_week(conn, new_week)
     return new_week

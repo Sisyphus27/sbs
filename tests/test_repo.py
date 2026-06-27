@@ -81,14 +81,15 @@ def test_update_and_delete_lift(tmp_path):
     conn.close()
 
 
-def test_create_lift_duplicate_name_raises(tmp_path):
-    import pytest
+def test_create_lift_allows_duplicate_name_different_day(tmp_path):
+    """Same exercise on different days = two independent rows (keyed by id, not name)."""
     conn = _fresh(tmp_path)
-    repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
-                     sets=5, max=135.0, intensity=0.7, reps=5, repout=10, start=None)
-    with pytest.raises(sqlite3.IntegrityError):
-        repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=1,
-                         sets=5, max=135.0, intensity=0.7, reps=5, repout=10, start=None)
+    a = repo.create_lift(conn, name="Face Pull", tier="t3", day=2, sort_order=0,
+                         sets=3, max=None, intensity=None, reps=None, repout=None, start=30.0)
+    b = repo.create_lift(conn, name="Face Pull", tier="t3", day=4, sort_order=0,
+                         sets=3, max=None, intensity=None, reps=None, repout=None, start=45.0)
+    assert a != b
+    assert len([r for r in repo.list_lifts(conn) if r["name"] == "Face Pull"]) == 2
     conn.close()
 
 

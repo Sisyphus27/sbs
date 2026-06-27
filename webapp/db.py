@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 CREATE TABLE IF NOT EXISTS lifts (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    name       TEXT UNIQUE NOT NULL,
+    name       TEXT NOT NULL,
     tier       TEXT NOT NULL CHECK (tier IN ('sbs','t2','t3')),
     day        INTEGER NOT NULL,
     sort_order INTEGER NOT NULL DEFAULT 0,

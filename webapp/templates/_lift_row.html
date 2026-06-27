@@ -1,0 +1,22 @@
+{% if lift %}
+<div class="row" id="lift-{{ lift.id }}">
+  <span class="name">{{ lift.name }}</span>
+  <span class="meta">{{ lift.tier }} | day {{ lift.day }} | sets {{ lift.sets }}
+    {% if lift.tier=='sbs' %} | max {{ lift.max }} | int {{ lift.intensity }} | {{ lift.reps }}/{{ lift.repout }}
+    {% else %} | start {{ lift.start }}
+    {% endif %}
+  </span>
+  <form hx-post="{{ url_for('lifts.edit', lid=lift.id) }}" hx-target="#lift-{{ lift.id }}" hx-swap="outerHTML" class="row">
+    <input name="name" value="{{ lift.name }}" style="width:140px">
+    <input name="day" type="number" value="{{ lift.day }}" style="width:60px">
+    <input name="intensity" type="number" step="0.05" value="{{ lift.intensity or '' }}" style="width:70px">
+    <input name="reps" type="number" value="{{ lift.reps or '' }}" style="width:50px">
+    <input name="repout" type="number" value="{{ lift.repout or '' }}" style="width:60px">
+    <input name="start" type="number" step="0.5" value="{{ lift.start or '' }}" style="width:70px">
+    <button>保存</button>
+  </form>
+  <button hx-post="{{ url_for('lifts.delete', lid=lift.id) }}" hx-target="#lift-{{ lift.id }}" hx-swap="outerHTML"
+          hx-confirm="删除 {{ lift.name }}?">删除</button>
+  <a class="btn" href="/lifts/{{ lift.id }}/tier">换 tier</a>
+</div>
+{% endif %}

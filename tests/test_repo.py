@@ -90,3 +90,27 @@ def test_create_lift_duplicate_name_raises(tmp_path):
         repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=1,
                          sets=5, max=135.0, intensity=0.7, reps=5, repout=10, start=None)
     conn.close()
+
+
+def test_save_lift_state_upserts(tmp_path):
+    conn = _fresh(tmp_path)
+    lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
+                           sets=5, max=135.0, intensity=0.7, reps=5, repout=10, start=None)
+    repo.save_lift_state(conn, lid, tier="sbs", tm=140.0, weight=None,
+                         target=None, streak=0, est1rm=141.2, _append_history=False)
+    st = repo.get_lift_state(conn, lid)
+    assert st["tm"] == 140.0 and st["est1rm"] == 141.2
+    conn.close()
+
+
+def test_append_history_and_list(tmp_path):
+    conn = _fresh(tmp_path)
+    lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
+                           sets=5, max=135.0, intensity=0.7, reps=5, repout=10, start=None)
+    repo.append_history(conn, lid, week=1, weight=95.0, reps=11)
+    repo.append_history(conn, lid, week=2, weight=97.5, reps=9)
+    rows = repo.list_history(conn, lid)
+    assert len(rows) == 2
+    assert rows[0]["week"] == 1 and rows[0]["weight"] == 95.0 and rows[0]["reps"] == 11
+    assert rows[1]["week"] == 2
+    conn.close()

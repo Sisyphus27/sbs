@@ -93,3 +93,41 @@ def delete_lift(conn: sqlite3.Connection, lift_id: int) -> None:
 # ---------- lift_state (read; full CRUD in Task 4) ----------
 def get_lift_state(conn: sqlite3.Connection, lift_id: int):
     return conn.execute("SELECT * FROM lift_state WHERE lift_id = ?", (lift_id,)).fetchone()
+
+
+# ---------- lift_state ----------
+_STATE_COLS = ("tier", "tm", "weight", "target", "streak", "est1rm")
+
+
+def save_lift_state(conn: sqlite3.Connection, lift_id: int, *, tier: str, tm,
+                    weight, target, streak: int, est1rm, _append_history: bool = True) -> None:
+    """Upsert lift_state from engine-produced fields. Does NOT touch history table
+    (history is appended separately via append_history)."""
+    conn.execute(
+        "INSERT INTO lift_state (lift_id, tier, tm, weight, target, streak, est1rm) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT(lift_id) DO UPDATE SET "
+        "tier=excluded.tier, tm=excluded.tm, weight=excluded.weight, "
+        "target=excluded.target, streak=excluded.streak, est1rm=excluded.est1rm",
+        (lift_id, tier, tm, weight, target, streak, est1rm),
+    )
+    conn.commit()
+
+
+# ---------- history ----------
+def append_history(conn: sqlite3.Connection, lift_id: int, *, week: int,
+                   weight, reps: int, ts: str | None = None) -> None:
+    if ts is None:
+        from datetime import datetime, timezone
+        ts = datetime.now(timezone.utc).isoformat()
+    conn.execute(
+        "INSERT INTO history (lift_id, week, weight, reps, ts) VALUES (?, ?, ?, ?, ?)",
+        (lift_id, week, weight, reps, ts),
+    )
+    conn.commit()
+
+
+def list_history(conn: sqlite3.Connection, lift_id: int):
+    return conn.execute(
+        "SELECT * FROM history WHERE lift_id = ? ORDER BY id", (lift_id,)
+    ).fetchall()

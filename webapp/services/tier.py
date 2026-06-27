@@ -12,7 +12,7 @@ def derive_state(conn: sqlite3.Connection, lift_id: int, new_tier: str,
     if new_tier not in ("sbs", "t2", "t3"):
         raise ValueError(f"unknown tier: {new_tier}")
     hist_rows = repo.list_history(conn, lift_id)
-    history = [SetEntry(h["week"], h["weight"], h["reps"]) for h in hist_rows]
+    history = [SetEntry(week=h["week"], weight=h["weight"], reps=h["reps"]) for h in hist_rows]
     est1rm = _est1rm_from_history(history)
     lift = repo.get_lift(conn, lift_id)
     quantum = settings["rounding"]

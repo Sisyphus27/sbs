@@ -1,7 +1,7 @@
 """Orchestrate the engine over a logged week: DB -> dataclass -> engine -> DB."""
 import sqlite3
 from sbs_cli.data.schema import Lift, Profile, SetEntry, LiftState
-from sbs_cli.program import advance_lift, _est1rm_from_history
+from sbs_cli.program import advance_lift
 from .. import repo
 
 

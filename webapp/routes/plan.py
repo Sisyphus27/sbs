@@ -9,36 +9,34 @@ bp = Blueprint("plan", __name__)
 
 
 def _by_day(conn):
-    from sbs_cli.data.schema import Profile, LiftState
-    from sbs_cli.program import week_plan
+    # NOTE: the engine's week_plan() looks state up by lift NAME, so it cannot
+    # distinguish two rows that share a name (e.g. Face Pull on day 2 and day 4).
+    # Build display rows directly, keyed by row id, mirroring week_plan's field
+    # mapping. Each item carries its id so the log form targets the right row.
+    from types import SimpleNamespace
+    from sbs_cli.engine.progression import round_weight
     settings = repo.get_settings(conn)
     lift_rows = repo.list_lifts(conn)
-    profile = Profile(
-        rounding=settings["rounding"], days_per_week=settings["days_per_week"],
-        incr=settings["incr"], t2_reset_pct=settings["t2_reset_pct"],
-        t2_fail=settings["t2_fail"], t3_target=settings["t3_target"],
-    )
-    from sbs_cli.data.schema import Lift
-    lifts = [Lift(name=r["name"], tier=r["tier"], day=r["day"], max=r["max"],
-                  intensity=r["intensity"] or 0.0, reps=r["reps"] or 0,
-                  repout=r["repout"] or 0, sets=r["sets"] or 3, start=r["start"]) for r in lift_rows]
-    profile.lifts = lifts
-    states = {}
+    rows_by_day = {}
     for r in lift_rows:
         st = repo.get_lift_state(conn, r["id"])
-        hist = repo.list_history(conn, r["id"])
-        states[r["name"]] = LiftState(
-            name=r["name"], tier=st["tier"], tm=st["tm"], weight=st["weight"],
-            target=st["target"], streak=st["streak"], est1rm=st["est1rm"])
-    from sbs_cli.data.schema import ProgramState
-    ps = ProgramState(week=settings["week"], lifts=states)
-    by_day = []
-    for d in range(1, settings["days_per_week"] + 1):
-        items = week_plan(profile, ps, day=d)
-        rows_for_day = [r for r in lift_rows if r["day"] == d]
-        if items:
-            # items and rows_for_day share profile.yaml order within a day
-            by_day.append((d, list(zip(items, rows_for_day))))
+        est1rm = st["est1rm"]
+        if r["tier"] == "sbs":
+            w = round_weight((st["tm"] or 0) * (r["intensity"] or 0.0), settings["rounding"])
+            item = SimpleNamespace(id=r["id"], name=r["name"], tier="sbs", weight=w,
+                                   reps=r["reps"], sets=r["sets"], repout=r["repout"],
+                                   target=None, streak=0, est1rm=est1rm)
+        elif r["tier"] == "t2":
+            item = SimpleNamespace(id=r["id"], name=r["name"], tier="t2", weight=st["weight"],
+                                   reps=st["target"], sets=r["sets"], repout=None,
+                                   target=st["target"], streak=st["streak"], est1rm=est1rm)
+        else:  # t3
+            item = SimpleNamespace(id=r["id"], name=r["name"], tier="t3", weight=st["weight"],
+                                   reps=settings["t3_target"], sets=r["sets"], repout=None,
+                                   target=settings["t3_target"], streak=0, est1rm=est1rm)
+        rows_by_day.setdefault(r["day"], []).append(item)
+    by_day = [(d, rows_by_day[d]) for d in sorted(rows_by_day)
+              if d <= settings["days_per_week"] and rows_by_day[d]]
     return settings["week"], by_day
 
 

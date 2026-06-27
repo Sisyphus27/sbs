@@ -4,9 +4,9 @@
 <h1>Week {{ week }} 计划</h1>
 <p>练完填每个动作的<b>末组次数</b>, 点 <b>提交并算下周</b>。</p>
 <form method="post" action="{{ url_for('plan.submit') }}">
-  {% for day, pairs in by_day %}
+  {% for day, items in by_day %}
     <h2>Day {{ day }}</h2>
-    {% for it, row in pairs %}
+    {% for it in items %}
       <div class="row">
         <span class="name">{{ it.name }}</span>
         <span class="meta">{{ it.tier }} | {{ it.weight }} kg
@@ -16,7 +16,7 @@
           {% endif %}
           | est 1RM {{ it.est1rm if it.est1rm is not none else '—' }}
         </span>
-        <label>末组: <input type="number" name="log_{{ row.id }}"></label>
+        <label>末组: <input type="number" name="log_{{ it.id }}"></label>
       </div>
     {% endfor %}
   {% endfor %}

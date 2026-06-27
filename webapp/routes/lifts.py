@@ -1,5 +1,5 @@
 """Lift CRUD: list, create, edit (rename/params/day), delete."""
-from flask import Blueprint, render_template, request, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash
 from ..db import get_db
 from .. import repo
 
@@ -26,6 +26,9 @@ def new():
     conn = get_db()
     name = request.form.get("name", "").strip()
     tier = request.form.get("tier", "sbs")
+    if tier not in ("sbs", "t2", "t3"):
+        flash("tier 必须是 sbs / t2 / t3")
+        return render_template("_lift_row.html", lift=None, error="bad tier"), 400
     if not name:
         flash("动作名不能为空")
         return render_template("_lift_row.html", lift=None, error="name required"), 400
@@ -81,10 +84,13 @@ def tier_apply(lid):
     new_tier = request.form.get("tier", "sbs")
     preview = tier_service.derive_state(conn, lid, new_tier, repo.get_settings(conn))
     # user may override derived start values
-    if "weight" in request.form and request.form["weight"].strip():
-        preview["weight"] = float(request.form["weight"])
-    if "tm" in request.form and request.form["tm"].strip():
-        preview["tm"] = float(request.form["tm"])
+    try:
+        if "weight" in request.form and request.form["weight"].strip():
+            preview["weight"] = float(request.form["weight"])
+        if "tm" in request.form and request.form["tm"].strip():
+            preview["tm"] = float(request.form["tm"])
+    except ValueError:
+        flash("重量 / TM 必须是数字")
+        return redirect(url_for("lifts.view"))
     tier_service.apply_switch(conn, lid, preview)
-    from flask import redirect, url_for
     return redirect(url_for("lifts.view"))

@@ -46,10 +46,11 @@ def test_autosave_persists_and_prefills_then_advances(client, app):
         lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
                                sets=5, max=135.0, intensity=0.7, reps=5, repout=10, start=None)
         conn.close()
-    # autosave via /log/save (HTMX on change) — no advance
+    # autosave via /log/save (HTMX on change) — no advance, returns live est1RM preview
     rv = client.post(f"/log/save?lid={lid}", data={f"log_{lid}": "11"})
     assert rv.status_code == 200
-    assert "✓" in rv.get_data(as_text=True)
+    body = rv.get_data(as_text=True)
+    assert "≈" in body and "(首次)" in body   # live preview, no history yet
     # input is prefilled from week_log on next render
     assert 'value="11"' in client.get("/").get_data(as_text=True)
     # advancing with an EMPTY form still consumes the saved log

@@ -68,7 +68,15 @@ def save_log():
     if reps < 0:
         return ("negative", 400)
     repo.save_log(conn, lid, week, reps)
-    return "✓"  # swapped into the .save-ok span next to the input
+    from ..services.preview import live_preview
+    p = live_preview(conn, lid, reps)
+    if p["delta"] is None:
+        delta_html = '<span class="first">(首次)</span>'
+    else:
+        cls = "up" if p["delta"] >= 0 else "down"
+        sign = "+" if p["delta"] >= 0 else ""
+        delta_html = f'<span class="{cls}">{sign}{p["delta"]:.1f}</span>'
+    return f'≈{p["est1rm"]:.1f} {delta_html}'
 
 
 @bp.route("/log", methods=["POST"])

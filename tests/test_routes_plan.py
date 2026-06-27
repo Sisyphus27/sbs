@@ -38,6 +38,26 @@ def test_plan_submit_advances(client, app):
         conn.close()
 
 
+def test_export_week_standalone_with_progress(client, app):
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
+                               sets=5, max=135.0, intensity=0.7, reps=5, repout=10, start=None)
+        repo.save_log(conn, lid, 1, 11)   # logged this week
+        conn.close()
+    rv = client.get("/export/week.html")
+    assert rv.status_code == 200
+    assert "attachment" in rv.headers.get("Content-Disposition", "")
+    assert f'week-1.html' in rv.headers.get("Content-Disposition", "")
+    html = rv.get_data(as_text=True)
+    assert "Week 1" in html and "Squat" in html
+    assert "本周末组: 11" in html          # progress shown
+    assert "≈" in html                    # live est1RM shown
+    # standalone / offline: no server-relative deps
+    assert "hx-post" not in html and "/log/" not in html and "htmx" not in html
+
+
 def test_autosave_persists_and_prefills_then_advances(client, app):
     """Daily logging: save per-field (no advance), prefill on reopen, advance consumes saved."""
     with app.app_context():

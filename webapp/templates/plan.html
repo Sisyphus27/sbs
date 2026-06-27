@@ -3,6 +3,7 @@
 {% block content %}
 <h1>Week {{ week }} 计划</h1>
 <p>练完填每个动作的<b>末组次数</b>(填完自动保存,关掉也不丢)。全部练完点 <b>提交并算下周</b>。</p>
+<p><a class="btn" href="{{ url_for('plan.export_week') }}" download>📱 导出本周计划(手机看)</a></p>
 <form method="post" action="{{ url_for('plan.submit') }}">
   {% for day, items in by_day %}
     <h2>Day {{ day }}</h2>

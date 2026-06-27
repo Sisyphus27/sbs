@@ -1,5 +1,5 @@
 """Plan view + log submit."""
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, Response
 from ..db import get_db
 from .. import repo
 from ..services import advance, tier  # tier imported for completeness; used in lifts route
@@ -107,3 +107,21 @@ def submit():
     repo.clear_week_logs(conn, week)
     flash(f"已推进到 week {new_week}")
     return redirect(url_for("plan.view"))
+
+
+@bp.route("/export/week.html")
+def export_week():
+    """Standalone offline HTML of this week's plan + logged progress, for phone viewing.
+    Self-contained (no nav/HTMX/server-relative URLs) so it opens offline after copy to phone."""
+    conn = get_db()
+    week, by_day = _by_day(conn)
+    from ..services.preview import live_preview
+    for day, items in by_day:
+        for it in items:
+            if it.logged not in ("", None):
+                it.live = live_preview(conn, it.id, int(it.logged))["est1rm"]
+            else:
+                it.live = None
+    html = render_template("week_export.html", week=week, by_day=by_day)
+    return Response(html, mimetype="text/html",
+                    headers={"Content-Disposition": f'attachment; filename="week-{week}.html"'})

@@ -46,7 +46,7 @@ conda run -n sbs python -m webapp
 
 引擎同旧 CLI,见 `README_sbs_cli.md` 的「进阶规则(三层)」:
 - **sbs**:TM 按末组表现自调节(超目标几次 → 多涨,差几次 → 降)。
-- **t2**:GZCLP 状态机 3×10 → 3×8 → 3×6,连败降级,到底重置。
+- **t2**:改良版 GZCLP **4×8 → 4×6**(连败降级,到底按 est1RM×0.7 重置回 4×8)。
 - **t3**:末组 ≥ 目标(默认 15)→ +incr。
 
 est1RM 三式平均(Epley/Brzycki/Wathan),从历史最佳组算,tier 无关。

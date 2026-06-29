@@ -27,7 +27,7 @@ def initial_state(profile: Profile) -> ProgramState:
         if l.tier == "sbs":
             lifts[l.name] = LiftState(name=l.name, tier="sbs", tm=l.max)
         elif l.tier == "t2":
-            lifts[l.name] = LiftState(name=l.name, tier="t2", weight=l.start, target=10, streak=0)
+            lifts[l.name] = LiftState(name=l.name, tier="t2", weight=l.start, target=8, streak=0)
         elif l.tier == "t3":
             lifts[l.name] = LiftState(name=l.name, tier="t3", weight=l.start)
     return ProgramState(week=1, lifts=lifts)

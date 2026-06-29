@@ -54,7 +54,7 @@ def _init_lift_state(conn, lid, tier, max, start):
     elif tier == "t2":
         conn.execute(
             "INSERT INTO lift_state (lift_id, tier, tm, weight, target, streak, est1rm) "
-            "VALUES (?, 't2', NULL, ?, 10, 0, NULL)", (lid, start))
+            "VALUES (?, 't2', NULL, ?, 8, 0, NULL)", (lid, start))
     else:  # t3
         conn.execute(
             "INSERT INTO lift_state (lift_id, tier, tm, weight, target, streak, est1rm) "

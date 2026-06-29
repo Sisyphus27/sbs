@@ -41,7 +41,7 @@ def test_advance_week_skips_unlogged_lifts(tmp_path):
 
 def test_advance_week_rows_t2_hit_increments(tmp_path):
     conn, ids = _seed(tmp_path)
-    advance.advance_week(conn, {ids["Rows"]: 10})  # hit target 10 -> +incr 2.5
+    advance.advance_week(conn, {ids["Rows"]: 10})  # reps 10 >= target 8 -> hit -> +incr 2.5
     rows_id = ids["Rows"]
     assert repo.get_lift_state(conn, rows_id)["weight"] == 87.5
     conn.close()

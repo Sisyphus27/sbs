@@ -45,7 +45,7 @@ def test_create_lift_t2_inits_weight_target(tmp_path):
     lid = repo.create_lift(conn, name="Rows", tier="t2", day=1, sort_order=1,
                            sets=3, max=None, intensity=None, reps=None, repout=None, start=85.0)
     st = repo.get_lift_state(conn, lid)
-    assert st["tier"] == "t2" and st["weight"] == 85.0 and st["target"] == 10 and st["streak"] == 0
+    assert st["tier"] == "t2" and st["weight"] == 85.0 and st["target"] == 8 and st["streak"] == 0
     conn.close()
 
 

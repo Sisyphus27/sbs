@@ -24,7 +24,7 @@ def test_best_1rm_empty_returns_none():
 def test_initial_state_sbs_uses_max_as_tm():
     p = _profile(); s = initial_state(p)
     assert s.lifts["Squat"].tm == 100
-    assert s.lifts["Barbell rows"].weight == 50 and s.lifts["Barbell rows"].target == 10
+    assert s.lifts["Barbell rows"].weight == 50 and s.lifts["Barbell rows"].target == 8
     assert s.lifts["Curls"].weight == 40
 
 
@@ -46,10 +46,10 @@ def test_advance_t2_reset_uses_best_set_est1rm():
     # seed a best set: 50x10 -> est1rm ~ 67
     advance_lift(p, p.lift("Barbell rows"), ls, actual_reps=10, week=1)
     est = ls.est1rm
-    # now force 3 consecutive misses at 10, then 8, into 6, then reset
+    # now force 3 consecutive misses: at 8 into 6, then reset
     ls.target, ls.streak = 6, 2
     advance_lift(p, p.lift("Barbell rows"), ls, actual_reps=4, week=4)   # 3rd miss at 6 -> reset
-    assert ls.target == 10 and ls.streak == 0
+    assert ls.target == 8 and ls.streak == 0
     assert ls.weight == round_weight(est * 0.70)                      # 0.70*est, MROUND 2.5
 
 

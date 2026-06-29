@@ -39,31 +39,32 @@ def test_t3_miss_repeats():
 def test_t3_no_log_repeats():
     assert t3_next(weight=40, actual=None) == 40
 
-# --- T2 (state machine, est1rm reset) ---
+# --- T2 (state machine: 4x8 -> 4x6 -> reset, est1rm reset) ---
 def test_t2_hit_adds_weight_keeps_tier():
-    s = t2_next(T2State(target=10, streak=0, weight=50), actual=10, est1rm=100)
-    assert s == T2State(target=10, streak=0, weight=52.5)
+    s = t2_next(T2State(target=8, streak=0, weight=50), actual=8, est1rm=100)
+    assert s == T2State(target=8, streak=0, weight=52.5)
+
 
 def test_t2_miss_under_threshold_accumulates():
-    s = t2_next(T2State(target=10, streak=1, weight=50), actual=8, est1rm=100)
-    assert s == T2State(target=10, streak=2, weight=50)
+    s = t2_next(T2State(target=8, streak=1, weight=50), actual=6, est1rm=100)
+    assert s == T2State(target=8, streak=2, weight=50)
 
-def test_t2_three_misses_10_drops_to_8():
-    s = t2_next(T2State(target=10, streak=2, weight=50), actual=8, est1rm=100)
-    assert s == T2State(target=8, streak=0, weight=50)
 
 def test_t2_three_misses_8_drops_to_6():
     s = t2_next(T2State(target=8, streak=2, weight=50), actual=6, est1rm=100)
     assert s == T2State(target=6, streak=0, weight=50)
 
+
 def test_t2_three_misses_6_resets_to_70pct_of_est1rm():
     s = t2_next(T2State(target=6, streak=2, weight=50), actual=4, est1rm=100)
-    assert s == T2State(target=10, streak=0, weight=70)
+    assert s == T2State(target=8, streak=0, weight=70)
+
 
 def test_t2_reset_uses_est1rm_not_old_weight():
     # est1rm 110 -> 0.70*110 = 77 -> MROUND(77,2.5)=77.5
     s = t2_next(T2State(target=6, streak=2, weight=50), actual=4, est1rm=110)
-    assert s == T2State(target=10, streak=0, weight=77.5)
+    assert s == T2State(target=8, streak=0, weight=77.5)
+
 
 def test_t2_no_log_carries_state():
     s = t2_next(T2State(target=8, streak=1, weight=50), actual=None, est1rm=100)

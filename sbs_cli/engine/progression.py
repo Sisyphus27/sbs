@@ -40,22 +40,20 @@ def t3_next(weight: float, actual, target: int = 15, incr: float = 2.5,
 
 @dataclass(frozen=True)
 class T2State:
-    target: int     # 10 / 8 / 6
+    target: int     # 8 / 6
     streak: int     # consecutive misses at current target
     weight: float
 
 
 def t2_next(state: T2State, actual, est1rm: float, fail: int = 3,
             incr: float = 2.5, reset_pct: float = 0.70, quantum: float = 2.5) -> T2State:
-    """GZCLP T2 back: 10->8->6 tier cascade; full reset = reset_pct * est1rm, back to 10."""
+    """GZCLP-modified T2 back: 4x8 -> 4x6 cascade; reset = reset_pct * est1rm, back to 8."""
     if actual is None:
         return state
     if actual >= state.target:                                   # hit
         return T2State(state.target, 0, round_weight(state.weight + incr, quantum))
-    if state.streak + 1 >= fail:                                 # Nth consecutive miss -> tier change
-        if state.target == 10:
-            return T2State(8, 0, state.weight)
+    if state.streak + 1 >= fail:                                 # Nth consecutive miss
         if state.target == 8:
-            return T2State(6, 0, state.weight)
-        return T2State(10, 0, round_weight(est1rm * reset_pct, quantum))   # reset at 6
+            return T2State(6, 0, state.weight)                   # 4x8 -> 4x6
+        return T2State(8, 0, round_weight(est1rm * reset_pct, quantum))  # at 6 -> reset to 8
     return T2State(state.target, state.streak + 1, state.weight) # miss, under threshold

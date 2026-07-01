@@ -74,3 +74,38 @@ def test_tier_preview_then_apply(client, app):
         conn = connect(app.config["DB_PATH"])
         assert repo.get_lift(conn, lid)["tier"] == "t3"
         conn.close()
+
+
+def _t2_lift(app):
+    from webapp.db import connect
+    conn = connect(app.config["DB_PATH"])
+    lid = repo.create_lift(conn, name="Rows", tier="t2", day=1, sort_order=0,
+                           sets=4, max=None, intensity=None, reps=None, repout=None, start=85.0)
+    conn.close()
+    return lid
+
+
+def test_edit_start_t2_recomputes_weight(client, app):
+    lid = _t2_lift(app)  # created with start=85 -> lift_state.weight seeded 85
+    rv = client.post(f"/lifts/{lid}/edit", data={"start": "65"})
+    assert rv.status_code == 200
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        assert repo.get_lift_state(conn, lid)["weight"] == 65.0  # recomputed to new start
+        conn.close()
+
+
+def test_edit_start_sbs_does_not_recompute(client, app):
+    lid = _lift(app)  # sbs Squat
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        tm_before = repo.get_lift_state(conn, lid)["tm"]
+        conn.close()
+    client.post(f"/lifts/{lid}/edit", data={"start": "100"})
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        assert repo.get_lift_state(conn, lid)["tm"] == tm_before  # sbs tm unchanged
+        conn.close()

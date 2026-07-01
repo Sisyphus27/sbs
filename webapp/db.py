@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS week_log (
 
 _DEFAULT_SETTINGS = dict(
     week=1, days_per_week=4, rounding=2.5, incr=2.5,
-    t2_reset_pct=0.7, t2_fail=3, t3_target=15,
+    t2_reset_pct=0.75, t2_fail=3, t3_target=15,
 )
 
 

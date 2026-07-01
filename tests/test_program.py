@@ -46,11 +46,11 @@ def test_advance_t2_reset_uses_best_set_est1rm():
     # seed a best set: 50x10 -> est1rm ~ 67
     advance_lift(p, p.lift("Barbell rows"), ls, actual_reps=10, week=1)
     est = ls.est1rm
-    # now force 3 consecutive misses: at 8 into 6, then reset
-    ls.target, ls.streak = 6, 2
-    advance_lift(p, p.lift("Barbell rows"), ls, actual_reps=4, week=4)   # 3rd miss at 6 -> reset
+    # now force 3 consecutive misses at the bottom (target 4) -> reset @ 75%
+    ls.target, ls.streak = 4, 2
+    advance_lift(p, p.lift("Barbell rows"), ls, actual_reps=3, week=4)   # 3rd miss at 4 -> reset
     assert ls.target == 8 and ls.streak == 0
-    assert ls.weight == round_weight(est * 0.70)                      # 0.70*est, MROUND 2.5
+    assert ls.weight == round_weight(est * 0.75)                      # 0.75*est, MROUND 2.5
 
 
 def test_week_plan_sbs_shows_working_weight():
@@ -81,6 +81,6 @@ def test_advance_t2_reset_uses_profile_reset_pct():
     ls = s.lifts["Row"]
     advance_lift(p, p.lift("Row"), ls, actual_reps=10, week=1)   # seed best set 50x10
     est = ls.est1rm
-    ls.target, ls.streak = 6, 2
-    advance_lift(p, p.lift("Row"), ls, actual_reps=4, week=4)    # 3rd miss @6 -> reset
-    assert ls.weight == round_weight(est * 0.60)                 # uses 0.60, not hardcoded 0.70
+    ls.target, ls.streak = 4, 2
+    advance_lift(p, p.lift("Row"), ls, actual_reps=3, week=4)    # 3rd miss @4 -> reset
+    assert ls.weight == round_weight(est * 0.60)                 # uses 0.60, not default 0.75

@@ -24,7 +24,7 @@ class Profile:
     rounding: float = 2.5
     days_per_week: int = 4
     incr: float = 2.5
-    t2_reset_pct: float = 0.70
+    t2_reset_pct: float = 0.75
     t2_fail: int = 3
     t3_target: int = 15
     lifts: List[Lift] = field(default_factory=list)

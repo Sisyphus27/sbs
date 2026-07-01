@@ -56,6 +56,12 @@ def edit(lid):
             fields[col] = cast(request.form[col])
     repo.update_lift(conn, lid, **fields)
     lift = repo.get_lift(conn, lid)
+    # start is the progression basis for t2/t3: replay from the new start over
+    # history to resync the working weight. Idempotent (no-op effect if start
+    # unchanged). sbs has no start-based progression -> skipped.
+    if lift["tier"] in ("t2", "t3") and "start" in fields:
+        from ..services import recompute as recompute_service
+        recompute_service.recompute_on_start_change(conn, lid, lift["start"])
     return render_template("_lift_row.html", lift=lift)
 
 

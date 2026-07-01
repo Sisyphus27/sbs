@@ -10,7 +10,7 @@ def test_lift_t2_construction():
 
 def test_profile_defaults():
     p = Profile()
-    assert p.rounding == 2.5 and p.days_per_week == 4 and p.t2_reset_pct == 0.70
+    assert p.rounding == 2.5 and p.days_per_week == 4 and p.t2_reset_pct == 0.75
     assert p.lifts == []
 
 def test_setentry_and_liftstate():

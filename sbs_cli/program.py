@@ -82,3 +82,29 @@ def week_plan(profile: Profile, state: ProgramState, day: Optional[int] = None) 
         elif l.tier == "t3":
             out.append(PlanItem(l.name, "t3", ls.weight, profile.t3_target, l.sets, None, profile.t3_target, 0, ls.est1rm))
     return out
+
+
+def recompute_state(lift: Lift, history: List[SetEntry], profile: Profile) -> LiftState:
+    """Re-derive a t2/t3 lift's state by replaying progression from ``lift.start``
+    over ``history``. History rows are immutable facts; only their reps drive the
+    replay. ``est1rm`` is computed from the real history weights (unchanged by the
+    new start). Not applicable to sbs (sbs has no start-based progression)."""
+    est = _est1rm_from_history(history)
+    if lift.tier == "t3":
+        weight = lift.start or 0.0
+        for h in history:
+            weight = t3_next(weight, h.reps, target=profile.t3_target,
+                             incr=profile.incr, quantum=profile.rounding)
+        return LiftState(name=lift.name, tier="t3", weight=weight, target=None,
+                         streak=0, est1rm=est, history=history)
+    if lift.tier == "t2":
+        target, streak, weight = 8, 0, lift.start or 0.0
+        for k, h in enumerate(history):
+            est_k = _est1rm_from_history(history[:k + 1]) or 0.0
+            ns = t2_next(T2State(target, streak, weight), h.reps, est_k,
+                         fail=profile.t2_fail, incr=profile.incr,
+                         reset_pct=profile.t2_reset_pct, quantum=profile.rounding)
+            target, streak, weight = ns.target, ns.streak, ns.weight
+        return LiftState(name=lift.name, tier="t2", weight=weight, target=target,
+                         streak=streak, est1rm=est, history=history)
+    raise ValueError(f"recompute_state not applicable to tier {lift.tier!r}")

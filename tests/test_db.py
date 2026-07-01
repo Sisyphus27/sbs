@@ -10,7 +10,7 @@ def test_init_schema_creates_tables_and_default_settings(tmp_path):
     assert {"settings", "lifts", "lift_state", "history"} <= tables
     s = conn.execute("SELECT * FROM settings").fetchone()
     assert s["week"] == 1 and s["days_per_week"] == 4 and s["rounding"] == 2.5
-    assert s["incr"] == 2.5 and s["t2_reset_pct"] == 0.7 and s["t2_fail"] == 3 and s["t3_target"] == 15
+    assert s["incr"] == 2.5 and s["t2_reset_pct"] == 0.75 and s["t2_fail"] == 3 and s["t3_target"] == 15
     conn.close()
 
 

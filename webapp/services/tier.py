@@ -18,6 +18,8 @@ def derive_state(conn: sqlite3.Connection, lift_id: int, new_tier: str,
     quantum = settings["rounding"]
 
     if new_tier == "sbs":
+        # See ADR 0001 — est1rm seed here is deliberate; unification with the
+        # engine's max-replay is deferred. Do not "fix" without reading the ADR.
         tm = est1rm if est1rm is not None else (lift["max"] or 0.0)
         return {"tier": "sbs", "tm": tm, "weight": None, "target": None,
                 "streak": 0, "est1rm": est1rm}

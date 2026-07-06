@@ -37,7 +37,8 @@ def new():
             conn, name=name, tier=tier, day=_f("day", 1, int), sort_order=999,
             sets=_f("sets", 3, int), max=_f("max", cast=float),
             intensity=_f("intensity", cast=float), reps=_f("reps", cast=int),
-            repout=_f("repout", cast=int), start=_f("start", cast=float))
+            repout=_f("repout", cast=int), start=_f("start", cast=float),
+            lift_kind=_f("lift_kind") if tier == "sbs" else None)
     except Exception as e:
         flash(f"创建失败: {e}")
         return render_template("_lift_row.html", lift=None, error=str(e)), 400
@@ -51,7 +52,7 @@ def edit(lid):
     fields = {}
     for col, cast in (("name", str), ("tier", str), ("day", int), ("sets", int),
                       ("max", float), ("intensity", float), ("reps", int),
-                      ("repout", int), ("start", float)):
+                      ("repout", int), ("start", float), ("lift_kind", str)):
         if col in request.form and request.form[col].strip() != "":
             fields[col] = cast(request.form[col])
     repo.update_lift(conn, lid, **fields)

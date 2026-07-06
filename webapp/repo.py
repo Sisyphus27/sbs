@@ -29,16 +29,16 @@ def update_settings(conn: sqlite3.Connection, **fields) -> None:
 
 # ---------- lifts ----------
 _LIFT_COLS = ("name", "tier", "day", "sort_order", "sets",
-              "max", "intensity", "reps", "repout", "start")
+              "max", "intensity", "reps", "repout", "start", "lift_kind")
 
 
 def create_lift(conn: sqlite3.Connection, *, name: str, tier: str, day: int,
                 sort_order: int, sets: int, max, intensity, reps, repout,
-                start) -> int:
+                start, lift_kind=None) -> int:
     cur = conn.execute(
-        "INSERT INTO lifts (name, tier, day, sort_order, sets, max, intensity, reps, repout, start) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (name, tier, day, sort_order, sets, max, intensity, reps, repout, start),
+        "INSERT INTO lifts (name, tier, day, sort_order, sets, max, intensity, reps, repout, start, lift_kind) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (name, tier, day, sort_order, sets, max, intensity, reps, repout, start, lift_kind),
     )
     lid = cur.lastrowid
     _init_lift_state(conn, lid, tier, max, start)
@@ -156,4 +156,56 @@ def get_week_logs(conn: sqlite3.Connection, week: int) -> dict:
 
 def clear_week_logs(conn: sqlite3.Connection, week: int) -> None:
     conn.execute("DELETE FROM week_log WHERE week = ?", (week,))
+    conn.commit()
+
+
+# ---------- schedule (Task 5) ----------
+def load_schedule(conn: sqlite3.Connection):
+    """Return the schedule as a list of ScheduleRow (the dataclass the engine wants).
+    Single loader used by every read path — do not inline this comprehension."""
+    from sbs_cli.data.schema import ScheduleRow
+    return [ScheduleRow(kind=r["kind"], week=r["week"], intensity=r["intensity"],
+                        reps=r["reps"], repout=r["repout"])
+            for r in conn.execute("SELECT * FROM sbs_schedule ORDER BY kind, week")]
+
+
+def get_schedule(conn: sqlite3.Connection):
+    """Raw sqlite3.Row view of the schedule (for the /schedule editor template)."""
+    return conn.execute(
+        "SELECT * FROM sbs_schedule ORDER BY kind, week"
+    ).fetchall()
+
+
+def replace_schedule(conn: sqlite3.Connection, rows) -> None:
+    """Wipe + insert. `rows` is an iterable of (kind, week, intensity, reps, repout)."""
+    conn.execute("DELETE FROM sbs_schedule")
+    conn.executemany(
+        "INSERT INTO sbs_schedule (kind, week, intensity, reps, repout) "
+        "VALUES (?, ?, ?, ?, ?)",
+        list(rows),
+    )
+    conn.commit()
+
+
+def reset_schedule(conn: sqlite3.Connection) -> None:
+    """Restore the 42-row DEFAULT_SCHEDULE (used by the /schedule reset button)."""
+    from sbs_cli.defaults import DEFAULT_SCHEDULE
+    replace_schedule(conn, [(r.kind, r.week, r.intensity, r.reps, r.repout)
+                            for r in DEFAULT_SCHEDULE])
+
+
+# ---------- reseed (Task 5) ----------
+def set_reseed(conn: sqlite3.Connection, lift_id: int, *, cycle: int, new_max=None) -> None:
+    """Stamp ``reseeded_cycle`` on an sbs lift; if ``new_max`` is given, also set
+    ``lifts.max`` and ``lift_state.tm`` to it.
+
+    This is the ONLY writer of ``reseeded_cycle`` besides the one-shot migration
+    (Task 7). In particular ``save_lift_state`` deliberately omits the column so
+    that ``advance_week``'s weekly UPSERT cannot clobber the reseed stamp (ADR 0002).
+    """
+    conn.execute(
+        "UPDATE lift_state SET reseeded_cycle = ? WHERE lift_id = ?", (cycle, lift_id))
+    if new_max is not None:
+        conn.execute("UPDATE lifts SET max = ? WHERE id = ?", (new_max, lift_id))
+        conn.execute("UPDATE lift_state SET tm = ? WHERE lift_id = ?", (new_max, lift_id))
     conn.commit()

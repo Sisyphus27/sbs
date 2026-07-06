@@ -8,7 +8,8 @@ def _seed(db_path):
     # sbs Squat: max=135, week-1 history 90x8 (repout 10 -> diff -2 -> -5%).
     # Faithful raw TM = 135*0.95 = 128.25. Stored (buggy, rounded) = 127.5.
     lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
-                           sets=3, max=135.0, intensity=0.7, reps=4, repout=10, start=None)
+                           sets=3, max=135.0, intensity=0.7, reps=4, repout=10,
+                           start=None, lift_kind="main")
     repo.save_lift_state(conn, lid, tier="sbs", tm=127.5, weight=None,
                          target=None, streak=0, est1rm=120.0)
     repo.append_history(conn, lid, week=1, weight=90.0, reps=8)

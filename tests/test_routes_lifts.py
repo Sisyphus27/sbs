@@ -5,7 +5,8 @@ def _lift(app):
     from webapp.db import connect
     conn = connect(app.config["DB_PATH"])
     lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
-                           sets=5, max=135.0, intensity=0.7, reps=5, repout=10, start=None)
+                           sets=5, max=135.0, intensity=0.7, reps=5, repout=10,
+                           start=None, lift_kind="main")
     conn.close()
     return lid
 
@@ -108,4 +109,30 @@ def test_edit_start_sbs_does_not_recompute(client, app):
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
         assert repo.get_lift_state(conn, lid)["tm"] == tm_before  # sbs tm unchanged
+        conn.close()
+
+
+def test_create_sbs_persists_lift_kind(client, app):
+    # sbs lifts get an explicit main/aux kind from the form
+    rv = client.post("/lifts/new", data={
+        "name": "Bench", "tier": "sbs", "day": "1", "sets": "5",
+        "max": "100", "lift_kind": "aux",
+    })
+    assert rv.status_code == 200
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        row = repo.get_lift_by_name(conn, "Bench")
+        assert row["lift_kind"] == "aux"
+        conn.close()
+
+
+def test_edit_changes_lift_kind(client, app):
+    lid = _lift(app)  # created with lift_kind="main"
+    rv = client.post(f"/lifts/{lid}/edit", data={"lift_kind": "aux"})
+    assert rv.status_code == 200
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        assert repo.get_lift(conn, lid)["lift_kind"] == "aux"
         conn.close()

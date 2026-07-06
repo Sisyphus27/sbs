@@ -28,7 +28,8 @@ def migrate_from_yaml(db_path: str, profile_path: str, state_path: str, *, force
     for i, l in enumerate(p.lifts):
         lid = repo.create_lift(
             conn, name=l.name, tier=l.tier, day=l.day, sort_order=i, sets=l.sets,
-            max=l.max, intensity=l.intensity, reps=l.reps, repout=l.repout, start=l.start)
+            max=l.max, intensity=l.intensity, reps=l.reps, repout=l.repout, start=l.start,
+            lift_kind=l.lift_kind)
         lids.append(lid)
     # Pass 2: apply YAML state. The old state.yaml is name-keyed, so for a name
     # shared by multiple rows (e.g. Face Pull on day 2 + day 4) assign the YAML
@@ -74,7 +75,8 @@ def migrate_from_xlsx(db_path: str, xlsx_path: str, *, force: bool = False) -> N
                          t3_target=p.t3_target)
     for i, l in enumerate(p.lifts):
         repo.create_lift(conn, name=l.name, tier=l.tier, day=l.day, sort_order=i, sets=l.sets,
-                         max=l.max, intensity=l.intensity, reps=l.reps, repout=l.repout, start=l.start)
+                         max=l.max, intensity=l.intensity, reps=l.reps, repout=l.repout, start=l.start,
+                         lift_kind=l.lift_kind)
     conn.close()
     print(f"imported {len(p.lifts)} lifts from xlsx -> {db_path}")
 

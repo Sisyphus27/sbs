@@ -12,22 +12,35 @@ def profile_to_dict(p: Profile) -> dict:
             {k: v for k, v in {
                 "name": l.name, "tier": l.tier, "day": l.day, "max": l.max,
                 "intensity": l.intensity, "reps": l.reps, "repout": l.repout,
-                "sets": l.sets, "start": l.start,
+                "sets": l.sets, "start": l.start, "lift_kind": l.lift_kind,
             }.items() if v is not None and v != 0}
             for l in p.lifts
         ],
     }
 
 def profile_from_dict(d: dict) -> Profile:
+    # Lazy import: sbs_cli.defaults imports sbs_cli.data.schema, and importing it
+    # at module top would force schema.py -> defaults.py resolution during the
+    # sbs_cli.data package init. Importing here keeps the cycle out of module
+    # load. The CLI path renders the STANDARD SBS RTF program (the static 21-week
+    # ladder); it is NOT wired to the editable DB schedule (webapp-only, Task 6).
+    from ..defaults import DEFAULT_SCHEDULE
+
     lifts = [Lift(
         name=x["name"], tier=x["tier"], day=x["day"],
         max=x.get("max"), intensity=x.get("intensity", 0.0), reps=x.get("reps", 0),
         repout=x.get("repout", 0), sets=x.get("sets", 3), start=x.get("start"),
+        # Legacy profile.yaml has no lift_kind. The engine's lookup_schedule
+        # needs a kind that exists in DEFAULT_SCHEDULE ("main" or "aux").
+        # Default sbs lifts to "main" so a legacy YAML still renders; re-running
+        # `sbs init` from the xlsx importer repopulates the proper main/aux split.
+        lift_kind=x.get("lift_kind") or ("main" if x.get("tier") == "sbs" else None),
     ) for x in d.get("lifts", [])]
     return Profile(
         rounding=d.get("rounding", 2.5), days_per_week=d.get("days_per_week", 4),
         incr=d.get("incr", 2.5), t2_reset_pct=d.get("t2_reset_pct", 0.70),
         t2_fail=d.get("t2_fail", 3), t3_target=d.get("t3_target", 15), lifts=lifts,
+        schedule=list(DEFAULT_SCHEDULE),
     )
 
 def save_profile(p: Profile, path: str) -> None:

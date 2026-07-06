@@ -3,6 +3,15 @@ from dataclasses import dataclass, field
 from typing import Optional, List, Dict
 
 
+@dataclass(frozen=True)
+class ScheduleRow:
+    kind: str            # "main" | "aux"
+    week: int            # 1..21
+    intensity: float
+    reps: int
+    repout: int
+
+
 @dataclass
 class Lift:
     """A lift definition in profile.yaml (static)."""
@@ -17,6 +26,7 @@ class Lift:
     sets: int = 3
     # t2 / t3
     start: Optional[float] = None
+    lift_kind: Optional[str] = None   # "main" | "aux" for sbs; None for t2/t3
 
 
 @dataclass
@@ -28,6 +38,7 @@ class Profile:
     t2_fail: int = 3
     t3_target: int = 15
     lifts: List[Lift] = field(default_factory=list)
+    schedule: List[ScheduleRow] = field(default_factory=list)
 
     def lift(self, name: str) -> Lift:
         for l in self.lifts:

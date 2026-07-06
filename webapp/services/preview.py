@@ -2,15 +2,20 @@
 import sqlite3
 from sbs_cli.data.schema import SetEntry
 from sbs_cli.engine.onerm import estimate_1rm
-from sbs_cli.engine.progression import round_weight
+from sbs_cli.engine.progression import round_weight, lookup_schedule
 from sbs_cli.program import _est1rm_from_history
 from .. import repo
 
 
-def _working_weight(lift, state, settings) -> float:
-    """Same working-weight logic as the plan view (sbs = tm*intensity, else state.weight)."""
+def _working_weight(lift, state, settings, schedule) -> float:
+    """Same working-weight logic as the plan view (sbs = tm*intensity, else state.weight).
+
+    For sbs, intensity is pulled from sbs_schedule (single loader) by (lift_kind,
+    program week) — the lifts.intensity column is a stale seed, ignored at read.
+    """
     if lift["tier"] == "sbs":
-        return round_weight((state["tm"] or 0) * (lift["intensity"] or 0.0), settings["rounding"])
+        sc = lookup_schedule(schedule, lift["lift_kind"], settings["week"])
+        return round_weight((state["tm"] or 0) * sc.intensity, settings["rounding"])
     return state["weight"]
 
 
@@ -22,7 +27,8 @@ def live_preview(conn: sqlite3.Connection, lift_id: int, reps: int) -> dict:
     lift = repo.get_lift(conn, lift_id)
     state = repo.get_lift_state(conn, lift_id)
     settings = repo.get_settings(conn)
-    w = _working_weight(lift, state, settings)
+    schedule = repo.load_schedule(conn)
+    w = _working_weight(lift, state, settings, schedule)
     est = estimate_1rm(w, reps)
     history = [SetEntry(week=h["week"], weight=h["weight"], reps=h["reps"])
                for h in repo.list_history(conn, lift_id)]

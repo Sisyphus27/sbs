@@ -1,13 +1,22 @@
-from sbs_cli.data.schema import Lift, Profile, SetEntry, LiftState, ProgramState
-from sbs_cli.program import best_1rm, initial_state, advance_lift, week_plan, recompute_state
+from sbs_cli.data.schema import Lift, Profile, SetEntry, LiftState, ProgramState, ScheduleRow
+from sbs_cli.program import (best_1rm, initial_state, advance_lift, week_plan,
+                             recompute_state, recompute_sbs_tm)
 
 
 def _profile():
-    return Profile(lifts=[
-        Lift(name="Squat", tier="sbs", day=1, max=100, intensity=0.75, reps=4, repout=8, sets=3),
-        Lift(name="Barbell rows", tier="t2", day=1, start=50),
-        Lift(name="Curls", tier="t3", day=1, start=40),
-    ])
+    # Profile carries a 1-week schedule so sbs engine paths (week_plan, advance_lift,
+    # recompute_sbs_tm) can read intensity/reps/repout via lookup_schedule.
+    # Schedule row for week 1 mirrors the legacy static Lift fields (0.75 / 4 / 8).
+    sched = [ScheduleRow("main", 1, 0.75, 4, 8)]
+    return Profile(
+        lifts=[
+            Lift(name="Squat", tier="sbs", day=1, max=100, intensity=0.75,
+                 reps=4, repout=8, sets=3, lift_kind="main"),
+            Lift(name="Barbell rows", tier="t2", day=1, start=50),
+            Lift(name="Curls", tier="t3", day=1, start=40),
+        ],
+        schedule=sched,
+    )
 
 
 def test_best_1rm_picks_max_estimate():
@@ -109,13 +118,13 @@ def test_recompute_state_t2_all_hits_increments_from_start():
     assert ls.est1rm == _est1rm_from_history(hist)
 
 
-def test_recompute_state_t2_cascade_drops_to_6():
+def test_recompute_state_t2_one_miss_drops_to_6():
     p = Profile(lifts=[Lift(name="Row", tier="t2", day=1, start=50)])
     lift = p.lift("Row")
-    # 3 consecutive misses at target 8 (reps 5 < 8) -> drop to target 6, weight unchanged
-    hist = [SetEntry(1, 50.0, 5), SetEntry(2, 50.0, 5), SetEntry(3, 50.0, 5)]
+    # 1-strike: a single miss at target 8 drops to target 6, weight unchanged
+    hist = [SetEntry(1, 50.0, 5)]
     ls = recompute_state(lift, hist, p)
-    assert ls.target == 6 and ls.streak == 0 and ls.weight == 50.0
+    assert ls.target == 6 and ls.streak == 1 and ls.weight == 50.0
 
 
 def test_recompute_state_empty_history_seeds_start():
@@ -140,8 +149,10 @@ def test_sbs_tm_raw_accumulation_unfreezes_weight():
     # Beat repout by 1 each week -> +0.5%/week. Under the old bug the TM was
     # rounded each week, freezing the weight at 95 forever. With raw TM the
     # weight must climb in legal 2.5 steps.
-    p = Profile(lifts=[Lift(name="Squat", tier="sbs", day=1, max=135,
-                            intensity=0.7, reps=4, repout=8, sets=3)])
+    # Schedule: weeks 1..8 all at (0.7, 4, 8) — preserves the legacy single-intensity intent.
+    sched = [ScheduleRow("main", w, 0.7, 4, 8) for w in range(1, 9)]
+    p = Profile(lifts=[Lift(name="Squat", tier="sbs", day=1, max=135, sets=3, lift_kind="main")],
+                schedule=sched)
     s = initial_state(p); lift = p.lift("Squat")
     weights = []
     for week in range(1, 9):
@@ -150,3 +161,42 @@ def test_sbs_tm_raw_accumulation_unfreezes_weight():
     assert s.lifts["Squat"].tm % 2.5 != 0          # (a) TM stays raw, not snapped
     assert weights[-1] > weights[0]                # (b) weight climbs -- stall fixed
     assert all(w % 2.5 == 0 for w in weights)      # (c) every loaded weight legal
+
+
+# ---- Task 4: schedule-driven sbs engine paths ----
+
+def _profile_with_schedule():
+    sched = [ScheduleRow("main", w, i, r, ro) for (w, i, r, ro) in
+             [(1, 0.70, 5, 10), (2, 0.75, 4, 8), (3, 0.80, 3, 6)]]
+    lifts = [Lift(name="Squat", tier="sbs", day=1, max=100.0, sets=5, lift_kind="main")]
+    return Profile(rounding=2.5, lifts=lifts, schedule=sched)
+
+
+def test_week_plan_uses_scheduled_intensity_reps_repout_at_week_2():
+    p = _profile_with_schedule()
+    st = ProgramState(week=2, lifts={"Squat": LiftState(name="Squat", tier="sbs", tm=100.0)})
+    items = week_plan(p, st, day=1)
+    squat = items[0]
+    # week 2 schedule: 0.75 / 4 / 8 ; weight = MROUND(100*0.75, 2.5) = 75.0
+    assert squat.weight == 75.0
+    assert squat.reps == 4
+    assert squat.repout == 8
+    assert squat.sets == 5
+
+
+def test_advance_lift_uses_scheduled_repout_for_tm_delta():
+    p = _profile_with_schedule()
+    lift = p.lift("Squat")
+    st = LiftState(name="Squat", tier="sbs", tm=100.0)
+    # week 2 scheduled repout = 8; actual 11 -> beat by 3 -> +1.5% -> 101.5
+    advance_lift(p, lift, st, actual_reps=11, week=2)
+    assert st.tm == 101.5
+
+
+def test_recompute_sbs_tm_uses_schedule_repout_per_week():
+    p = _profile_with_schedule()
+    lift = p.lift("Squat")
+    hist = [SetEntry(week=1, weight=70.0, reps=12),   # W1 repout 10 -> beat by 2 -> +1% -> 101.0
+            SetEntry(week=2, weight=75.0, reps=10)]   # W2 repout 8 -> beat by 2 -> +1% -> 102.01
+    tm = recompute_sbs_tm(lift, hist, p.schedule)
+    assert tm == round(100.0 * 1.01 * 1.01, 10)

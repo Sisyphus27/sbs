@@ -12,8 +12,9 @@ def test_full_flow_init_week_next_show(tmp_path, monkeypatch):
     # week 1 html
     cli.run(["week", "--profile", str(prof), "--state", str(st), "--out", "week-1.html"])
     assert (tmp_path / "week-1.html").exists()
-    # synthesize a log: Squat beats repout, Barbell rows hits, Leg Extension hits
-    log = {"week": 1, "logs": {"Squat": 11, "Barbell rows": 10, "Leg Extension": 15}}
+    # synthesize a log: Squat beats repout (DEFAULT_SCHEDULE wk1 main repout=10),
+    # Barbell rows hits t2 target, Leg Extension hits t3 target.
+    log = {"week": 1, "logs": {"Squat": 13, "Barbell rows": 10, "Leg Extension": 15}}
     logp = tmp_path / "week-1-log.json"; logp.write_text(json.dumps(log))
     # next
     cli.run(["next", str(logp), "--profile", str(prof), "--state", str(st), "--out", "week-2.html"])
@@ -22,7 +23,7 @@ def test_full_flow_init_week_next_show(tmp_path, monkeypatch):
     from sbs_cli.data import io as dio
     s = dio.load_state(str(st))
     assert s.week == 2
-    # Squat beat repout 8 by 3 -> +1.5% on TM 135 -> 137.025 (raw, no MROUND)
+    # Squat beat repout 10 by 3 -> +1.5% on TM 135 -> 137.025 (raw, no MROUND)
     assert s.lifts["Squat"].tm == 137.025
     # Barbell rows hit (10 >= target 10) -> +2.5 on 85
     assert s.lifts["Barbell rows"].weight == 87.5

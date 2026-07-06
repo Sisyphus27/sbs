@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}重测 max{% endblock %}
+{% block content %}
+<h1>第 {{ cycle }} 周期 — 重测 max</h1>
+{% if not due %}
+  <p>当前无需重测。</p>
+{% else %}
+  {% for r, st in due %}
+  <div class="row">
+    <span class="name">{{ r.name }}</span>
+    <span class="meta">当前 TM {{ '%.1f'|format(st.tm or 0) }}</span>
+    <form action="{{ url_for('reseed.apply', lid=r.id) }}" method="post" style="display:inline">
+      <input type="number" step="0.5" name="max" placeholder="新 max">
+      <button type="submit">重测并重置</button>
+    </form>
+    <form action="{{ url_for('reseed.skip', lid=r.id) }}" method="post" style="display:inline">
+      <button type="submit">跳过</button>
+    </form>
+  </div>
+  {% endfor %}
+{% endif %}
+{% endblock %}

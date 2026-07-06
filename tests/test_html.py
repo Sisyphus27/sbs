@@ -1,15 +1,20 @@
 import json
 import re
 from sbs_cli.data.schema import Lift, Profile
+from sbs_cli.defaults import DEFAULT_SCHEDULE
 from sbs_cli.program import initial_state
 from sbs_cli.view.html import render_week_html, parse_log_json
 
 def _profile():
+    # Engine is schedule-driven (Task 4): sbs lifts need lift_kind and the
+    # profile must carry a schedule. The CLI path uses DEFAULT_SCHEDULE
+    # (the standard 21-week SBS RTF ladder); mirror that here.
     return Profile(lifts=[
-        Lift(name="Squat", tier="sbs", day=1, max=100, intensity=0.75, reps=4, repout=8, sets=3),
+        Lift(name="Squat", tier="sbs", day=1, max=100, intensity=0.75, reps=4,
+             repout=8, sets=3, lift_kind="main"),
         Lift(name="Barbell rows", tier="t2", day=1, start=50),
         Lift(name="Curls", tier="t3", day=1, start=40),
-    ])
+    ], schedule=DEFAULT_SCHEDULE)
 
 def test_render_html_has_input_per_lift_and_export_button():
     p = _profile(); s = initial_state(p)
@@ -23,7 +28,8 @@ def test_render_html_has_input_per_lift_and_export_button():
 def test_render_html_shows_weights():
     p = _profile(); s = initial_state(p)
     html = render_week_html(p, s, week=1)
-    assert "75" in html        # Squat working weight round(100*0.75)
+    # Week-1 DEFAULT_SCHEDULE main row is (0.70, 5, 10) -> round(100*0.70) = 70
+    assert "70" in html        # Squat working weight (week 1 main intensity 0.70)
     assert "50" in html        # Barbell rows start
     assert "40" in html        # Curls start
 

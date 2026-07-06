@@ -10,15 +10,17 @@ def _lift_from_row(r) -> Lift:
         name=r["name"], tier=r["tier"], day=r["day"], max=r["max"],
         intensity=r["intensity"] or 0.0, reps=r["reps"] or 0,
         repout=r["repout"] or 0, sets=r["sets"] or 3, start=r["start"],
+        lift_kind=r["lift_kind"],
     )
 
 
-def _profile_from_rows(settings, lift_rows) -> Profile:
+def _profile_from_rows(settings, lift_rows, schedule) -> Profile:
     return Profile(
         rounding=settings["rounding"], days_per_week=settings["days_per_week"],
         incr=settings["incr"], t2_reset_pct=settings["t2_reset_pct"],
         t2_fail=settings["t2_fail"], t3_target=settings["t3_target"],
         lifts=[_lift_from_row(r) for r in lift_rows],
+        schedule=schedule,
     )
 
 
@@ -39,7 +41,8 @@ def advance_week(conn: sqlite3.Connection, logs: dict) -> int:
     settings = repo.get_settings(conn)
     week = settings["week"]
     lift_rows = repo.list_lifts(conn)
-    profile = _profile_from_rows(settings, lift_rows)  # engine reads only globals from it
+    schedule = repo.load_schedule(conn)
+    profile = _profile_from_rows(settings, lift_rows, schedule)  # engine reads globals + schedule
     for row in lift_rows:
         lid = row["id"]
         actual = logs.get(lid)

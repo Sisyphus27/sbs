@@ -70,3 +70,25 @@ def t2_next(state: T2State, actual, est1rm: float, fail: int = 3,
             return T2State(4, 0, state.weight)                   # 4x6 -> 4x4
         return T2State(8, 0, round_weight(est1rm * reset_pct, quantum))  # at 4 -> reset to 8
     return T2State(state.target, state.streak + 1, state.weight) # miss, under threshold
+
+
+def schedule_week(program_week: int) -> int:
+    """Cyclic 1..21 schedule-row index for an absolute program week."""
+    return ((program_week - 1) % 21) + 1
+
+
+def cycle_number(program_week: int) -> int:
+    """Which 21-week cycle a program week falls in (1-based)."""
+    return ((program_week - 1) // 21) + 1
+
+
+def lookup_schedule(schedule, kind: str, program_week: int):
+    """Return the ScheduleRow for (kind, schedule_week(program_week)).
+
+    Raises KeyError if that row is not present in `schedule`.
+    """
+    sw = schedule_week(program_week)
+    for row in schedule:
+        if row.kind == kind and row.week == sw:
+            return row
+    raise KeyError(f"no schedule row for kind={kind!r} week={sw}")

@@ -3,6 +3,8 @@ import yaml
 from webapp import db, repo
 import migrate
 
+SRC_XLSX = r"D:\WorkSpace\sbs\backup\00_cold_backup.xlsx"
+
 
 def _write_yaml(path, doc):
     with open(path, "w", encoding="utf-8") as f:
@@ -30,7 +32,10 @@ def test_migrate_from_yaml(tmp_path, monkeypatch):
     conn = db.connect(dbp); db.init_schema(conn)
     assert repo.get_settings(conn)["week"] == 2
     assert len(repo.list_lifts(conn)) == 2
-    squat_id = repo.get_lift_by_name(conn, "Squat")["id"]
+    squat = repo.get_lift_by_name(conn, "Squat")
+    squat_id = squat["id"]
+    # sbs lifts must carry a non-NULL lift_kind so lookup_schedule doesn't KeyError on /plan.
+    assert squat["lift_kind"] == "main"
     assert repo.get_lift_state(conn, squat_id)["tm"] == 137.5
     assert len(repo.list_history(conn, squat_id)) == 1
     conn.close()
@@ -42,3 +47,21 @@ def test_migrate_refuses_overwrite(tmp_path):
     import pytest
     with pytest.raises(SystemExit):
         migrate.migrate_from_yaml(dbp, "profile.yaml", "state.yaml")
+
+
+def test_migrate_from_xlsx_sets_sbs_lift_kind(tmp_path):
+    # Regression: migrate_from_xlsx must pass the importer's lift_kind through to
+    # the DB, else every sbs read path KeyErrors on lookup_schedule.
+    if not os.path.exists(SRC_XLSX):
+        import pytest
+        pytest.skip("cold-backup xlsx fixture not available")
+    dbp = str(tmp_path / "out.db")
+    migrate.migrate_from_xlsx(dbp, SRC_XLSX, force=True)
+    conn = db.connect(dbp)
+    sbs_kinds = {row["name"]: row["lift_kind"] for row in repo.list_lifts(conn)
+                 if row["tier"] == "sbs"}
+    conn.close()
+    assert sbs_kinds, "expected at least one sbs lift from xlsx import"
+    assert sbs_kinds["Squat"] == "main"      # QS main row
+    for name, kind in sbs_kinds.items():
+        assert kind in ("main", "aux"), f"{name} has NULL/invalid lift_kind={kind!r}"

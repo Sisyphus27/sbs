@@ -4,7 +4,9 @@ from webapp import repo
 def test_settings_view(client):
     rv = client.get("/settings")
     text = rv.data.decode("utf-8")
-    assert rv.status_code == 200 and ("rounding" in text.lower() or "参数" in text)
+    assert rv.status_code == 200
+    assert "最小变动" in text            # gym-increment field relabeled
+    assert "全局参数" in text            # page title still present
 
 
 def test_settings_update(client, app):

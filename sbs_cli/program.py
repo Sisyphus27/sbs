@@ -2,7 +2,7 @@
 from typing import Optional, List
 from .data.schema import Lift, Profile, SetEntry, LiftState, ProgramState
 from .engine.onerm import estimate_1rm
-from .engine.progression import sbs_next, t3_next, t2_next, T2State, round_weight
+from .engine.progression import sbs_next, t3_next, t2_next, T2State, round_weight, lookup_schedule
 
 
 def best_1rm(history: List[SetEntry]):
@@ -37,7 +37,8 @@ def advance_lift(profile: Profile, lift: Lift, state: LiftState, actual_reps, we
     """Apply this week's logged last-set reps; mutate state in place. All knobs from profile."""
     # working weight this week (before progression)
     if lift.tier == "sbs":
-        w = round_weight((state.tm or 0) * lift.intensity, profile.rounding)
+        sc = lookup_schedule(profile.schedule, lift.lift_kind, week)
+        w = round_weight((state.tm or 0) * sc.intensity, profile.rounding)
     else:
         w = state.weight
     if actual_reps is not None:
@@ -45,7 +46,7 @@ def advance_lift(profile: Profile, lift: Lift, state: LiftState, actual_reps, we
         state.est1rm = _est1rm_from_history(state.history)
     # progress
     if lift.tier == "sbs":
-        state.tm = sbs_next(state.tm, lift.repout, actual_reps)
+        state.tm = sbs_next(state.tm, sc.repout, actual_reps)
     elif lift.tier == "t3":
         state.weight = t3_next(state.weight, actual_reps,
                                target=profile.t3_target, incr=profile.incr, quantum=profile.rounding)
@@ -75,8 +76,9 @@ def week_plan(profile: Profile, state: ProgramState, day: Optional[int] = None) 
         if ls is None:
             continue
         if l.tier == "sbs":
-            w = round_weight((ls.tm or 0) * l.intensity, profile.rounding)
-            out.append(PlanItem(l.name, "sbs", w, l.reps, l.sets, l.repout, None, 0, ls.est1rm))
+            sc = lookup_schedule(profile.schedule, l.lift_kind, state.week)
+            w = round_weight((ls.tm or 0) * sc.intensity, profile.rounding)
+            out.append(PlanItem(l.name, "sbs", w, sc.reps, l.sets, sc.repout, None, 0, ls.est1rm))
         elif l.tier == "t2":
             out.append(PlanItem(l.name, "t2", ls.weight, ls.target, l.sets, None, ls.target, ls.streak, ls.est1rm))
         elif l.tier == "t3":
@@ -110,13 +112,14 @@ def recompute_state(lift: Lift, history: List[SetEntry], profile: Profile) -> Li
     raise ValueError(f"recompute_state not applicable to tier {lift.tier!r}")
 
 
-def recompute_sbs_tm(lift: Lift, history: List[SetEntry]) -> float:
-    """Replay an sbs lift's TM from ``lift.max`` over its history (raw, no rounding).
-    History rows are immutable facts; only their reps drive the replay. No Profile
-    is needed: ``sbs_next`` (post-fix) takes only ``(tm, repout, actual)``.
-    xlsx-faithful: in the RTF template, editing Max recomputes every downstream
-    TM from that Max. See ADR 0001."""
+def recompute_sbs_tm(lift: Lift, history: List[SetEntry], schedule) -> float:
+    """Replay an sbs lift's TM from ``lift.max`` over its history (raw, no rounding),
+    using each week's SCHEDULED repout as the rep-out target. ``schedule`` is the list
+    of ScheduleRow passed from the caller (webapp loads it from sbs_schedule).
+    History rows are immutable facts; only their reps + the scheduled repout drive the
+    replay. See ADR 0001 (TM raw) and the schedule spec (Q6: current-schedule replay)."""
     tm = lift.max
     for h in sorted(history, key=lambda x: x.week):
-        tm = sbs_next(tm, lift.repout, h.reps)
+        sc = lookup_schedule(schedule, lift.lift_kind, h.week)
+        tm = sbs_next(tm, sc.repout, h.reps)
     return tm

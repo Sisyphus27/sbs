@@ -118,13 +118,13 @@ def test_recompute_state_t2_all_hits_increments_from_start():
     assert ls.est1rm == _est1rm_from_history(hist)
 
 
-def test_recompute_state_t2_cascade_drops_to_6():
+def test_recompute_state_t2_one_miss_drops_to_6():
     p = Profile(lifts=[Lift(name="Row", tier="t2", day=1, start=50)])
     lift = p.lift("Row")
-    # 3 consecutive misses at target 8 (reps 5 < 8) -> drop to target 6, weight unchanged
-    hist = [SetEntry(1, 50.0, 5), SetEntry(2, 50.0, 5), SetEntry(3, 50.0, 5)]
+    # 1-strike: a single miss at target 8 drops to target 6, weight unchanged
+    hist = [SetEntry(1, 50.0, 5)]
     ls = recompute_state(lift, hist, p)
-    assert ls.target == 6 and ls.streak == 0 and ls.weight == 50.0
+    assert ls.target == 6 and ls.streak == 1 and ls.weight == 50.0
 
 
 def test_recompute_state_empty_history_seeds_start():

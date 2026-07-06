@@ -1,3 +1,4 @@
+import re
 from sbs_cli.data.schema import Lift, Profile
 from sbs_cli.program import initial_state
 from sbs_cli.view.terminal import render_week_text, render_show_text
@@ -21,3 +22,4 @@ def test_render_show_text_has_est1rm_and_history_count():
     advance_lift(p, p.lift("Squat"), s.lifts["Squat"], actual_reps=10, week=1)
     txt = render_show_text(p, s)
     assert "Squat" in txt and "est" in txt.lower()
+    assert re.search(r"\d+\.\d{2}", txt)          # est1RM renders to 2 decimals

@@ -29,10 +29,10 @@
         {% elif it.tier=='t2' %} × {{ it.target }} × {{ it.sets }} | streak {{ it.streak }}
         {% else %} × {{ it.target }} × {{ it.sets }}
         {% endif %}
-        | 最佳 1RM {{ it.est1rm if it.est1rm is not none else '—' }}
+        | 最佳 1RM {{ "%.2f"|format(it.est1rm) if it.est1rm is not none else '—' }}
       </span>
       {% if it.logged not in (None, '') %}
-        <span class="log">本周末组: {{ it.logged }} → est1RM ≈{{ "%.1f"|format(it.live) }}</span>
+        <span class="log">本周末组: {{ it.logged }} → est1RM ≈{{ "%.2f"|format(it.live) }}</span>
       {% else %}
         <span class="log empty">本周末组: 未填</span>
       {% endif %}

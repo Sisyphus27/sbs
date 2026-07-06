@@ -45,7 +45,7 @@ def advance_lift(profile: Profile, lift: Lift, state: LiftState, actual_reps, we
         state.est1rm = _est1rm_from_history(state.history)
     # progress
     if lift.tier == "sbs":
-        state.tm = sbs_next(state.tm, lift.repout, actual_reps, quantum=profile.rounding)
+        state.tm = sbs_next(state.tm, lift.repout, actual_reps)
     elif lift.tier == "t3":
         state.weight = t3_next(state.weight, actual_reps,
                                target=profile.t3_target, incr=profile.incr, quantum=profile.rounding)
@@ -108,3 +108,15 @@ def recompute_state(lift: Lift, history: List[SetEntry], profile: Profile) -> Li
         return LiftState(name=lift.name, tier="t2", weight=weight, target=target,
                          streak=streak, est1rm=est, history=history)
     raise ValueError(f"recompute_state not applicable to tier {lift.tier!r}")
+
+
+def recompute_sbs_tm(lift: Lift, history: List[SetEntry]) -> float:
+    """Replay an sbs lift's TM from ``lift.max`` over its history (raw, no rounding).
+    History rows are immutable facts; only their reps drive the replay. No Profile
+    is needed: ``sbs_next`` (post-fix) takes only ``(tm, repout, actual)``.
+    xlsx-faithful: in the RTF template, editing Max recomputes every downstream
+    TM from that Max. See ADR 0001."""
+    tm = lift.max
+    for h in sorted(history, key=lambda x: x.week):
+        tm = sbs_next(tm, lift.repout, h.reps)
+    return tm

@@ -23,7 +23,7 @@ button{margin-top:1em;padding:8px 14px;font-size:1em;cursor:pointer}
     {% elif it.tier == 't2' %} | {{ it.weight }} kg x {{ it.target }} x {{ it.sets }} | streak {{ it.streak }}
     {% else %} | {{ it.weight }} kg x {{ it.target }}+ x {{ it.sets }}
     {% endif %}
-    {% if it.est1rm %} | est 1RM {{ "%.1f"|format(it.est1rm) }}{% else %} | est 1RM —{% endif %}
+    {% if it.est1rm %} | est 1RM {{ "%.2f"|format(it.est1rm) }}{% else %} | est 1RM —{% endif %}
   </span>
   <label>last set reps: <input type="number" data-lift="{{ it.name }}"></label>
 </div>

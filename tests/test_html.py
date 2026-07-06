@@ -1,4 +1,5 @@
 import json
+import re
 from sbs_cli.data.schema import Lift, Profile
 from sbs_cli.program import initial_state
 from sbs_cli.view.html import render_week_html, parse_log_json
@@ -32,3 +33,11 @@ def test_parse_log_json_reads_filled_values_ignores_blanks():
     assert parsed["week"] == 1
     assert parsed["logs"] == {"Squat": 11, "Curls": 15}
     assert "Barbell rows" not in parsed["logs"]
+
+
+def test_render_html_est1rm_two_decimals():
+    p = _profile(); s = initial_state(p)
+    from sbs_cli.program import advance_lift
+    advance_lift(p, p.lift("Squat"), s.lifts["Squat"], actual_reps=11, week=1)
+    html = render_week_html(p, s, week=1)
+    assert re.search(r"est 1RM \d+\.\d{2}", html)   # est1RM renders to 2 decimals (anchored on label)

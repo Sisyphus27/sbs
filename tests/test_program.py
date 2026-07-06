@@ -35,8 +35,8 @@ def test_advance_sbs_appends_history_and_updates_est1rm():
     assert len(s.lifts["Squat"].history) == 1
     assert s.lifts["Squat"].history[0].weight == 75 and s.lifts["Squat"].history[0].reps == 11
     assert s.lifts["Squat"].est1rm is not None
-    # TM progressed: beat repout 8 by 3 -> +1.5% -> 100*1.015=101.5 -> MROUND 102.5
-    assert s.lifts["Squat"].tm == 102.5
+    # TM progressed: beat repout 8 by 3 -> +1.5% -> 100*1.015 = 101.5 (raw, no MROUND)
+    assert s.lifts["Squat"].tm == 101.5
 
 
 def test_advance_t2_reset_uses_best_set_est1rm():
@@ -134,3 +134,19 @@ def test_recompute_state_sbs_raises():
     p = Profile(lifts=[Lift(name="Squat", tier="sbs", day=1, max=100, intensity=0.75, reps=4, repout=8)])
     with pytest.raises(ValueError):
         recompute_state(p.lift("Squat"), [], p)
+
+
+def test_sbs_tm_raw_accumulation_unfreezes_weight():
+    # Beat repout by 1 each week -> +0.5%/week. Under the old bug the TM was
+    # rounded each week, freezing the weight at 95 forever. With raw TM the
+    # weight must climb in legal 2.5 steps.
+    p = Profile(lifts=[Lift(name="Squat", tier="sbs", day=1, max=135,
+                            intensity=0.7, reps=4, repout=8, sets=3)])
+    s = initial_state(p); lift = p.lift("Squat")
+    weights = []
+    for week in range(1, 9):
+        advance_lift(p, lift, s.lifts["Squat"], actual_reps=9, week=week)
+        weights.append(week_plan(p, s, day=1)[0].weight)
+    assert s.lifts["Squat"].tm % 2.5 != 0          # (a) TM stays raw, not snapped
+    assert weights[-1] > weights[0]                # (b) weight climbs -- stall fixed
+    assert all(w % 2.5 == 0 for w in weights)      # (c) every loaded weight legal

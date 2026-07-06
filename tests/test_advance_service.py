@@ -8,7 +8,8 @@ def _seed(tmp_path):
     db.init_schema(conn)
     ids = {}
     ids["Squat"] = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
-                                    sets=5, max=135.0, intensity=0.7, reps=5, repout=10, start=None)
+                                    sets=5, max=135.0, intensity=0.7, reps=5, repout=10,
+                                    start=None, lift_kind="main")
     ids["Rows"] = repo.create_lift(conn, name="Rows", tier="t2", day=1, sort_order=1,
                                    sets=3, max=None, intensity=None, reps=None, repout=None, start=85.0)
     ids["Curl"] = repo.create_lift(conn, name="Curl", tier="t3", day=1, sort_order=2,

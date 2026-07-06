@@ -14,18 +14,20 @@ def _by_day(conn):
     # Build display rows directly, keyed by row id, mirroring week_plan's field
     # mapping. Each item carries its id so the log form targets the right row.
     from types import SimpleNamespace
-    from sbs_cli.engine.progression import round_weight
+    from sbs_cli.engine.progression import round_weight, lookup_schedule
     settings = repo.get_settings(conn)
     lift_rows = repo.list_lifts(conn)
     logged = repo.get_week_logs(conn, settings["week"])
+    schedule = repo.load_schedule(conn)
     rows_by_day = {}
     for r in lift_rows:
         st = repo.get_lift_state(conn, r["id"])
         est1rm = st["est1rm"]
         if r["tier"] == "sbs":
-            w = round_weight((st["tm"] or 0) * (r["intensity"] or 0.0), settings["rounding"])
+            sc = lookup_schedule(schedule, r["lift_kind"], settings["week"])
+            w = round_weight((st["tm"] or 0) * sc.intensity, settings["rounding"])
             item = SimpleNamespace(id=r["id"], name=r["name"], tier="sbs", weight=w,
-                                   reps=r["reps"], sets=r["sets"], repout=r["repout"],
+                                   reps=sc.reps, sets=r["sets"], repout=sc.repout,
                                    target=None, streak=0, est1rm=est1rm)
         elif r["tier"] == "t2":
             item = SimpleNamespace(id=r["id"], name=r["name"], tier="t2", weight=st["weight"],

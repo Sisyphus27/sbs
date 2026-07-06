@@ -5,7 +5,8 @@ def _lift(app):
     from webapp.db import connect
     conn = connect(app.config["DB_PATH"])
     lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
-                           sets=5, max=135.0, intensity=0.7, reps=5, repout=10, start=None)
+                           sets=5, max=135.0, intensity=0.7, reps=5, repout=10,
+                           start=None, lift_kind="main")
     conn.close()
     return lid
 

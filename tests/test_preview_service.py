@@ -7,7 +7,8 @@ def _sbs(tmp_path):
     conn = db.connect(str(tmp_path / "t.db"))
     db.init_schema(conn)
     lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
-                           sets=5, max=135.0, intensity=0.7, reps=5, repout=10, start=None)
+                           sets=5, max=135.0, intensity=0.7, reps=5, repout=10,
+                           start=None, lift_kind="main")
     return conn, lid
 
 

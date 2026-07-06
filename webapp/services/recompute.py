@@ -22,7 +22,7 @@ def recompute_on_start_change(conn: sqlite3.Connection, lift_id: int, new_start:
                for h in repo.list_history(conn, lift_id)]
     lift = advance_service._lift_from_row(lift_row)
     lift.start = new_start  # authoritative; the lifts row already holds it post-update
-    profile = advance_service._profile_from_rows(settings, [])  # globals only
+    profile = advance_service._profile_from_rows(settings, [], repo.load_schedule(conn))
     ls = recompute_state(lift, history, profile)
     repo.save_lift_state(conn, lift_id, tier=ls.tier, tm=None, weight=ls.weight,
                          target=ls.target, streak=ls.streak, est1rm=ls.est1rm)
@@ -40,7 +40,8 @@ def recompute_sbs_tm(conn: sqlite3.Connection, lift_id: int) -> Optional[float]:
     history = [SetEntry(week=h["week"], weight=h["weight"], reps=h["reps"])
                for h in repo.list_history(conn, lift_id)]
     lift = advance_service._lift_from_row(lift_row)
-    tm = _engine_recompute_sbs_tm(lift, history)
+    schedule = repo.load_schedule(conn)
+    tm = _engine_recompute_sbs_tm(lift, history, schedule)
     st = repo.get_lift_state(conn, lift_id)
     repo.save_lift_state(conn, lift_id, tier="sbs", tm=tm, weight=None,
                          target=None, streak=0, est1rm=st["est1rm"])

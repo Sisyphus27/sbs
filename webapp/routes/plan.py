@@ -48,7 +48,10 @@ def _by_day(conn):
 def view():
     conn = get_db()
     week, by_day = _by_day(conn)
-    return render_template("plan.html", week=week, by_day=by_day)
+    from ..routes.reseed import _due_lifts
+    due, _cyc = _due_lifts(conn)
+    return render_template("plan.html", week=week, by_day=by_day,
+                           due_reseeds=[r["name"] for r, _st in due])
 
 
 @bp.route("/log/save", methods=["POST"])

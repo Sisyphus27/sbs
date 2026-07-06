@@ -134,3 +134,97 @@ def test_week_log_upsert_get_clear(tmp_path):
     assert repo.get_week_logs(conn, 1) == {}
     assert repo.get_week_logs(conn, 2) == {lid: 9}
     conn.close()
+
+
+# ---------- Task 5: sbs_schedule + lift_kind + reseeded_cycle ----------
+
+
+def test_init_schema_seeds_schedule(app):
+    from webapp.db import connect
+    with app.app_context():
+        conn = connect(app.config["DB_PATH"])
+        rows = conn.execute("SELECT COUNT(*) FROM sbs_schedule").fetchone()[0]
+        assert rows == 42
+
+
+def test_get_and_replace_schedule(app):
+    from webapp.db import connect
+    with app.app_context():
+        conn = connect(app.config["DB_PATH"])
+        assert len(repo.get_schedule(conn)) == 42
+        # replace with a single edited row
+        repo.replace_schedule(conn, [("main", 1, 0.71, 5, 10)])
+        got = repo.get_schedule(conn)
+        assert len(got) == 1 and got[0]["intensity"] == 0.71
+
+
+def test_reset_schedule_restores_defaults(app):
+    from webapp.db import connect
+    with app.app_context():
+        conn = connect(app.config["DB_PATH"])
+        repo.replace_schedule(conn, [("main", 1, 0.99, 1, 1)])
+        repo.reset_schedule(conn)
+        assert len(repo.get_schedule(conn)) == 42
+
+
+def test_load_schedule_returns_dataclasses(app):
+    from webapp.db import connect
+    from sbs_cli.data.schema import ScheduleRow
+    with app.app_context():
+        conn = connect(app.config["DB_PATH"])
+        rows = repo.load_schedule(conn)
+        assert len(rows) == 42
+        assert all(isinstance(r, ScheduleRow) for r in rows)
+        assert rows[0].kind in ("main", "aux")
+
+
+def test_save_lift_state_does_not_clobber_reseeded_cycle(app):
+    """advance_week must not reset reseeded_cycle to 0 every week (ADR 0002)."""
+    from webapp.db import connect
+    with app.app_context():
+        conn = connect(app.config["DB_PATH"])
+        lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
+                               sets=5, max=100.0, intensity=None, reps=None, repout=None,
+                               start=None, lift_kind="main")
+        repo.set_reseed(conn, lid, cycle=2)               # stamp it
+        # simulate an advance-week UPSERT (no reseeded_cycle passed)
+        repo.save_lift_state(conn, lid, tier="sbs", tm=101.5, weight=None,
+                             target=None, streak=0, est1rm=None)
+        assert repo.get_lift_state(conn, lid)["reseeded_cycle"] == 2   # preserved
+
+
+def test_create_lift_accepts_lift_kind(app):
+    from webapp.db import connect
+    with app.app_context():
+        conn = connect(app.config["DB_PATH"])
+        lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
+                               sets=5, max=100.0, intensity=None, reps=None, repout=None,
+                               start=None, lift_kind="main")
+        assert repo.get_lift(conn, lid)["lift_kind"] == "main"
+
+
+def test_set_reseed_writes_max_tm_and_cycle(app):
+    from webapp.db import connect
+    with app.app_context():
+        conn = connect(app.config["DB_PATH"])
+        lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
+                               sets=5, max=100.0, intensity=None, reps=None, repout=None,
+                               start=None, lift_kind="main")
+        repo.set_reseed(conn, lid, new_max=120.0, cycle=2)
+        assert repo.get_lift(conn, lid)["max"] == 120.0
+        st = repo.get_lift_state(conn, lid)
+        assert st["tm"] == 120.0
+        assert st["reseeded_cycle"] == 2
+
+
+def test_set_reseed_skip_keeps_tm_advances_cycle(app):
+    from webapp.db import connect
+    with app.app_context():
+        conn = connect(app.config["DB_PATH"])
+        lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
+                               sets=5, max=100.0, intensity=None, reps=None, repout=None,
+                               start=None, lift_kind="main")
+        repo.set_reseed(conn, lid, cycle=2)  # no new_max -> skip
+        st = repo.get_lift_state(conn, lid)
+        assert st["tm"] == 100.0            # unchanged
+        assert st["reseeded_cycle"] == 2

@@ -33,16 +33,18 @@ CREATE TABLE IF NOT EXISTS lifts (
     intensity  REAL,
     reps       INTEGER,
     repout     INTEGER,
-    start      REAL
+    start      REAL,
+    lift_kind  TEXT
 );
 CREATE TABLE IF NOT EXISTS lift_state (
-    lift_id INTEGER PRIMARY KEY REFERENCES lifts(id) ON DELETE CASCADE,
-    tier    TEXT NOT NULL,
-    tm      REAL,
-    weight  REAL,
-    target  INTEGER,
-    streak  INTEGER NOT NULL DEFAULT 0,
-    est1rm  REAL
+    lift_id        INTEGER PRIMARY KEY REFERENCES lifts(id) ON DELETE CASCADE,
+    tier           TEXT NOT NULL,
+    tm             REAL,
+    weight         REAL,
+    target         INTEGER,
+    streak         INTEGER NOT NULL DEFAULT 0,
+    est1rm         REAL,
+    reseeded_cycle INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS history (
     id      INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,6 +59,14 @@ CREATE TABLE IF NOT EXISTS week_log (
     week    INTEGER NOT NULL,
     reps    INTEGER NOT NULL,
     PRIMARY KEY (lift_id, week)
+);
+CREATE TABLE IF NOT EXISTS sbs_schedule (
+    kind      TEXT NOT NULL,
+    week      INTEGER NOT NULL,
+    intensity REAL NOT NULL,
+    reps      INTEGER NOT NULL,
+    repout    INTEGER NOT NULL,
+    PRIMARY KEY (kind, week)
 );
 """
 
@@ -80,6 +90,16 @@ def init_schema(conn: sqlite3.Connection) -> None:
             "INSERT INTO settings (id, week, days_per_week, rounding, incr, t2_reset_pct, t2_fail, t3_target) "
             "VALUES (1, :week, :days_per_week, :rounding, :incr, :t2_reset_pct, :t2_fail, :t3_target)",
             _DEFAULT_SETTINGS,
+        )
+    # Task 5: seed the 42-row schedule table when empty (21 main + 21 aux).
+    # Idempotent — re-running init_schema does NOT re-seed. The one-shot
+    # migrate_schedule.py (Task 7) handles live DBs that pre-date this column.
+    if conn.execute("SELECT COUNT(*) FROM sbs_schedule").fetchone()[0] == 0:
+        from sbs_cli.defaults import DEFAULT_SCHEDULE
+        conn.executemany(
+            "INSERT INTO sbs_schedule (kind, week, intensity, reps, repout) "
+            "VALUES (?, ?, ?, ?, ?)",
+            [(r.kind, r.week, r.intensity, r.reps, r.repout) for r in DEFAULT_SCHEDULE],
         )
     conn.commit()
 

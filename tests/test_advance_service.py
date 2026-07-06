@@ -21,10 +21,10 @@ def test_advance_week_runs_engine_and_bumps_week(tmp_path):
     new_week = advance.advance_week(conn, {ids["Squat"]: 13, ids["Rows"]: 10, ids["Curl"]: 15})
     assert new_week == 2
     assert repo.get_settings(conn)["week"] == 2
-    # Squat beat repout(10) by 3 -> +1.5% -> tm 135*1.015=137.025 -> round 2.5 -> 137.5
+    # Squat beat repout(10) by 3 -> +1.5% -> tm 135*1.015=137.025 (raw, no MROUND)
     squat_id = ids["Squat"]
     st = repo.get_lift_state(conn, squat_id)
-    assert st["tm"] == 137.5
+    assert st["tm"] == 137.025
     # history appended for logged lift
     assert len(repo.list_history(conn, squat_id)) == 1
     conn.close()

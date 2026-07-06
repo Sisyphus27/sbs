@@ -11,23 +11,23 @@ def test_sbs_hit_keeps_tm():
     assert sbs_next(tm=100, repout=8, actual=8) == 100
 
 def test_sbs_beat_adds_pct():
-    # beat target 8 by 3 -> +1.5% -> 100*1.015 = 101.5 -> MROUND 102.5
-    assert sbs_next(tm=100, repout=8, actual=11) == 102.5
+    # beat target 8 by 3 -> +1.5% -> 100*1.015 = 101.5 (raw, TM never rounded)
+    assert sbs_next(tm=100, repout=8, actual=11) == 101.5
 
 def test_sbs_miss_drops_pct():
     # miss by 2 -> -5% -> 95
     assert sbs_next(tm=100, repout=8, actual=6) == 95
 
 def test_sbs_beat_5_plus_caps_at_3pct():
-    # beat by 6 -> +3% -> 103 -> MROUND(103,2.5)=102.5
-    assert sbs_next(tm=100, repout=8, actual=14) == 102.5
+    # beat by 6 -> +3% -> 100*1.03 = 103.0 (raw)
+    assert sbs_next(tm=100, repout=8, actual=14) == 103.0
 
 def test_sbs_no_log_keeps_tm():
     assert sbs_next(tm=100, repout=8, actual=None) == 100
 
 def test_sbs_miss_by_1_drops_2pct():
-    # diff -1 -> -2% -> 100*0.98 = 98 -> MROUND(98,2.5)=97.5
-    assert sbs_next(tm=100, repout=8, actual=7) == 97.5
+    # diff -1 -> -2% -> 100*0.98 = 98.0 (raw)
+    assert sbs_next(tm=100, repout=8, actual=7) == 98.0
 
 # --- T3 (threshold) ---
 def test_t3_hit_adds():

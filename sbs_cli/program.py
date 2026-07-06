@@ -45,7 +45,7 @@ def advance_lift(profile: Profile, lift: Lift, state: LiftState, actual_reps, we
         state.est1rm = _est1rm_from_history(state.history)
     # progress
     if lift.tier == "sbs":
-        state.tm = sbs_next(state.tm, lift.repout, actual_reps, quantum=profile.rounding)
+        state.tm = sbs_next(state.tm, lift.repout, actual_reps)
     elif lift.tier == "t3":
         state.weight = t3_next(state.weight, actual_reps,
                                target=profile.t3_target, incr=profile.incr, quantum=profile.rounding)

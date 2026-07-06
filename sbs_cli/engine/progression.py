@@ -21,11 +21,22 @@ def _sbs_delta(diff: int) -> float:
     return 0.03   # beat by 5+
 
 
-def sbs_next(tm: float, repout: int, actual, quantum: float = 2.5) -> float:
-    """SBS main/aux: next TM from rep-out performance. actual=None -> unchanged."""
+def sbs_next(tm: float, repout: int, actual) -> float:
+    """SBS main/aux: next TM from rep-out performance. actual=None -> unchanged.
+
+    TM is kept full-precision to match the SBS RTF xlsx (which rounds only the
+    working weight, not the TM). Rounding the TM here stalls upward progression
+    because sub-quantum weekly deltas are discarded before they accumulate.
+    The working weight is rounded to the gym increment in week_plan / the webapp.
+
+    The trailing ``round(..., 10)`` absorbs IEEE 754 drift (e.g. ``100*1.015``
+    yields ``101.49999999999999`` raw) so the stored TM equals its mathematical
+    value. It is NOT quantum rounding -- the TM is never snapped to 2.5 here.
+    See ADR 0001.
+    """
     if actual is None:
         return tm
-    return round_weight(tm * (1 + _sbs_delta(actual - repout)), quantum)
+    return round(tm * (1 + _sbs_delta(actual - repout)), 10)
 
 
 def t3_next(weight: float, actual, target: int = 15, incr: float = 2.5,

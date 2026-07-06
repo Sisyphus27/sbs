@@ -22,8 +22,8 @@ def test_full_flow_init_week_next_show(tmp_path, monkeypatch):
     from sbs_cli.data import io as dio
     s = dio.load_state(str(st))
     assert s.week == 2
-    # Squat beat repout 8 by 3 -> +1.5% on TM 135 -> 137.025 -> MROUND 137.5
-    assert s.lifts["Squat"].tm == 137.5
+    # Squat beat repout 8 by 3 -> +1.5% on TM 135 -> 137.025 (raw, no MROUND)
+    assert s.lifts["Squat"].tm == 137.025
     # Barbell rows hit (10 >= target 10) -> +2.5 on 85
     assert s.lifts["Barbell rows"].weight == 87.5
     # show runs without error

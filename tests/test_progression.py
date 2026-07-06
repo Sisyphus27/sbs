@@ -39,39 +39,47 @@ def test_t3_miss_repeats():
 def test_t3_no_log_repeats():
     assert t3_next(weight=40, actual=None) == 40
 
-# --- T2 (state machine: 4x8 -> 4x6 -> 4x4 -> reset, est1rm reset @75%) ---
-def test_t2_hit_adds_weight_keeps_tier():
+# --- T2 (1-strike cascade: 8 -> 6 -> 4, reset after `fail` misses @75% est1rm) ---
+def test_t2_hit_adds_weight_stays_at_target():
     s = t2_next(T2State(target=8, streak=0, weight=50), actual=8, est1rm=100)
     assert s == T2State(target=8, streak=0, weight=52.5)
 
 
-def test_t2_miss_under_threshold_accumulates():
-    s = t2_next(T2State(target=8, streak=1, weight=50), actual=6, est1rm=100)
-    assert s == T2State(target=8, streak=2, weight=50)
+def test_t2_miss_at_8_drops_to_6_same_weight():
+    s = t2_next(T2State(target=8, streak=0, weight=50), actual=6, est1rm=100)
+    assert s == T2State(target=6, streak=1, weight=50)
 
 
-def test_t2_three_misses_8_drops_to_6():
-    s = t2_next(T2State(target=8, streak=2, weight=50), actual=6, est1rm=100)
-    assert s == T2State(target=6, streak=0, weight=50)
+def test_t2_miss_at_6_drops_to_4_same_weight():
+    s = t2_next(T2State(target=6, streak=1, weight=50), actual=5, est1rm=100)
+    assert s == T2State(target=4, streak=2, weight=50)
 
 
-def test_t2_three_misses_6_drops_to_4():
-    s = t2_next(T2State(target=6, streak=2, weight=50), actual=4, est1rm=100)
-    assert s == T2State(target=4, streak=0, weight=50)
-
-
-def test_t2_three_misses_4_resets_to_75pct_of_est1rm():
-    # 0.75 * 100 = 75 -> MROUND(75, 2.5) = 75
+def test_t2_third_miss_resets_to_8_at_est1rm_pct():
+    # streak 2 -> +1 = 3 >= fail(3) -> reset: target 8, weight round(100*0.75, 2.5)=75
     s = t2_next(T2State(target=4, streak=2, weight=50), actual=3, est1rm=100)
-    assert s == T2State(target=8, streak=0, weight=75)
+    assert s == T2State(target=8, streak=0, weight=75.0)
 
 
-def test_t2_reset_uses_est1rm_not_old_weight():
-    # est1rm 110 -> 0.75*110 = 82.5 -> MROUND(82.5, 2.5) = 82.5
-    s = t2_next(T2State(target=4, streak=2, weight=50), actual=3, est1rm=110)
-    assert s == T2State(target=8, streak=0, weight=82.5)
+def test_t2_fail_2_resets_after_two_misses():
+    # fail=2: miss @8 -> streak1 (<2) drop to 6; miss @6 -> streak2 (>=2) reset
+    s1 = t2_next(T2State(target=8, streak=0, weight=50), actual=6, est1rm=100, fail=2)
+    assert s1 == T2State(target=6, streak=1, weight=50)
+    s2 = t2_next(s1, actual=5, est1rm=100, fail=2)
+    assert s2 == T2State(target=8, streak=0, weight=75.0)
 
 
-def test_t2_no_log_carries_state():
-    s = t2_next(T2State(target=8, streak=1, weight=50), actual=None, est1rm=100)
-    assert s == T2State(target=8, streak=1, weight=50)
+def test_t2_hit_at_6_does_not_climb_back_to_8():
+    s = t2_next(T2State(target=6, streak=1, weight=50), actual=6, est1rm=100)
+    assert s == T2State(target=6, streak=0, weight=52.5)
+
+
+def test_t2_miss_at_4_under_fail_floor_keeps_target():
+    # at bottom (4), streak not yet at fail -> stay 4, streak increments
+    s = t2_next(T2State(target=4, streak=1, weight=50), actual=3, est1rm=100, fail=4)
+    assert s == T2State(target=4, streak=2, weight=50)
+
+
+def test_t2_no_log_unchanged():
+    s = t2_next(T2State(target=8, streak=0, weight=50), actual=None, est1rm=100)
+    assert s == T2State(target=8, streak=0, weight=50)

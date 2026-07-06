@@ -58,18 +58,20 @@ class T2State:
 
 def t2_next(state: T2State, actual, est1rm: float, fail: int = 3,
             incr: float = 2.5, reset_pct: float = 0.75, quantum: float = 2.5) -> T2State:
-    """GZCLP-modified T2 back: 4x8 -> 4x6 -> 4x4 cascade; reset = reset_pct * est1rm, back to 8."""
+    """T2 1-strike cascade: each miss drops one rep level (8 -> 6 -> 4); after `fail`
+    consecutive misses, reset to target 8 at round(est1rm * reset_pct, quantum).
+    A hit adds `incr` and stays at the current level (no climb-back)."""
     if actual is None:
         return state
-    if actual >= state.target:                                   # hit
+    if actual >= state.target:                                   # HIT
         return T2State(state.target, 0, round_weight(state.weight + incr, quantum))
-    if state.streak + 1 >= fail:                                 # Nth consecutive miss
-        if state.target == 8:
-            return T2State(6, 0, state.weight)                   # 4x8 -> 4x6
-        if state.target == 6:
-            return T2State(4, 0, state.weight)                   # 4x6 -> 4x4
-        return T2State(8, 0, round_weight(est1rm * reset_pct, quantum))  # at 4 -> reset to 8
-    return T2State(state.target, state.streak + 1, state.weight) # miss, under threshold
+    new_streak = state.streak + 1                                # MISS
+    if new_streak >= fail:                                       # Nth consecutive miss -> reset
+        return T2State(8, 0, round_weight(est1rm * reset_pct, quantum))
+    ladder = [8, 6, 4]
+    idx = ladder.index(state.target) if state.target in ladder else 0
+    next_target = ladder[min(idx + 1, len(ladder) - 1)]          # drop one level, floor at 4
+    return T2State(next_target, new_streak, state.weight)
 
 
 def schedule_week(program_week: int) -> int:

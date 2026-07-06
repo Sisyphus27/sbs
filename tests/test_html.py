@@ -40,4 +40,4 @@ def test_render_html_est1rm_two_decimals():
     from sbs_cli.program import advance_lift
     advance_lift(p, p.lift("Squat"), s.lifts["Squat"], actual_reps=11, week=1)
     html = render_week_html(p, s, week=1)
-    assert re.search(r"\d+\.\d{2}", html)          # est1RM renders to 2 decimals
+    assert re.search(r"est 1RM \d+\.\d{2}", html)   # est1RM renders to 2 decimals (anchored on label)

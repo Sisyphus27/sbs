@@ -45,6 +45,49 @@ Full-precision in storage; displayed to 2 decimals.
 _Avoid_: 1RM (that denotes an actual, measured max — a different concept)
 
 **Tier**:
-Which progression rule a lift follows: `sbs` (TM autoregulation by rep-out), `t2` (GZCLP
-4×8→4×6→4×4 cascade with est1RM-based reset), or `t3` (threshold accessories). A lift can be
+Which progression rule a lift follows: `sbs` (TM autoregulation by rep-out), `t2` (1-strike
+rep cascade with est1RM-based reset), or `t3` (threshold accessories). A lift can be
 switched between tiers; history is preserved across switches.
+
+**Kind (main / aux)**:
+Which of the two sbs progression tracks a lift follows, selecting its schedule ladder. Main
+lifts run a 5-set, higher-intensity track; aux lifts a 4-set, lower-intensity track. A
+property of an sbs lift, independent of tier (both tracks are `tier: sbs`); fixed when the
+lift is created.
+_Avoid_: tier (that selects the progression *rule family*, not the track)
+
+**Schedule (21-week progression)**:
+The fixed table of weekly (intensity, reps, repout) values that an sbs lift follows, one row
+per week, organised by kind. The working weight is derived from the scheduled intensity, and
+the displayed reps / repout come from the same row. Seeded from the SBS RTF template and
+editable.
+_Avoid_: progression table (too generic), weekly plan (that is the rendered output, not the input)
+
+**Program week vs schedule week**:
+Program week is the absolute, ever-incrementing counter (`settings.week`: 1, 2, 3, …). Schedule
+week is the cyclic 1–21 row index that selects the current schedule row. TM autoregulation
+persists across program weeks; the schedule repeats every 21 program weeks.
+_Avoid_: bare "week" when the distinction matters
+
+**Cycle**:
+One 21-week pass through the schedule. Cycle 1 = program weeks 1–21; cycle 2 = 22–42; and so on.
+The cycle boundary is where a max retest is expected (see Reseed).
+
+**Deload week**:
+Schedule weeks 7, 14, and 21 — low-intensity, high-rep rows interspersed every seventh week.
+They participate in TM autoregulation like any other week, matching the SBS RTF template.
+_Avoid_: rest week, unload
+
+**Reseed**:
+The optional, per-lift action at the start of a new cycle of setting `TM = a newly tested max`,
+starting that cycle's autoregulation fresh. Prompted (not forced) and skippable; a skipped reseed
+leaves TM autoregulating continuously across the boundary. History is preserved.
+_Avoid_: TM reset (that implies a failure-driven event, like T2's), max update (that is the
+mechanism, not the cycle-boundary event)
+
+**1-strike cascade (T2)**:
+The T2 progression rule: each rep miss drops the target one level (8 → 6 → 4); after a
+configurable number of consecutive misses the lift resets to target 8 at a lower weight derived
+from est1RM. A hit adds weight and stays at the current level. Replaces an earlier 3-strike
+per-level cascade.
+_Avoid_: GZCLP cascade (ambiguous — several variants exist)

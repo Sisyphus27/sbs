@@ -29,8 +29,12 @@ def import_profile(xlsx_path: str, sheet: str = "4x") -> Profile:
         if not name or one_rm is None:
             continue
         intensity, reps, repout, sets = SBS_DEFAULTS[r]
+        # main vs aux drives the schedule ladder the engine reads (Task 4):
+        # main lifts follow MAIN_LADDER, aux follow AUX_LADDER.
+        kind = "main" if r in QS_MAIN_ROWS else "aux"
         lifts.append(Lift(name=str(name), tier="sbs", day=0, max=float(one_rm),
-                          intensity=intensity, reps=reps, repout=repout, sets=sets))
+                          intensity=intensity, reps=reps, repout=repout, sets=sets,
+                          lift_kind=kind))
 
     ws = wb[sheet]
     acc_rows = [r for r in range(1, ws.max_row + 1)

@@ -2,7 +2,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from ..db import get_db
 from .. import repo
-from sbs_cli.defaults import DEFAULT_SCHEDULE
 
 bp = Blueprint("schedule", __name__)
 

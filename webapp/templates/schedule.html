@@ -24,7 +24,4 @@
 <form action="{{ url_for('schedule.reset') }}" method="post" style="margin-top:8px">
   <button type="submit">恢复默认进度表</button>
 </form>
-{% with msgs = get_flashed_messages() %}
-  {% if msgs %}<div class="flash">{{ msgs[0] }}</div>{% endif %}
-{% endwith %}
 {% endblock %}

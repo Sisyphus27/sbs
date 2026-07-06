@@ -22,6 +22,8 @@ def create_app(db_path: str | None = None, backup_dir: str | None = None,
     from .routes.settings import bp as settings_bp
     app.register_blueprint(lifts_bp)
     app.register_blueprint(settings_bp)
+    from .routes.schedule import bp as schedule_bp
+    app.register_blueprint(schedule_bp)
     app.teardown_appcontext(close_db)
     return app
 

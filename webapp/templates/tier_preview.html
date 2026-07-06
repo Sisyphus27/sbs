@@ -6,7 +6,7 @@
 <form method="post" action="{{ url_for('lifts.tier_apply', lid=lift.id) }}">
   <input type="hidden" name="tier" value="{{ preview.tier }}">
   <ul>
-    <li>est1RM (从历史): {{ preview.est1rm if preview.est1rm is not none else '—' }}</li>
+    <li>est1RM (从历史): {{ "%.2f"|format(preview.est1rm) if preview.est1rm is not none else '—' }}</li>
     {% if preview.tier == 'sbs' %}
       <li>新 TM: <input name="tm" type="number" step="0.5" value="{{ preview.tm }}"></li>
     {% else %}

@@ -1,4 +1,5 @@
 from webapp import repo
+import re
 
 
 def test_plan_view_empty(client):
@@ -54,6 +55,7 @@ def test_export_week_standalone_with_progress(client, app):
     assert "Week 1" in html and "Squat" in html
     assert "本周末组: 11" in html          # progress shown
     assert "≈" in html                    # live est1RM shown
+    assert re.search(r"≈\s*\d+\.\d{2}", html)      # live est1RM renders to 2 decimals
     # standalone / offline: no server-relative deps
     assert "hx-post" not in html and "/log/" not in html and "htmx" not in html
 

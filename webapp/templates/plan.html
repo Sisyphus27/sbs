@@ -15,7 +15,7 @@
           {% elif it.tier=='t2' %} x {{ it.target }} x {{ it.sets }} | streak {{ it.streak }}
           {% else %} x {{ it.target }} x {{ it.sets }}
           {% endif %}
-          | est 1RM {{ it.est1rm if it.est1rm is not none else '—' }}
+          | est 1RM {{ "%.2f"|format(it.est1rm) if it.est1rm is not none else '—' }}
         </span>
         <label>末组: <input type="number" name="log_{{ it.id }}" value="{{ it.logged }}"
                hx-post="{{ url_for('plan.save_log', lid=it.id) }}" hx-trigger="change"

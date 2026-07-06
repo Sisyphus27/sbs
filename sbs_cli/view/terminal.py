@@ -10,7 +10,7 @@ def render_week_text(profile, state, week: int) -> str:
             continue
         lines.append(f"\n-- Day {day} --")
         for it in items:
-            est = f"  est1RM {it.est1rm:.1f}" if it.est1rm else ""
+            est = f"  est1RM {it.est1rm:.2f}" if it.est1rm else ""
             if it.tier == "sbs":
                 lines.append(f"{it.name:18} {it.weight:>5} kg x {it.reps} x {it.sets}  (repout {it.repout}){est}")
             elif it.tier == "t2":
@@ -27,9 +27,9 @@ def render_show_text(profile, state) -> str:
         if not ls:
             continue
         hist = len(ls.history)
-        est = f"  est1RM {ls.est1rm:.1f}" if ls.est1rm else ""
+        est = f"  est1RM {ls.est1rm:.2f}" if ls.est1rm else ""
         if l.tier == "sbs":
-            lines.append(f"{l.name:18} TM {ls.tm}  hist {hist}{est}")
+            lines.append(f"{l.name:18} TM {ls.tm:.1f}  hist {hist}{est}")
         elif l.tier == "t2":
             lines.append(f"{l.name:18} {ls.weight} kg  3x{ls.target}  streak {ls.streak}  hist {hist}{est}")
         else:

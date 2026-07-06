@@ -75,8 +75,8 @@ def save_log():
     else:
         cls = "up" if p["delta"] >= 0 else "down"
         sign = "+" if p["delta"] >= 0 else ""
-        delta_html = f'<span class="{cls}">{sign}{p["delta"]:.1f}</span>'
-    return f'≈{p["est1rm"]:.1f} {delta_html}'
+        delta_html = f'<span class="{cls}">{sign}{p["delta"]:.2f}</span>'
+    return f'≈{p["est1rm"]:.2f} {delta_html}'
 
 
 @bp.route("/log", methods=["POST"])

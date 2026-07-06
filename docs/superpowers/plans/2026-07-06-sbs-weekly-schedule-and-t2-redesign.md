@@ -586,7 +586,8 @@ git commit -m "feat(engine): week_plan/advance/recompute read intensity+repout f
   - `repo.replace_schedule(conn, rows)` — wipe + insert (used by /schedule save + reset).
   - `repo.reset_schedule(conn)` — replace with `DEFAULT_SCHEDULE`.
   - `repo.create_lift` / `update_lift` accept `lift_kind`.
-  - `repo.save_lift_state` accepts `reseeded_cycle` (default 0).
+  - `repo.save_lift_state` does **NOT** touch `reseeded_cycle` (the column DEFAULT 0 seeds fresh rows; only `set_reseed` writes it — this is critical so `advance_week` does not clobber the reseed stamp every week).
+  - `repo.load_schedule(conn) -> list[ScheduleRow]` — single loader used by every read path (DRY).
   - `repo.set_reseed(conn, lift_id, *, new_max=None, cycle)` — writes `reseeded_cycle`; if `new_max` given, also sets `lifts.max` and `lift_state.tm`.
 
 - [ ] **Step 1: Write the failing repo/db tests**
@@ -625,6 +626,34 @@ def test_reset_schedule_restores_defaults(app):
         repo.replace_schedule(conn, [("main", 1, 0.99, 1, 1)])
         repo.reset_schedule(conn)
         assert len(repo.get_schedule(conn)) == 42
+
+
+def test_load_schedule_returns_dataclasses(app):
+    from webapp.db import connect
+    from sbs_cli.data.schema import ScheduleRow
+    with app.app_context():
+        conn = connect(app.config["DB_PATH"])
+        from webapp import repo
+        rows = repo.load_schedule(conn)
+        assert len(rows) == 42
+        assert all(isinstance(r, ScheduleRow) for r in rows)
+        assert rows[0].kind in ("main", "aux")
+
+
+def test_save_lift_state_does_not_clobber_reseeded_cycle(app):
+    """advance_week must not reset reseeded_cycle to 0 every week (ADR 0002)."""
+    from webapp.db import connect
+    with app.app_context():
+        conn = connect(app.config["DB_PATH"])
+        from webapp import repo
+        lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
+                               sets=5, max=100.0, intensity=None, reps=None, repout=None,
+                               start=None, lift_kind="main")
+        repo.set_reseed(conn, lid, cycle=2)               # stamp it
+        # simulate an advance-week UPSERT (no reseeded_cycle passed)
+        repo.save_lift_state(conn, lid, tier="sbs", tm=101.5, weight=None,
+                             target=None, streak=0, est1rm=None)
+        assert repo.get_lift_state(conn, lid)["reseeded_cycle"] == 2   # preserved
 
 
 def test_create_lift_accepts_lift_kind(app):
@@ -715,13 +744,23 @@ _LIFT_COLS = ("name", "tier", "day", "sort_order", "sets",
 
 Change `create_lift` to accept `lift_kind=None` and include it in the INSERT (add `lift_kind` to both the column list and values). Change `update_lift` to use the new `_LIFT_COLS` (it already validates against `_LIFT_COLS`, so `lift_kind` becomes settable automatically).
 
-Add `reseeded_cycle` handling: change `save_lift_state` to accept `reseeded_cycle: int = 0` and include it in both the INSERT column list and the `ON CONFLICT` update. (`_STATE_COLS` is informational; update it too: `("tier", "tm", "weight", "target", "streak", "est1rm", "reseeded_cycle")`.)
+**`reseeded_cycle` handling — do NOT let `save_lift_state` write it.** `advance_week` calls `save_lift_state` every week without passing `reseeded_cycle`; if the UPSERT wrote that column it would reset the reseed stamp to 0 on every advance and break ADR 0002. So `save_lift_state`'s INSERT column list and `ON CONFLICT DO UPDATE` set stay exactly as they are today (no `reseeded_cycle`). The column DEFAULT 0 seeds fresh rows; only `set_reseed` (and the migration) ever write `reseeded_cycle`. Leave `_STATE_COLS` unchanged.
 
-Add the schedule + reseed functions at the bottom of `repo.py`:
+Add the schedule loader + schedule/reseed functions at the bottom of `repo.py`:
 
 ```python
 # ---------- schedule ----------
+def load_schedule(conn: sqlite3.Connection):
+    """Return the schedule as a list of ScheduleRow (the dataclass the engine wants).
+    Single loader used by every read path — do not inline this comprehension."""
+    from sbs_cli.data.schema import ScheduleRow
+    return [ScheduleRow(kind=r["kind"], week=r["week"], intensity=r["intensity"],
+                        reps=r["reps"], repout=r["repout"])
+            for r in conn.execute("SELECT * FROM sbs_schedule ORDER BY kind, week")]
+
+
 def get_schedule(conn: sqlite3.Connection):
+    """Raw row version (for the /schedule editor template)."""
     return conn.execute(
         "SELECT * FROM sbs_schedule ORDER BY kind, week"
     ).fetchall()
@@ -746,7 +785,8 @@ def reset_schedule(conn: sqlite3.Connection) -> None:
 
 # ---------- reseed ----------
 def set_reseed(conn: sqlite3.Connection, lift_id: int, *, cycle: int, new_max=None) -> None:
-    """Stamp reseeded_cycle; if new_max given, also set lifts.max and lift_state.tm."""
+    """Stamp reseeded_cycle; if new_max given, also set lifts.max and lift_state.tm.
+    This is the ONLY writer of reseeded_cycle (besides the migration)."""
     conn.execute(
         "UPDATE lift_state SET reseeded_cycle = ? WHERE lift_id = ?", (cycle, lift_id))
     if new_max is not None:
@@ -823,7 +863,7 @@ Expected: FAIL — `_by_day` still reads `r["intensity"] / r["reps"] / r["repout
 
 - [ ] **Step 3: Carry the schedule through `advance.py`**
 
-In `webapp/services/advance.py`, build the schedule on the `Profile`. Modify `_profile_from_rows` to accept and attach it, and `_lift_from_row` to read `lift_kind`:
+In `webapp/services/advance.py`, build the schedule on the `Profile`. Modify `_profile_from_rows` to take the already-loaded dataclass list and `_lift_from_row` to read `lift_kind`:
 
 ```python
 def _lift_from_row(r) -> Lift:
@@ -835,10 +875,8 @@ def _lift_from_row(r) -> Lift:
     )
 
 
-def _profile_from_rows(settings, lift_rows, schedule_rows) -> Profile:
-    from sbs_cli.data.schema import ScheduleRow
-    schedule = [ScheduleRow(kind=sr["kind"], week=sr["week"], intensity=sr["intensity"],
-                            reps=sr["reps"], repout=sr["repout"]) for sr in schedule_rows]
+def _profile_from_rows(settings, lift_rows, schedule) -> Profile:
+    # `schedule` is the list[ScheduleRow] from repo.load_schedule(conn)
     return Profile(
         rounding=settings["rounding"], days_per_week=settings["days_per_week"],
         incr=settings["incr"], t2_reset_pct=settings["t2_reset_pct"],
@@ -848,30 +886,25 @@ def _profile_from_rows(settings, lift_rows, schedule_rows) -> Profile:
     )
 ```
 
-In `advance_week`, load the schedule and pass it through:
+In `advance_week`, load the schedule via the shared loader and pass it through:
 
 ```python
-    profile = _profile_from_rows(settings, lift_rows, repo.get_schedule(conn))
+    profile = _profile_from_rows(settings, lift_rows, repo.load_schedule(conn))
 ```
 
 (`advance_lift(profile, lift, ls, actual, week=week)` now finds the schedule via `profile.schedule`.)
 
 - [ ] **Step 4: Update `preview.py`**
 
-In `webapp/services/preview.py`, replace any `(state["tm"] or 0) * lift["intensity"]` with a schedule lookup. Load settings + schedule and compute the working weight for the current program week:
+In `webapp/services/preview.py`, replace any `(state["tm"] or 0) * lift["intensity"]` with a schedule lookup. Use the shared loader (no inline comprehension):
 
 ```python
 from sbs_cli.engine.progression import round_weight, lookup_schedule
-from sbs_cli.data.schema import ScheduleRow
-
-def _schedule(conn):
-    return [ScheduleRow(kind=r["kind"], week=r["week"], intensity=r["intensity"],
-                        reps=r["reps"], repout=r["repout"]) for r in repo.get_schedule(conn)]
 
 # inside live_preview(conn, lid, reps):
     settings = repo.get_settings(conn)
     week = settings["week"]
-    sc = lookup_schedule(_schedule(conn), lift["lift_kind"], week)
+    sc = lookup_schedule(repo.load_schedule(conn), lift["lift_kind"], week)
     w = round_weight((state["tm"] or 0) * sc.intensity, settings["rounding"])
     # ... rest of est1RM math unchanged, using w
 ```
@@ -880,26 +913,21 @@ def _schedule(conn):
 
 - [ ] **Step 5: Update `recompute.py`**
 
-In `webapp/services/recompute.py`, pass the schedule into `recompute_sbs_tm`:
+In `webapp/services/recompute.py`, pass the schedule into `recompute_sbs_tm` via the shared loader:
 
 ```python
-    from sbs_cli.data.schema import ScheduleRow
-    schedule = [ScheduleRow(kind=r["kind"], week=r["week"], intensity=r["intensity"],
-                            reps=r["reps"], repout=r["repout"]) for r in repo.get_schedule(conn)]
-    tm = recompute_sbs_tm(lift, history, schedule)
+    tm = recompute_sbs_tm(lift, history, repo.load_schedule(conn))
 ```
 
 (Update the import line and the existing call site, which previously passed only `(lift, history)`.)
 
 - [ ] **Step 6: Update the plan view `_by_day`**
 
-In `webapp/routes/plan.py::_by_day`, replace the sbs branch's static `r["intensity"] / r["reps"] / r["repout"]` with a schedule lookup. Add near the top of the function:
+In `webapp/routes/plan.py::_by_day`, replace the sbs branch's static `r["intensity"] / r["reps"] / r["repout"]` with a schedule lookup. Load the schedule once via the shared loader:
 
 ```python
     from sbs_cli.engine.progression import lookup_schedule
-    from sbs_cli.data.schema import ScheduleRow
-    schedule = [ScheduleRow(kind=r["kind"], week=r["week"], intensity=r["intensity"],
-                            reps=r["reps"], repout=r["repout"]) for r in repo.get_schedule(conn)]
+    schedule = repo.load_schedule(conn)
 ```
 
 Then the sbs branch:

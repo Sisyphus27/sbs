@@ -11,17 +11,18 @@
 
 ## Current task
 
-- **Plan task:** Task 3 — program.py eff_incr 解析（advance_lift + recompute_state；TDD）
+- **Plan task:** Task 4 — db.py _SCHEMA lifts.incr + test_db.py 列断言
 - **Stage:** dispatching
-- **Risk signals:** 引擎入口逻辑改动（eff_incr 解析 + 修 Task 1 遗留的 program.py→t3_next 调用）。多位置（advance_lift + recompute_state）。可能命中「跨模块/逻辑判断」→ 实现后看自报 + 复核 diff 决定是否派 reviewer。
+- **Risk signals:** DB schema DDL 加一 nullable 列 + 测试断言。命中「schema-migration」信号（DB 列变更）→ 实现后看自报 + 复核；可能需 reviewer。注：仅 init_schema bootstrap（新 DB），在线迁移是 Task 10（migrate_incr.py）。
 - **Review-fix round:** 0
 
 ## Deferred Minors (最终审查 triage)
 
-- Task 1: `t3_next` docstring `??`（nullish-coalescing 故意简写，非乱码）。接受。
+- Task 1: `??` 注释简写——reviewer Task 3 也认合理。非问题，不改。
 
 ## Completion log
 
-- **Task 0** (docs backfill): complete (c24b5cb, 直接勾选). openspec §0 done.
-- **Task 1** (engine progression 去 snap): complete (96de9cb, reviewer Spec✅+Approved). openspec 1.1/1.2 done. 23/23 green.
-- **Task 2** (schema Lift.incr): complete (a49ea48, 协调者复核 clean 无真实风险→直接勾选). openspec 1.3 done. 7/7 green.
+- Task 0 (docs): complete (c24b5cb, 直接勾选). openspec §0.
+- Task 1 (progression 去 snap): complete (96de9cb, reviewer ✅+Approved). openspec 1.1/1.2. 23/23.
+- Task 2 (schema Lift.incr): complete (a49ea48, 直接勾选). openspec 1.3. 7/7.
+- Task 3 (program eff_incr): complete (77d42d2, reviewer ✅+Approved 无 finding). openspec 2.1/2.2. 21/21. 修了 Task 1 遗留 program.py 调用。

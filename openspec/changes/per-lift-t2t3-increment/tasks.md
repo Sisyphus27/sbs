@@ -16,8 +16,8 @@
 
 ## 2. Engine: 有效步长解析（TDD）
 
-- [ ] 2.1 写 `advance_lift` eff_incr 测试：per-lift incr 优先（t2/t3 用 lift.incr）、NULL 回退 `profile.incr`、sbs 路径不沾 incr；改 `sbs_cli/program.py` 的 `advance_lift` 解析 `eff_incr = lift.incr if lift.incr is not None else profile.incr` 并传入 t2/t3 分支
-- [ ] 2.2 写 `recompute_state` eff_incr 测试：t2/t3 重放历史按 per-lift 步长累加；改 `recompute_state` 用同一 eff_incr 解析传入
+- [x] 2.1 写 `advance_lift` eff_incr 测试：per-lift incr 优先（t2/t3 用 lift.incr）、NULL 回退 `profile.incr`、sbs 路径不沾 incr；改 `sbs_cli/program.py` 的 `advance_lift` 解析 `eff_incr = lift.incr if lift.incr is not None else profile.incr` 并传入 t2/t3 分支
+- [x] 2.2 写 `recompute_state` eff_incr 测试：t2/t3 重放历史按 per-lift 步长累加；改 `recompute_state` 用同一 eff_incr 解析传入
 
 ## 3. DB schema + repo
 

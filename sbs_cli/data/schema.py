@@ -27,6 +27,7 @@ class Lift:
     # t2 / t3
     start: Optional[float] = None
     lift_kind: Optional[str] = None   # "main" | "aux" for sbs; None for t2/t3
+    incr: Optional[float] = None      # t2/t3 per-lift progression step; None = inherit global incr
 
 
 @dataclass

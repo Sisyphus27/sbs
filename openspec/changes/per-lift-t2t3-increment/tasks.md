@@ -4,9 +4,9 @@
 
 ## 0. 文档/术语先行
 
-- [ ] 0.1 回写 spec.md：MODIFY t2 reset requirement（snap 网格 rounding → effective step）+ ADD「tier 切换保留 incr」场景
-- [ ] 0.2 改 CONTEXT.md：rounding quantum / loaded-value 定义收窄到 sbs；加 progression step / effective step 术语
-- [ ] 0.3 落盘 docs/adr/0003-t2t3-progression-snap-grid.md（每动作一个 snap 网格）
+- [x] 0.1 回写 spec.md：MODIFY t2 reset requirement（snap 网格 rounding → effective step）+ ADD「tier 切换保留 incr」场景
+- [x] 0.2 改 CONTEXT.md：rounding quantum / loaded-value 定义收窄到 sbs；加 progression step / effective step 术语
+- [x] 0.3 落盘 docs/adr/0003-t2t3-progression-snap-grid.md（每动作一个 snap 网格）
 
 ## 1. Engine: progression 纯函数（TDD）
 

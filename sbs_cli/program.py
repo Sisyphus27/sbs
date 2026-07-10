@@ -47,15 +47,19 @@ def advance_lift(profile: Profile, lift: Lift, state: LiftState, actual_reps, we
     # progress
     if lift.tier == "sbs":
         state.tm = sbs_next(state.tm, sc.repout, actual_reps)
-    elif lift.tier == "t3":
-        state.weight = t3_next(state.weight, actual_reps,
-                               target=profile.t3_target, incr=profile.incr, quantum=profile.rounding)
-    elif lift.tier == "t2":
-        est = state.est1rm if state.est1rm is not None else 0.0
-        ns = t2_next(T2State(state.target, state.streak, state.weight), actual_reps, est,
-                     fail=profile.t2_fail, incr=profile.incr,
-                     reset_pct=profile.t2_reset_pct, quantum=profile.rounding)
-        state.target, state.streak, state.weight = ns.target, ns.streak, ns.weight
+    else:
+        # effective step: per-lift incr ?? global incr (ADR 0003). It is both the hit-add Δ
+        # and the snap grid for this lift's T2 reset. sbs ignores incr entirely.
+        eff_incr = lift.incr if lift.incr is not None else profile.incr
+        if lift.tier == "t3":
+            state.weight = t3_next(state.weight, actual_reps,
+                                   target=profile.t3_target, incr=eff_incr)
+        elif lift.tier == "t2":
+            est = state.est1rm if state.est1rm is not None else 0.0
+            ns = t2_next(T2State(state.target, state.streak, state.weight), actual_reps, est,
+                         fail=profile.t2_fail, incr=eff_incr,
+                         reset_pct=profile.t2_reset_pct, quantum=eff_incr)
+            state.target, state.streak, state.weight = ns.target, ns.streak, ns.weight
 
 
 class PlanItem:
@@ -92,11 +96,12 @@ def recompute_state(lift: Lift, history: List[SetEntry], profile: Profile) -> Li
     replay. ``est1rm`` is computed from the real history weights (unchanged by the
     new start). Not applicable to sbs (sbs has no start-based progression)."""
     est = _est1rm_from_history(history)
+    # effective step: per-lift incr ?? global incr (ADR 0003).
+    eff_incr = lift.incr if lift.incr is not None else profile.incr
     if lift.tier == "t3":
         weight = lift.start or 0.0
         for h in history:
-            weight = t3_next(weight, h.reps, target=profile.t3_target,
-                             incr=profile.incr, quantum=profile.rounding)
+            weight = t3_next(weight, h.reps, target=profile.t3_target, incr=eff_incr)
         return LiftState(name=lift.name, tier="t3", weight=weight, target=None,
                          streak=0, est1rm=est, history=history)
     if lift.tier == "t2":
@@ -104,8 +109,8 @@ def recompute_state(lift: Lift, history: List[SetEntry], profile: Profile) -> Li
         for k, h in enumerate(history):
             est_k = _est1rm_from_history(history[:k + 1]) or 0.0
             ns = t2_next(T2State(target, streak, weight), h.reps, est_k,
-                         fail=profile.t2_fail, incr=profile.incr,
-                         reset_pct=profile.t2_reset_pct, quantum=profile.rounding)
+                         fail=profile.t2_fail, incr=eff_incr,
+                         reset_pct=profile.t2_reset_pct, quantum=eff_incr)
             target, streak, weight = ns.target, ns.streak, ns.weight
         return LiftState(name=lift.name, tier="t2", weight=weight, target=target,
                          streak=streak, est1rm=est, history=history)

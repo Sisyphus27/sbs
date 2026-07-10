@@ -200,3 +200,48 @@ def test_recompute_sbs_tm_uses_schedule_repout_per_week():
             SetEntry(week=2, weight=75.0, reps=10)]   # W2 repout 8 -> beat by 2 -> +1% -> 102.01
     tm = recompute_sbs_tm(lift, hist, p.schedule)
     assert tm == round(100.0 * 1.01 * 1.01, 10)
+
+
+# ---- per-lift eff_incr 解析 (D1/D3) ----
+
+def test_advance_t3_uses_per_lift_incr_over_global():
+    # lift.incr=5 覆盖 profile.incr=2.5；HIT 时 40+5=45（旧实现用 profile.incr=2.5 -> 42.5）
+    p = Profile(incr=2.5, lifts=[Lift(name="Curls", tier="t3", day=1, start=40, incr=5)])
+    s = initial_state(p)
+    advance_lift(p, p.lift("Curls"), s.lifts["Curls"], actual_reps=16, week=1)  # 16>=15 hit
+    assert s.lifts["Curls"].weight == 45.0
+
+
+def test_advance_t3_null_incr_falls_back_to_global():
+    # incr=None -> eff_incr=profile.incr=2.5；40+2.5=42.5（向后兼容）
+    p = Profile(incr=2.5, lifts=[Lift(name="Curls", tier="t3", day=1, start=40)])
+    s = initial_state(p)
+    advance_lift(p, p.lift("Curls"), s.lifts["Curls"], actual_reps=16, week=1)
+    assert s.lifts["Curls"].weight == 42.5
+
+
+def test_advance_sbs_ignores_incr():
+    # sbs 路径不沾 incr：working weight = round(TM*intensity, rounding)
+    sched = [ScheduleRow("main", 1, 0.75, 4, 8)]
+    p = Profile(rounding=2.5, schedule=sched,
+                lifts=[Lift(name="Squat", tier="sbs", day=1, max=100, sets=3,
+                            lift_kind="main", incr=99)])
+    s = initial_state(p)
+    advance_lift(p, p.lift("Squat"), s.lifts["Squat"], actual_reps=8, week=1)
+    assert s.lifts["Squat"].history[0].weight == 75  # round(100*0.75, 2.5)=75, incr=99 被忽略
+
+
+def test_recompute_state_t2_reset_snaps_to_eff_incr():
+    # recompute 重放：incr=5 的 t2，reset 重量 snap 到 eff_incr=5 网格，而非全局 rounding=2.5
+    from sbs_cli.engine.progression import round_weight
+    from sbs_cli.program import _est1rm_from_history
+    p = Profile(t2_reset_pct=0.75, incr=2.5, rounding=2.5,
+                lifts=[Lift(name="PD", tier="t2", day=1, start=100, incr=5)])
+    lift = p.lift("PD")
+    # 最佳组 100x5 -> est1rm≈115；×0.75≈86.4 落在 5-grid(85) 与 2.5-grid(87.5) 之间
+    hist = [SetEntry(1, 100.0, 5), SetEntry(2, 100.0, 3),
+            SetEntry(3, 100.0, 3), SetEntry(4, 100.0, 3)]  # 1 hit 后 3 连 miss -> reset
+    ls = recompute_state(lift, hist, p)
+    est = _est1rm_from_history(hist)
+    assert ls.weight == round_weight(est * 0.75, 5)       # NEW: eff_incr 网格
+    assert ls.weight != round_weight(est * 0.75, 2.5)     # OLD: 全局 rounding 会给不同值

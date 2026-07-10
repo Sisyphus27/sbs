@@ -10,8 +10,8 @@
 
 ## 1. Engine: progression 纯函数（TDD）
 
-- [ ] 1.1 写 `t3_next` 去 rounding 测试：命中精确累加（20+5=25）、非 rounding 倍数不 snap（50+3=53）、默认配置 no-op（50+2.5=52.5）；改 `sbs_cli/engine/progression.py` 的 `t3_next` 移除 `quantum` 参数与 `round_weight`，直接 `weight + incr`
-- [ ] 1.2 写 `t2_next` 测试：HIT 分支精确累加（去 rounding）、reset 分支仍 `round_weight(est1rm×reset_pct, quantum)`；改 `t2_next` 仅 HIT 分支去 `round_weight`，reset 分支与签名保留 `quantum`
+- [x] 1.1 写 `t3_next` 去 rounding 测试：命中精确累加（20+5=25）、非 rounding 倍数不 snap（50+3=53）、默认配置 no-op（50+2.5=52.5）；改 `sbs_cli/engine/progression.py` 的 `t3_next` 移除 `quantum` 参数与 `round_weight`，直接 `weight + incr`
+- [x] 1.2 写 `t2_next` 测试：HIT 分支精确累加（去 rounding）、reset 分支仍 `round_weight(est1rm×reset_pct, quantum)`；改 `t2_next` 仅 HIT 分支去 `round_weight`，reset 分支与签名保留 `quantum`
 - [ ] 1.3 `sbs_cli/data/schema.py` 的 `Lift` dataclass 加 `incr: Optional[float] = None`
 
 ## 2. Engine: 有效步长解析（TDD）

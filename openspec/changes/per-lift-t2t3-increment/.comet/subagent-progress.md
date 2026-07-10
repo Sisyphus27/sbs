@@ -11,15 +11,20 @@
 
 ## Pre-flight plan review
 
-CLEAN — 计划自我一致，无冲突需升级。
+CLEAN。
 
 ## Current task
 
-- **Plan task:** Task 1 — Engine progression t2_next/t3_next 命中加重量去 snap（TDD）
+- **Plan task:** Task 2 — schema.py Lift.incr 字段（TDD）
 - **Stage:** dispatching
-- **Risk signals:** 引擎纯函数改动（progression.py），单文件 + 测试。无跨模块/安全/并发/schema/API。diff 预计 < 200 行。→ 低风险（standard 下不派每任务 reviewer，除非协调者复核 diff 命中风险）
-- **Review-fix round:** 0（standard 上限 1）
+- **Risk signals:** dataclass 加一 nullable 字段，单文件 + 测试。无跨模块/安全/并发/schema-migration(DB)/API。→ 低风险（standard 下不派 reviewer，除非复核 diff 命中风险）
+- **Review-fix round:** 0
+
+## Deferred Minors (最终审查 triage)
+
+- Task 1: `t3_next` docstring `per-lift ?? global` 的 `??`（nullish-coalescing 故意简写，非乱码；reviewer 误判为可能乱码）。接受，不改。
 
 ## Completion log
 
-- **Task 0** (docs backfill): complete (commit c24b5cb, 协调者复核 diff clean — 4 文件 spec/tasks/CONTEXT/ADR，无源码无测试，无风险信号 → 直接勾选未派 reviewer)。openspec §0 (0.1/0.2/0.3) 已勾选。
+- **Task 0** (docs backfill): complete (c24b5cb, 协调者复核 clean, 无风险 → 直接勾选). openspec §0 done.
+- **Task 1** (engine progression t3/t2 去 snap): complete (96de9cb, reviewer Spec✅+Approved 无 Critical/Important; 风险信号 cross-module/public-API/DONE_WITH_CONCERNS 均为计划预期临时态 program.py→Task 3 修). openspec 1.1/1.2 done. 23/23 test_progression green.

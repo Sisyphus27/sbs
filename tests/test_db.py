@@ -27,13 +27,14 @@ def test_init_schema_seeds_schedule_when_empty(tmp_path):
     conn.close()
 
 
-def test_init_schema_has_lift_kind_and_reseeded_cycle_columns(tmp_path):
-    """lifts.lift_kind and lift_state.reseeded_cycle exist with correct defaults (Task 5)."""
+def test_init_schema_has_lift_kind_reseeded_cycle_and_incr_columns(tmp_path):
+    """lifts.lift_kind + lifts.incr and lift_state.reseeded_cycle exist (Task 5 / per-lift incr)."""
     conn = db.connect(str(tmp_path / "t.db"))
     db.init_schema(conn)
     lift_cols = {r[1] for r in conn.execute("PRAGMA table_info(lifts)").fetchall()}
     state_cols = {r[1] for r in conn.execute("PRAGMA table_info(lift_state)").fetchall()}
     assert "lift_kind" in lift_cols
+    assert "incr" in lift_cols          # per-lift t2/t3 progression step (nullable)
     assert "reseeded_cycle" in state_cols
     # reseeded_cycle defaults to 0 so advance_week's UPSERT won't NULL it out
     conn.execute(

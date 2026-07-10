@@ -34,7 +34,8 @@ CREATE TABLE IF NOT EXISTS lifts (
     reps       INTEGER,
     repout     INTEGER,
     start      REAL,
-    lift_kind  TEXT
+    lift_kind  TEXT,
+    incr       REAL
 );
 CREATE TABLE IF NOT EXISTS lift_state (
     lift_id        INTEGER PRIMARY KEY REFERENCES lifts(id) ON DELETE CASCADE,

@@ -43,14 +43,26 @@ t2/t3 动作命中后累加有效步长时，系统 SHALL 直接 `weight + effec
 - **WHEN** 一个 t3 动作（incr=NULL，全局 incr=2.5、rounding=2.5，当前重量 50）命中目标次数
 - **THEN** 下次重量 = 52.5（与本变更前完全一致）
 
-### Requirement: t2 reset 保留全局 rounding
+### Requirement: t2 reset 与 tier 切换起始重量 snap 到有效步长
 
-t2 动作连续 miss 达 `fail` 次触发 reset 时，系统 SHALL 将重置重量 `est1rm × reset_pct` snap 到全局 rounding quantum。per-lift incr 不参与 reset 路径。
+t2 动作连续 miss 达 `fail` 次触发 reset 时，系统 SHALL 将重置重量 `est1rm × reset_pct` snap 到**该动作的有效步长（eff_incr）网格**，而非全局 rounding quantum。tier 切换时 `derive_state` 推导的 t2/t3 起始重量同样 SHALL snap 到 eff_incr 网格。sbs 路径不受影响（其工作重量仍 snap 到全局 rounding）。
 
-#### Scenario: reset 重量 snap 到全局 rounding
+依据：cable/器械动作（如 Pull-downs）的配片堆最小增量（如 5kg）独立于杠铃 rounding；snap 到全局 rounding 会产生该器械不可加载的重量（见 ADR 0003）。
 
-- **WHEN** 一个 t2 动作连续 miss 达 `fail` 次（est1rm=103.3，reset_pct=0.75，全局 rounding=2.5）
-- **THEN** reset 重量 = round_weight(103.3 × 0.75, 2.5) = 77.5
+#### Scenario: reset 重量 snap 到 eff_incr 网格
+
+- **WHEN** 一个 t2 动作（per-lift incr=5，全局 rounding=2.5）连续 miss 达 `fail` 次（est1rm=103.3，reset_pct=0.75）
+- **THEN** reset 重量 = round_weight(103.3 × 0.75, eff_incr=5) = 75（5kg 堆可加载；旧的全局 rounding 会得 77.5，非 5 倍数不可加载）
+
+#### Scenario: incr 为 NULL 时 reset 仍 snap 到全局 incr
+
+- **WHEN** 一个 t2 动作 incr=NULL（全局 incr=2.5、rounding=2.5）触发 reset
+- **THEN** eff_incr=2.5，reset 重量 = round_weight(est1rm × reset_pct, 2.5)，与本变更前完全一致
+
+#### Scenario: tier 切换保留 per-lift incr
+
+- **WHEN** 一个设了 incr=5 的动作经历 tier 切换（如 t2 → t3 → sbs → t2）
+- **THEN** `lifts.incr` 列始终保持 5（tier 切换只改 `lifts.tier` 与 `lift_state`，不触碰 incr 列）
 
 ### Requirement: 重算历史使用有效步长
 

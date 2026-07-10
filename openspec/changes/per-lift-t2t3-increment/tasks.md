@@ -2,6 +2,12 @@
 
 实现 t2/t3 per-lift 增长步长。引擎层走 TDD（先红后绿）。命令在 `D:\WorkSpace\sbs\` 下用 `conda run -n sbs` 跑。
 
+## 0. 文档/术语先行
+
+- [ ] 0.1 回写 spec.md：MODIFY t2 reset requirement（snap 网格 rounding → effective step）+ ADD「tier 切换保留 incr」场景
+- [ ] 0.2 改 CONTEXT.md：rounding quantum / loaded-value 定义收窄到 sbs；加 progression step / effective step 术语
+- [ ] 0.3 落盘 docs/adr/0003-t2t3-progression-snap-grid.md（每动作一个 snap 网格）
+
 ## 1. Engine: progression 纯函数（TDD）
 
 - [ ] 1.1 写 `t3_next` 去 rounding 测试：命中精确累加（20+5=25）、非 rounding 倍数不 snap（50+3=53）、默认配置 no-op（50+2.5=52.5）；改 `sbs_cli/engine/progression.py` 的 `t3_next` 移除 `quantum` 参数与 `round_weight`，直接 `weight + incr`
@@ -23,6 +29,7 @@
 
 - [ ] 4.1 `webapp/services/advance.py` 的 `_lift_from_row` 读 `incr` 列传入 `Lift`
 - [ ] 4.2 `webapp/routes/lifts.py`：`_lift_from_row`（new/edit 共用逻辑若有）读 incr；`new`/`edit` 路由接收 `incr` 字段；sbs 创建时传 `incr=None`
+- [ ] 4.4 `webapp/services/tier.py` 的 `derive_state`：t2/t3 起始重量 snap 网格由 rounding 改为 eff_incr（`lift["incr"] if not None else settings["incr"]`）；`apply_switch` 不动（incr 在 lifts 列，tier 切换不触碰）
 - [ ] 4.3 写 webapp 集成测试：t2/t3 创建带 incr、编辑改 incr、清空写回 NULL、sbs 不写 incr
 
 ## 5. UI 模板

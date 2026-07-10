@@ -39,13 +39,16 @@ def sbs_next(tm: float, repout: int, actual) -> float:
     return round(tm * (1 + _sbs_delta(actual - repout)), 10)
 
 
-def t3_next(weight: float, actual, target: int = 15, incr: float = 2.5,
-            quantum: float = 2.5) -> float:
-    """T3 accessories: +incr when last set >= target, else repeat."""
+def t3_next(weight: float, actual, target: int = 15, incr: float = 2.5) -> float:
+    """T3 accessories: +incr when last set >= target, else repeat.
+
+    Pure arithmetic — the hit add is NOT snapped. The incr IS the lift's
+    effective step (per-lift ?? global, resolved by the caller), which is itself
+    the loadable grid for that apparatus (see ADR 0003)."""
     if actual is None:
         return weight
     if actual >= target:
-        return round_weight(weight + incr, quantum)
+        return weight + incr
     return weight
 
 
@@ -63,8 +66,8 @@ def t2_next(state: T2State, actual, est1rm: float, fail: int = 3,
     A hit adds `incr` and stays at the current level (no climb-back)."""
     if actual is None:
         return state
-    if actual >= state.target:                                   # HIT
-        return T2State(state.target, 0, round_weight(state.weight + incr, quantum))
+    if actual >= state.target:                                   # HIT — pure arithmetic (ADR 0003)
+        return T2State(state.target, 0, state.weight + incr)
     new_streak = state.streak + 1                                # MISS
     if new_streak >= fail:                                       # Nth consecutive miss -> reset
         return T2State(8, 0, round_weight(est1rm * reset_pct, quantum))

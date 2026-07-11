@@ -60,3 +60,46 @@ def test_advance_week_handles_duplicate_names_per_day(tmp_path):
     assert repo.get_lift_state(conn, d1)["weight"] == 32.5
     assert repo.get_lift_state(conn, d4)["weight"] == 45.0
     conn.close()
+
+
+def test_lift_from_row_tolerates_missing_incr_column():
+    """Regression: legacy DBs that predate the lifts.incr column (pre-migrate_incr)
+    must not blow up _lift_from_row with IndexError. A row lacking incr should
+    yield a Lift with incr=None (inherit global), per ADR 0003 / design D1.
+
+    Mirrors the legacy-DB shape: lift_kind column present (added by Task 5
+    migration before replay) but incr column absent (added by separate
+    migrate_incr.py which the legacy DB has not yet run).
+    """
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute(
+        """
+        CREATE TABLE lifts (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            name       TEXT NOT NULL,
+            tier       TEXT NOT NULL,
+            day        INTEGER NOT NULL,
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            sets       INTEGER NOT NULL DEFAULT 3,
+            max        REAL,
+            intensity  REAL,
+            reps       INTEGER,
+            repout     INTEGER,
+            start      REAL,
+            lift_kind  TEXT
+        )
+        """
+    )
+    conn.execute(
+        "INSERT INTO lifts (name, tier, day, max, intensity, reps, repout, sets, start, lift_kind) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        ("Rows", "t2", 1, None, None, None, None, 3, 85.0, "main"),
+    )
+    row = conn.execute("SELECT * FROM lifts WHERE name = 'Rows'").fetchone()
+    conn.close()
+
+    lift = advance._lift_from_row(row)
+    assert lift.name == "Rows"
+    assert lift.incr is None  # no IndexError; inherits global
+

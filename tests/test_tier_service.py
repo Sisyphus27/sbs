@@ -42,3 +42,53 @@ def test_apply_tier_switch_keeps_history_and_writes_state(tmp_path):
     assert repo.get_lift(conn, lid)["tier"] == "t3"
     assert len(repo.list_history(conn, lid)) == hist_before  # history untouched
     conn.close()
+
+
+def test_derive_state_t2_snaps_to_eff_incr(tmp_path):
+    """t2 derive：incr=5 的动作，起始重量 snap 到 eff_incr=5 网格，而非全局 rounding=2.5。"""
+    from sbs_cli.engine.progression import round_weight
+    from sbs_cli.program import _est1rm_from_history
+    from sbs_cli.data.schema import SetEntry
+    conn, _ = _seed_with_history(tmp_path)  # 复用既有 fixture 建一个 sbs lift+history
+    # 另建一个 incr=5 的 t2 动作，灌入产生已知 est1rm 的 history
+    lid = repo.create_lift(conn, name="PD", tier="t2", day=1, sort_order=1,
+                           sets=3, max=None, intensity=None, reps=None, repout=None,
+                           start=100.0, incr=5)
+    repo.append_history(conn, lid, week=1, weight=100.0, reps=5)  # 100x5 -> est1rm≈115
+    settings = repo.get_settings(conn)
+    preview = tier.derive_state(conn, lid, "t2", settings)
+    est = _est1rm_from_history([SetEntry(1, 100.0, 5)])
+    assert preview["weight"] == round_weight(est * settings["t2_reset_pct"], 5)   # eff_incr=5
+    assert preview["weight"] != round_weight(est * settings["t2_reset_pct"], 2.5)  # 旧全局 rounding
+    conn.close()
+
+
+def test_derive_state_t3_snaps_to_eff_incr(tmp_path):
+    from sbs_cli.engine.progression import round_weight
+    from sbs_cli.program import _est1rm_from_history
+    from sbs_cli.data.schema import SetEntry
+    conn = db.connect(str(tmp_path / "t2.db"))
+    db.init_schema(conn)
+    lid = repo.create_lift(conn, name="FP", tier="t3", day=1, sort_order=0,
+                           sets=3, max=None, intensity=None, reps=None, repout=None,
+                           start=30.0, incr=5)
+    repo.append_history(conn, lid, week=1, weight=100.0, reps=5)  # est1rm≈115 -> *0.6≈69
+    settings = repo.get_settings(conn)
+    preview = tier.derive_state(conn, lid, "t3", settings)
+    est = _est1rm_from_history([SetEntry(1, 100.0, 5)])
+    assert preview["weight"] == round_weight(est * 0.6, 5)   # eff_incr=5 网格
+    conn.close()
+
+
+def test_apply_switch_preserves_incr(tmp_path):
+    """D6：tier 切换不触碰 lifts.incr 列。"""
+    conn = db.connect(str(tmp_path / "t3.db"))
+    db.init_schema(conn)
+    lid = repo.create_lift(conn, name="PD", tier="t2", day=1, sort_order=0,
+                           sets=3, max=None, intensity=None, reps=None, repout=None,
+                           start=50.0, incr=5)
+    repo.append_history(conn, lid, week=1, weight=50.0, reps=8)
+    preview = tier.derive_state(conn, lid, "t3", repo.get_settings(conn))
+    tier.apply_switch(conn, lid, preview)
+    assert repo.get_lift(conn, lid)["incr"] == 5   # preserved across switch
+    conn.close()

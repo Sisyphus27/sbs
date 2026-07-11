@@ -15,7 +15,9 @@ def derive_state(conn: sqlite3.Connection, lift_id: int, new_tier: str,
     history = [SetEntry(week=h["week"], weight=h["weight"], reps=h["reps"]) for h in hist_rows]
     est1rm = _est1rm_from_history(history)
     lift = repo.get_lift(conn, lift_id)
-    quantum = settings["rounding"]
+    # ADR 0003: t2/t3 derived start weights snap to this lift's effective-step grid
+    # (per-lift incr ?? global incr), NOT the global rounding. sbs ignores incr.
+    eff_incr = lift["incr"] if lift["incr"] is not None else settings["incr"]
 
     if new_tier == "sbs":
         # See ADR 0001 — est1rm seed here is deliberate; unification with the
@@ -25,14 +27,14 @@ def derive_state(conn: sqlite3.Connection, lift_id: int, new_tier: str,
                 "streak": 0, "est1rm": est1rm}
     if new_tier == "t2":
         if est1rm is not None:
-            w = round_weight(est1rm * settings["t2_reset_pct"], quantum)
+            w = round_weight(est1rm * settings["t2_reset_pct"], eff_incr)
         else:
             w = lift["start"] or 0.0
         return {"tier": "t2", "tm": None, "weight": w, "target": 10,
                 "streak": 0, "est1rm": est1rm}
     # t3
     if est1rm is not None:
-        w = round_weight(est1rm * 0.6, quantum)
+        w = round_weight(est1rm * 0.6, eff_incr)
     else:
         w = lift["start"] or 0.0
     return {"tier": "t3", "tm": None, "weight": w, "target": None,

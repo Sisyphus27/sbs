@@ -28,15 +28,15 @@
 ## 4. Webapp 服务/路由接线
 
 - [x] 4.1 `webapp/services/advance.py` 的 `_lift_from_row` 读 `incr` 列传入 `Lift`
-- [ ] 4.2 `webapp/routes/lifts.py`：`_lift_from_row`（new/edit 共用逻辑若有）读 incr；`new`/`edit` 路由接收 `incr` 字段；sbs 创建时传 `incr=None`
+- [x] 4.2 `webapp/routes/lifts.py`：`_lift_from_row`（new/edit 共用逻辑若有）读 incr；`new`/`edit` 路由接收 `incr` 字段；sbs 创建时传 `incr=None`
 - [x] 4.4 `webapp/services/tier.py` 的 `derive_state`：t2/t3 起始重量 snap 网格由 rounding 改为 eff_incr（`lift["incr"] if not None else settings["incr"]`）；`apply_switch` 不动（incr 在 lifts 列，tier 切换不触碰）
-- [ ] 4.3 写 webapp 集成测试：t2/t3 创建带 incr、编辑改 incr、清空写回 NULL、sbs 不写 incr
+- [x] 4.3 写 webapp 集成测试：t2/t3 创建带 incr、编辑改 incr、清空写回 NULL、sbs 不写 incr
 
 ## 5. UI 模板
 
 - [ ] 5.1 `webapp/templates/_lift_row.html` 编辑行：t2/t3 加 incr number 输入框（值=`lift.incr`），sbs 行隐藏（仿 intensity/reps/repout 条件模式）
 - [ ] 5.2 `webapp/templates/lifts.html` 新建表单：t2/t3 加 incr 输入框，sbs 隐藏
-- [ ] 5.3 incr 服务端校验：≤0 或非数字 → flash + 保留原值（路由层）
+- [x] 5.3 incr 服务端校验：≤0 或非数字 → flash + 保留原值（路由层）
 
 ## 6. 迁移
 

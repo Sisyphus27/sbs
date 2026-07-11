@@ -11,10 +11,15 @@
 
 ## Current task
 
-- **Plan task:** Task 8 — routes/lifts.py new/edit 接 incr + 校验（TDD）
+- **Plan task:** Task 9 — 模板 _lift_row.html + lifts.html incr UI
 - **Stage:** dispatching
-- **Risk signals:** 路由层 + 用户输入校验（incr ≤0/非数字 拒绝、sbs 强制 None、清空→NULL）。命中「外部输入处理」安全相关信号。→ 实现后必复核，likely 派 reviewer。
+- **Risk signals:** 纯 UI 模板（条件渲染 incr 框）。低风险。实现后看自报。
 - **Review-fix round:** 0
+
+## Deferred Minors (最终审查 triage)
+
+- Task 1: `??` 注释简写（reviewer 认合理）。非问题。
+- Task 8: `_parse_incr` float() 接受 "inf"/"nan"——number 输入框不可达，spec-verbatim，不值得加固。接受。
 
 ## Completion log
 
@@ -24,5 +29,6 @@
 - Task 3 (program eff_incr): complete (77d42d2, reviewer ✅). openspec 2.1/2.2.
 - Task 4 (db schema): complete (bda6827, reviewer ✅). openspec 3.1.
 - Task 5 (repo incr): complete (940ca05, reviewer ✅). openspec 3.2/3.3.
-- Task 6 (advance _lift_from_row): complete (96f5aba, 直接勾选). openspec 4.1. recompute.py 零改动.
-- Task 7 (tier derive eff_incr): complete (9a9ed89, 直接勾选无信号; apply_switch/sbs 不动). openspec 4.4. 6/6.
+- Task 6 (advance _lift_from_row): complete (96f5aba, 直接勾选). openspec 4.1.
+- Task 7 (tier derive eff_incr): complete (9a9ed89, 直接勾选). openspec 4.4.
+- Task 8 (routes incr+校验): complete (325b65c, reviewer ✅+Approved; 1 Minor inf/nan deferred). openspec 4.2/4.3/5.3. 16/16.

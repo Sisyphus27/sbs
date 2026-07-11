@@ -2,6 +2,7 @@
 change: per-lift-t2t3-increment
 design-doc: docs/superpowers/specs/2026-07-10-per-lift-t2t3-increment-design.md
 base-ref: 3c8bb1238caadcb31eadf896190c431ae71a53cc
+archived-with: 2026-07-11-per-lift-t2t3-increment
 ---
 
 # Per-lift T2/T3 递进步长 实施计划
@@ -24,6 +25,7 @@ base-ref: 3c8bb1238caadcb31eadf896190c431ae71a53cc
 - **out of scope**：`tools/sbs_gzclp/progression.py`（Excel 公式生成器的镜像源，含独立 `T2Params`/`T3Params`/`round_weight`）**不动**——它不是引擎，cable 动作的 xlsx 公式生成与本变更无关；不要"顺手统一"。`recompute.py` 服务层零改动（经 `_lift_from_row` + `recompute_state` 自动继承，仅在 Task 6 验证）。
 - **提交节奏**：每个 task 末尾单独 commit（conventional commits：feat/fix/refactor/docs/test/chore）。Attribution 已全局禁用，不要加 Co-authored-by。
 
+archived-with: 2026-07-11-per-lift-t2t3-increment
 ---
 
 ## 文件结构
@@ -49,6 +51,7 @@ base-ref: 3c8bb1238caadcb31eadf896190c431ae71a53cc
 | `migrate.py` | YAML/xlsx → DB | 零改动（Task 11 审计，create_lift 的 incr 默认 None） |
 | `tests/test_db.py` | schema 列断言 | MODIFY（加 incr 列断言） |
 
+archived-with: 2026-07-11-per-lift-t2t3-increment
 ---
 
 ## Task 0: Spec / CONTEXT.md / ADR 0003 回写（文档先行，无源码）
@@ -246,6 +249,7 @@ git add openspec/changes/per-lift-t2t3-increment/specs/t2t3-progression/spec.md 
 git commit -m "docs(per-lift-incr): backfill spec reset/eff_incr, CONTEXT terms, ADR 0003"
 ```
 
+archived-with: 2026-07-11-per-lift-t2t3-increment
 ---
 
 ## Task 1: Engine progression — t2_next/t3_next 命中加重量去 snap（TDD）
@@ -361,6 +365,7 @@ git add sbs_cli/engine/progression.py tests/test_progression.py
 git commit -m "feat(engine): t2/t3 hit progression drops rounding snap (ADR 0003)"
 ```
 
+archived-with: 2026-07-11-per-lift-t2t3-increment
 ---
 
 ## Task 2: schema.py Lift.incr 字段（TDD）
@@ -427,6 +432,7 @@ git add sbs_cli/data/schema.py tests/test_schema.py
 git commit -m "feat(schema): add Lift.incr (nullable per-lift progression step)"
 ```
 
+archived-with: 2026-07-11-per-lift-t2t3-increment
 ---
 
 ## Task 3: program.py eff_incr 解析（TDD）
@@ -626,6 +632,7 @@ git add sbs_cli/program.py tests/test_program.py
 git commit -m "feat(engine): resolve eff_incr at advance_lift/recompute_state entry"
 ```
 
+archived-with: 2026-07-11-per-lift-t2t3-increment
 ---
 
 ## Task 4: db.py _SCHEMA lifts.incr + test_db.py 列断言
@@ -723,6 +730,7 @@ git add webapp/db.py tests/test_db.py
 git commit -m "feat(db): add lifts.incr column to schema bootstrap"
 ```
 
+archived-with: 2026-07-11-per-lift-t2t3-increment
 ---
 
 ## Task 5: repo.py _LIFT_COLS + create_lift incr（TDD）
@@ -858,6 +866,7 @@ git add webapp/repo.py tests/test_repo.py
 git commit -m "feat(repo): persist per-lift incr in lifts table"
 ```
 
+archived-with: 2026-07-11-per-lift-t2t3-increment
 ---
 
 ## Task 6: advance.py _lift_from_row 读 incr + recompute.py 零改动验证
@@ -935,6 +944,7 @@ git add webapp/services/advance.py tests/test_recompute_service.py
 git commit -m "feat(advance): _lift_from_row carries incr; verify recompute auto-inherits"
 ```
 
+archived-with: 2026-07-11-per-lift-t2t3-increment
 ---
 
 ## Task 7: tier.py derive_state eff_incr snap（TDD）
@@ -1083,6 +1093,7 @@ git add webapp/services/tier.py tests/test_tier_service.py
 git commit -m "feat(tier): derive t2/t3 start weights snap to eff_incr grid"
 ```
 
+archived-with: 2026-07-11-per-lift-t2t3-increment
 ---
 
 ## Task 8: routes/lifts.py new/edit 接 incr + 校验（TDD）
@@ -1289,6 +1300,7 @@ git add webapp/routes/lifts.py tests/test_routes_lifts.py
 git commit -m "feat(routes): /lifts new/edit accept incr with validation"
 ```
 
+archived-with: 2026-07-11-per-lift-t2t3-increment
 ---
 
 ## Task 9: 模板 _lift_row.html + lifts.html incr UI
@@ -1368,6 +1380,7 @@ git add webapp/templates/_lift_row.html webapp/templates/lifts.html
 git commit -m "feat(ui): incr input on /lifts editor for t2/t3 (hidden for sbs)"
 ```
 
+archived-with: 2026-07-11-per-lift-t2t3-increment
 ---
 
 ## Task 10: migrate_incr.py 一次性列迁移 + 幂等测试（TDD）
@@ -1540,6 +1553,7 @@ git add migrate_incr.py tests/test_migrate_incr.py
 git commit -m "feat(migrate): one-shot ALTER to add lifts.incr (idempotent)"
 ```
 
+archived-with: 2026-07-11-per-lift-t2t3-increment
 ---
 
 ## Task 11: migrate.py 审计（零改动验证）
@@ -1563,6 +1577,7 @@ Expected: PASS（全部测试，含本变更新增的 9 个测试落点）。
 
 > 若发现任何 create_lift 位置参数调用（grep `create_lift(conn,` 在 migrate.py 中无位置参数——均 keyword），则按 Design Doc D4 显式补 `incr=None`。当前 `migrate.py:29-32` 与 `migrate.py:77-79` 均 keyword 且末尾为 `lift_kind=l.lift_kind`，默认 None 正确，**不编辑**。
 
+archived-with: 2026-07-11-per-lift-t2t3-increment
 ---
 
 ## Task 12: 验收（全量测试 + 手动冒烟）
@@ -1598,6 +1613,7 @@ Expected: 输出 `backup -> ...` 与 `migrated incr (added) -> sbs.db`；重复�
 
 若手动冒烟发现缺陷，回到对应 task 修复并加载 `superpowers:systematic-debugging` skill（根因定位后再改）。无缺陷则无需提交。
 
+archived-with: 2026-07-11-per-lift-t2t3-increment
 ---
 
 ## Self-Review
@@ -1619,3 +1635,4 @@ Expected: 输出 `backup -> ...` 与 `migrated incr (added) -> sbs.db`；重复�
 - `Lift.incr`——Task 2 定义；Task 3（program 读 `lift.incr`）、Task 5（repo 写）、Task 6（`_lift_from_row` 读 `r["incr"]`）、Task 7（tier 读 `lift["incr"]`）一致 ✓。
 - `create_lift(..., incr=None)`——Task 5 定义；Task 8（路由传 incr=incr）、Task 10（迁移测试不直接用）、Task 11（migrate.py 默认 None）一致 ✓。
 - `_LIFT_COLS` 含 incr——Task 5；`update_lift(incr=...)` / `update_lift(incr=None)` 经此自动支持 ✓。
+

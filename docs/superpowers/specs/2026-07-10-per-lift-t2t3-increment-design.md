@@ -2,6 +2,8 @@
 comet_change: per-lift-t2t3-increment
 role: technical-design
 canonical_spec: openspec
+archived-with: 2026-07-11-per-lift-t2t3-increment
+status: final
 ---
 
 # Per-lift T2/T3 Progression Step — Design
@@ -159,3 +161,4 @@ settings.incr → Profile.incr → advance_lift / recompute_state
 ## Open Questions
 
 无。三轮 grill 已resolve：rounding 本体论（#1→a）、reset 网格（#2→b）、术语（#3→a）。tier 切换 incr 保留（D6）、incr 校验（D7）、NULL live inheritance（D1）均已确认。
+

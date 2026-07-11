@@ -8,36 +8,25 @@
 - **tdd_mode:** tdd
 - **review_mode:** standard
 - **language:** zh-CN
-- **Full suite:** 213 passed / 0 failed
+- **Full suite:** 214 passed / 0 failed
 
-## Current stage: final-review
+## Current stage: build guard
 
-所有 12 plan task 完成 + openspec tasks.md 全勾选。进入 review_mode standard 的 final whole-branch review（1 次轻量审查，范围 base-ref..HEAD）。通过或接受非 CRITICAL 后回 comet-build 跑 build guard。
+所有 12 task 完成 + final whole-branch review（opus）通过（Ready to merge — Yes-with-followups）。final review 的 1 个 Important（derive_state 缺 legacy-DB 防御读）已 1 轮 fix（3c840bf）解决。3 个 Minor 接受（记录下方）。回 comet-build 跑 build guard --apply → verify。
 
-## Deferred Minors (最终审查 triage，交给 final reviewer)
+## Final review 结果
 
-- Task 1: `??` 注释简写。非问题。
-- Task 8: `_parse_incr` float() 接受 inf/nan——number 输入框不可达。接受。
-- Task 10: migrate_incr backup 秒级时间戳碰撞——继承 migrate_schedule.py 既有模式。接受。
+- Verdict: Ready to merge — Yes-with-followups。无 Critical。
+- Important #1（derive_state legacy DB guard）→ fix 3c840bf（1 轮，协调者复核：精确修复 + 回归测试 + 全量 214/0）。
+- Minors ACCEPT：Task 1 `??` 注释 / Task 8 `_parse_incr` inf-nan / Task 10 backup 秒级时间戳。
+- 注：`edit` 路由不强制 sbs→None 实为 D6 正确（incr 跨 tier 保留），非 bug，不改。
 
 ## Fixes (build 中)
 
-- 8f5e14b fix(advance): _lift_from_row 防御读 incr（legacy DB 读路径）+ 回归测试。全量 213/0。
+- 8f5e14b fix(advance): _lift_from_row 防御读 incr（legacy DB advance 读路径）。
+- 3c840bf fix(tier): derive_state 防御读 incr（legacy DB tier-switch 读路径，final review Important）。
 
 ## Completion log
 
-- Task 0 (docs): complete (c24b5cb). openspec §0.
-- Task 1 (progression): complete (96de9cb, reviewer ✅). openspec 1.1/1.2.
-- Task 2 (schema Lift.incr): complete (a49ea48). openspec 1.3.
-- Task 3 (program eff_incr): complete (77d42d2, reviewer ✅). openspec 2.1/2.2.
-- Task 4 (db schema): complete (bda6827, reviewer ✅). openspec 3.1.
-- Task 5 (repo incr): complete (940ca05, reviewer ✅). openspec 3.2/3.3.
-- Task 6 (advance _lift_from_row): complete (96f5aba + fix 8f5e14b). openspec 4.1.
-- Task 7 (tier derive eff_incr): complete (9a9ed89). openspec 4.4.
-- Task 8 (routes incr+校验): complete (325b65c, reviewer ✅). openspec 4.2/4.3/5.3.
-- Task 9 (templates incr UI): complete (dfb072e). openspec 5.1/5.2.
-- Task 10 (migrate_incr): complete (ef28210, reviewer ✅). openspec 6.1/6.2.
-- Task 11 (migrate.py 审计): complete (无 commit). openspec 6.3.
-- Task 12 (验收): complete (无 commit, 213/0 + 迁移冒烟过). openspec 7.1/7.2.
-
-ALL 12 TASKS COMPLETE. Full suite 213 passed / 0 failed.
+- Task 0–12 全 complete（详见前 checkpoint 版本）。openspec tasks.md 全勾选（0 残留）。
+- Full suite 214 passed / 0 failed。

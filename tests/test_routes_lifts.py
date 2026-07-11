@@ -136,3 +136,86 @@ def test_edit_changes_lift_kind(client, app):
         conn = connect(app.config["DB_PATH"])
         assert repo.get_lift(conn, lid)["lift_kind"] == "aux"
         conn.close()
+
+
+def _t2_lift_with_incr(app, incr=None):
+    from webapp.db import connect
+    conn = connect(app.config["DB_PATH"])
+    kwargs = dict(name="Rows", tier="t2", day=1, sort_order=0, sets=4,
+                  max=None, intensity=None, reps=None, repout=None, start=85.0)
+    if incr is not None:
+        kwargs["incr"] = incr
+    lid = repo.create_lift(conn, **kwargs)
+    conn.close()
+    return lid
+
+
+def test_create_t2_with_incr(client, app):
+    rv = client.post("/lifts/new", data={
+        "name": "Face Pull", "tier": "t3", "day": "2", "sets": "3", "start": "30", "incr": "5",
+    })
+    assert rv.status_code == 200
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        assert repo.get_lift_by_name(conn, "Face Pull")["incr"] == 5.0
+        conn.close()
+
+
+def test_create_sbs_does_not_write_incr(client, app):
+    # 即使表单带了 incr，sbs 创建也必须写 None（incr 仅 t2/t3）
+    rv = client.post("/lifts/new", data={
+        "name": "Bench", "tier": "sbs", "day": "1", "sets": "5",
+        "max": "100", "lift_kind": "main", "incr": "5",
+    })
+    assert rv.status_code == 200
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        assert repo.get_lift_by_name(conn, "Bench")["incr"] is None
+        conn.close()
+
+
+def test_create_rejects_nonpositive_incr(client, app):
+    rv = client.post("/lifts/new", data={
+        "name": "Bad", "tier": "t3", "day": "1", "sets": "3", "start": "30", "incr": "0",
+    })
+    assert rv.status_code == 400
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        assert repo.get_lift_by_name(conn, "Bad") is None  # not created
+        conn.close()
+
+
+def test_edit_changes_incr(client, app):
+    lid = _t2_lift_with_incr(app)
+    rv = client.post(f"/lifts/{lid}/edit", data={"incr": "5"})
+    assert rv.status_code == 200
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        assert repo.get_lift(conn, lid)["incr"] == 5.0
+        conn.close()
+
+
+def test_edit_clears_incr_to_null(client, app):
+    lid = _t2_lift_with_incr(app, incr=5.0)
+    rv = client.post(f"/lifts/{lid}/edit", data={"incr": ""})  # empty -> NULL
+    assert rv.status_code == 200
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        assert repo.get_lift(conn, lid)["incr"] is None
+        conn.close()
+
+
+def test_edit_rejects_nonpositive_incr_and_preserves_original(client, app):
+    lid = _t2_lift_with_incr(app, incr=5.0)
+    rv = client.post(f"/lifts/{lid}/edit", data={"incr": "-1"})
+    assert rv.status_code == 400
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        assert repo.get_lift(conn, lid)["incr"] == 5.0  # original preserved
+        conn.close()

@@ -13,6 +13,23 @@ def _f(name, default=None, cast=str):
     return cast(v)
 
 
+def _parse_incr(raw: str):
+    """Parse the incr form field. Returns (value, error).
+
+    value: None (empty -> NULL / inherit global), a positive float, or None-with-error.
+    error: None on success, a flash message string on validation failure."""
+    raw = (raw or "").strip()
+    if raw == "":
+        return None, None
+    try:
+        v = float(raw)
+    except ValueError:
+        return None, "incr 必须是数字"
+    if v <= 0:
+        return None, "incr 必须大于 0"
+    return v, None
+
+
 @bp.route("/lifts")
 def view():
     conn = get_db()
@@ -32,13 +49,18 @@ def new():
     if not name:
         flash("动作名不能为空")
         return render_template("_lift_row.html", lift=None, error="name required"), 400
+    # incr 仅 t2/t3 生效；sbs 强制 None（D5）。空=None=继承全局；>0 数值；≤0/非数字 拒绝（D7）。
+    incr, err = (None, None) if tier == "sbs" else _parse_incr(request.form.get("incr"))
+    if err is not None:
+        flash(err)
+        return render_template("_lift_row.html", lift=None, error="bad incr"), 400
     try:
         lid = repo.create_lift(
             conn, name=name, tier=tier, day=_f("day", 1, int), sort_order=999,
             sets=_f("sets", 3, int), max=_f("max", cast=float),
             intensity=_f("intensity", cast=float), reps=_f("reps", cast=int),
             repout=_f("repout", cast=int), start=_f("start", cast=float),
-            lift_kind=_f("lift_kind") if tier == "sbs" else None)
+            lift_kind=_f("lift_kind") if tier == "sbs" else None, incr=incr)
     except Exception as e:
         flash(f"创建失败: {e}")
         return render_template("_lift_row.html", lift=None, error=str(e)), 400
@@ -55,6 +77,15 @@ def edit(lid):
                       ("repout", int), ("start", float), ("lift_kind", str)):
         if col in request.form and request.form[col].strip() != "":
             fields[col] = cast(request.form[col])
+    # incr：表单出现即处理。空串 -> NULL（清除覆盖回全局）；非空 -> 必须 >0 数字（D7）。
+    # 校验在 update 之前，非法时保留原值并返回 400。
+    if "incr" in request.form:
+        incr, err = _parse_incr(request.form["incr"])
+        if err is not None:
+            flash(err)
+            return render_template("_lift_row.html", lift=repo.get_lift(conn, lid),
+                                   error="bad incr"), 400
+        fields["incr"] = incr  # None 表示清除（update_lift 经 _LIFT_COLS 支持 incr=None）
     repo.update_lift(conn, lid, **fields)
     lift = repo.get_lift(conn, lid)
     # start is the progression basis for t2/t3: replay from the new start over

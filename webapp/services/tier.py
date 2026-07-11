@@ -17,7 +17,11 @@ def derive_state(conn: sqlite3.Connection, lift_id: int, new_tier: str,
     lift = repo.get_lift(conn, lift_id)
     # ADR 0003: t2/t3 derived start weights snap to this lift's effective-step grid
     # (per-lift incr ?? global incr), NOT the global rounding. sbs ignores incr.
-    eff_incr = lift["incr"] if lift["incr"] is not None else settings["incr"]
+    # Guard: legacy DBs pre-migrate_incr.py have no incr column — fall back to
+    # global incr, identical to a migrated NULL-incr lift (same shape as
+    # advance._lift_from_row's "incr" in r.keys() guard).
+    lift_incr = lift["incr"] if "incr" in lift.keys() else None
+    eff_incr = lift_incr if lift_incr is not None else settings["incr"]
 
     if new_tier == "sbs":
         # See ADR 0001 — est1rm seed here is deliberate; unification with the

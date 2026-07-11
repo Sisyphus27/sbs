@@ -92,3 +92,31 @@ def test_apply_switch_preserves_incr(tmp_path):
     tier.apply_switch(conn, lid, preview)
     assert repo.get_lift(conn, lid)["incr"] == 5   # preserved across switch
     conn.close()
+
+
+def test_derive_state_tolerates_missing_incr_column(tmp_path):
+    """Regression: on a legacy DB whose lifts table has NO incr column
+    (pre-migrate_incr.py shape), derive_state must fall back to settings['incr']
+    instead of crashing with IndexError on the tier-switch preview/apply path.
+    The advance path was already hardened (advance._lift_from_row); derive_state
+    needs the same guard so 'reads degrade gracefully on an unmigrated DB' holds
+    symmetrically across both code paths."""
+    from sbs_cli.engine.progression import round_weight
+    conn, lid = _seed_with_history(tmp_path)
+    est_before = repo.get_lift_state(conn, lid)["est1rm"]
+    assert est_before is not None  # sanity: the lift has history -> est1rm known
+    settings = repo.get_settings(conn)
+    # Simulate a pre-migrate_incr legacy DB: drop the incr column from lifts.
+    conn.execute("ALTER TABLE lifts DROP COLUMN incr")
+    conn.commit()
+    assert "incr" not in repo.get_lift(conn, lid).keys()  # column really gone
+    # Must NOT raise IndexError; weight snaps to the global-incr grid.
+    preview_t2 = tier.derive_state(conn, lid, "t2", settings)
+    assert preview_t2["tier"] == "t2" and preview_t2["target"] == 10
+    assert preview_t2["weight"] == round_weight(est_before * settings["t2_reset_pct"],
+                                                settings["incr"])
+    # t3 path shares the same eff_incr resolution — must also be guarded.
+    preview_t3 = tier.derive_state(conn, lid, "t3", settings)
+    assert preview_t3["tier"] == "t3"
+    assert preview_t3["weight"] == round_weight(est_before * 0.6, settings["incr"])
+    conn.close()

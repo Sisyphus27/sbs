@@ -6,7 +6,7 @@ base-ref: 3c8bb1238caadcb31eadf896190c431ae71a53cc
 
 # Per-lift T2/T3 递进步长 实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 为 t2/t3 动作增加可选的 per-lift 递进步长（`lifts.incr`，NULL 继承全局 `settings.incr`），解决 cable/器械动作（Face Pull、Pull-downs）配片 5kg 一跳无法用全局 `incr=2.5` 加载的问题。
 
@@ -61,7 +61,7 @@ base-ref: 3c8bb1238caadcb31eadf896190c431ae71a53cc
 - Modify: `CONTEXT.md`
 - Create: `docs/adr/0003-t2t3-progression-snap-grid.md`
 
-- [ ] **Step 1: 回写 spec.md 的 t2 reset requirement**
+- [x] **Step 1: 回写 spec.md 的 t2 reset requirement**
 
 把 `openspec/changes/per-lift-t2t3-increment/specs/t2t3-progression/spec.md` 中这一段（open 阶段版本，snap 全局 rounding）：
 
@@ -101,7 +101,7 @@ t2 动作连续 miss 达 `fail` 次触发 reset 时，系统 SHALL 将重置重�
 - **THEN** `lifts.incr` 列始终保持 5（tier 切换只改 `lifts.tier` 与 `lift_state`，不触碰 incr 列）
 ```
 
-- [ ] **Step 2: 回写 tasks.md，并入精炼任务**
+- [x] **Step 2: 回写 tasks.md，并入精炼任务**
 
 在 `openspec/changes/per-lift-t2t3-increment/tasks.md` 中：
 
@@ -110,18 +110,18 @@ t2 动作连续 miss 达 `fail` 次触发 reset 时，系统 SHALL 将重置重�
 ```markdown
 ## 0. 文档/术语先行
 
-- [ ] 0.1 回写 spec.md：MODIFY t2 reset requirement（snap 网格 rounding → effective step）+ ADD「tier 切换保留 incr」场景
-- [ ] 0.2 改 CONTEXT.md：rounding quantum / loaded-value 定义收窄到 sbs；加 progression step / effective step 术语
-- [ ] 0.3 落盘 docs/adr/0003-t2t3-progression-snap-grid.md（每动作一个 snap 网格）
+- [x] 0.1 回写 spec.md：MODIFY t2 reset requirement（snap 网格 rounding → effective step）+ ADD「tier 切换保留 incr」场景
+- [x] 0.2 改 CONTEXT.md：rounding quantum / loaded-value 定义收窄到 sbs；加 progression step / effective step 术语
+- [x] 0.3 落盘 docs/adr/0003-t2t3-progression-snap-grid.md（每动作一个 snap 网格）
 ```
 
 (b) 在「## 4. Webapp 服务/路由接线」的 4.2 之后加 4.4：
 
 ```markdown
-- [ ] 4.4 `webapp/services/tier.py` 的 `derive_state`：t2/t3 起始重量 snap 网格由 rounding 改为 eff_incr（`lift["incr"] if not None else settings["incr"]`）；`apply_switch` 不动（incr 在 lifts 列，tier 切换不触碰）
+- [x] 4.4 `webapp/services/tier.py` 的 `derive_state`：t2/t3 起始重量 snap 网格由 rounding 改为 eff_incr（`lift["incr"] if not None else settings["incr"]`）；`apply_switch` 不动（incr 在 lifts 列，tier 切换不触碰）
 ```
 
-- [ ] **Step 3: 改 CONTEXT.md 术语**
+- [x] **Step 3: 改 CONTEXT.md 术语**
 
 在 `CONTEXT.md` 中：
 
@@ -175,7 +175,7 @@ starting weights snap to. Every lift therefore carries its own snap grid.
 _Avoid_: increment (ambiguous)
 ```
 
-- [ ] **Step 4: 落盘 ADR 0003**
+- [x] **Step 4: 落盘 ADR 0003**
 
 创建 `docs/adr/0003-t2t3-progression-snap-grid.md`：
 
@@ -237,7 +237,7 @@ invisible unless a lift sets `incr ≠ rounding`.
   ADR 0001 remains authoritative for TM accumulation and the sbs loaded weight.
 ```
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add openspec/changes/per-lift-t2t3-increment/specs/t2t3-progression/spec.md \
@@ -259,7 +259,7 @@ git commit -m "docs(per-lift-incr): backfill spec reset/eff_incr, CONTEXT terms,
 **Interfaces:**
 - Produces: `t3_next(weight, actual, target=15, incr=2.5) -> float`（**移除 `quantum` 参数**）；`t2_next(state, actual, est1rm, fail=3, incr=2.5, reset_pct=0.75, quantum=2.5) -> T2State`（签名不变，HIT 分支不再 round）。下游 `program.py`（Task 3）是首个依赖新 `t3_next` 签名的调用方——不得再传 `quantum=` 给 `t3_next`。
 
-- [ ] **Step 1: 写失败测试（追加到 `tests/test_progression.py` 末尾）**
+- [x] **Step 1: 写失败测试（追加到 `tests/test_progression.py` 末尾）**
 
 ```python
 # --- T3 命中精确累加（去 rounding snap；D2）---
@@ -295,12 +295,12 @@ def test_t2_reset_snaps_to_provided_quantum():
     assert s == T2State(target=8, streak=0, weight=70.0)
 ```
 
-- [ ] **Step 2: 运行测试，确认红**
+- [x] **Step 2: 运行测试，确认红**
 
 Run: `conda run -n sbs python -m pytest tests/test_progression.py -v`
 Expected: FAIL — `test_t3_hit_adds_incr_without_snapping`（旧实现 `round_weight(50+3, 2.5)=52.5 ≠ 53`）、`test_t2_hit_adds_incr_without_snapping`（同理 52.5 ≠ 53）、`test_t3_next_signature_has_no_quantum`（旧签名仍有 quantum）。`test_t3_hit_default_incr_backcompat` 与 `test_t2_reset_snaps_to_provided_quantum` 应已绿（向后兼容 characterization）。
 
-- [ ] **Step 3: 改 `sbs_cli/engine/progression.py` 的 `t3_next`（去 quantum/snap）**
+- [x] **Step 3: 改 `sbs_cli/engine/progression.py` 的 `t3_next`（去 quantum/snap）**
 
 把：
 
@@ -331,7 +331,7 @@ def t3_next(weight: float, actual, target: int = 15, incr: float = 2.5) -> float
     return weight
 ```
 
-- [ ] **Step 4: 改 `sbs_cli/engine/progression.py` 的 `t2_next` HIT 分支（去 snap，reset 分支不动）**
+- [x] **Step 4: 改 `sbs_cli/engine/progression.py` 的 `t2_next` HIT 分支（去 snap，reset 分支不动）**
 
 把 `t2_next` 函数体中的 HIT 行：
 
@@ -349,12 +349,12 @@ def t3_next(weight: float, actual, target: int = 15, incr: float = 2.5) -> float
 
 （reset 分支 `return T2State(8, 0, round_weight(est1rm * reset_pct, quantum))` 与函数签名**保持不变**——`quantum` 仍由调用方传入，Task 3 改传 eff_incr。）
 
-- [ ] **Step 5: 运行测试，确认全绿（含既有测试零回归）**
+- [x] **Step 5: 运行测试，确认全绿（含既有测试零回归）**
 
 Run: `conda run -n sbs python -m pytest tests/test_progression.py -v`
 Expected: PASS（全部，含既有的 `test_t3_hit_adds`、`test_t2_hit_adds_weight_stays_at_target`、`test_t2_third_miss_resets_to_8_at_est1rm_pct` 等——默认 incr=2.5/quantum=2.5 时 `50+2.5=52.5` 与旧 `round_weight(52.5,2.5)=52.5` 相同）。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add sbs_cli/engine/progression.py tests/test_progression.py
@@ -374,7 +374,7 @@ git commit -m "feat(engine): t2/t3 hit progression drops rounding snap (ADR 0003
 **Interfaces:**
 - Produces: `Lift(..., incr: Optional[float] = None)`。下游：`program.py` 读 `lift.incr`（Task 3）、`repo.create_lift` 写 incr（Task 5）、`advance._lift_from_row` 读 incr 填入（Task 6）。
 
-- [ ] **Step 1: 写失败测试（追加到 `tests/test_schema.py` 末尾）**
+- [x] **Step 1: 写失败测试（追加到 `tests/test_schema.py` 末尾）**
 
 ```python
 from sbs_cli.data.schema import Lift
@@ -391,12 +391,12 @@ def test_lift_incr_can_be_set():
     assert l.incr == 5.0
 ```
 
-- [ ] **Step 2: 运行测试，确认红**
+- [x] **Step 2: 运行测试，确认红**
 
 Run: `conda run -n sbs python -m pytest tests/test_schema.py -v`
 Expected: FAIL — `AttributeError: 'Lift' object has no attribute 'incr'`（或 dataclass 构造拒绝未知 kwarg）。
 
-- [ ] **Step 3: 改 `sbs_cli/data/schema.py` 的 `Lift`**
+- [x] **Step 3: 改 `sbs_cli/data/schema.py` 的 `Lift`**
 
 把：
 
@@ -415,12 +415,12 @@ Expected: FAIL — `AttributeError: 'Lift' object has no attribute 'incr'`（或
     incr: Optional[float] = None      # t2/t3 per-lift progression step; None = inherit global incr
 ```
 
-- [ ] **Step 4: 运行测试，确认全绿**
+- [x] **Step 4: 运行测试，确认全绿**
 
 Run: `conda run -n sbs python -m pytest tests/test_schema.py -v`
 Expected: PASS。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add sbs_cli/data/schema.py tests/test_schema.py
@@ -441,7 +441,7 @@ git commit -m "feat(schema): add Lift.incr (nullable per-lift progression step)"
 - Consumes: `Lift.incr`（Task 2）；`t3_next` 无 quantum 参数、`t2_next` 仍收 quantum（Task 1）。
 - Produces: `advance_lift` / `recompute_state` 现按 eff_incr 推进 t2/t3。recompute 服务层（`webapp/services/recompute.py`）经此自动继承（Task 6 验证）。
 
-- [ ] **Step 1: 写失败测试（追加到 `tests/test_program.py` 末尾）**
+- [x] **Step 1: 写失败测试（追加到 `tests/test_program.py` 末尾）**
 
 ```python
 # ---- per-lift eff_incr 解析 (D1/D3) ----
@@ -489,12 +489,12 @@ def test_recompute_state_t2_reset_snaps_to_eff_incr():
     assert ls.weight != round_weight(est * 0.75, 2.5)     # OLD: 全局 rounding 会给不同值
 ```
 
-- [ ] **Step 2: 运行测试，确认红**
+- [x] **Step 2: 运行测试，确认红**
 
 Run: `conda run -n sbs python -m pytest tests/test_program.py -k "per_lift_incr_over_global or null_incr_falls_back or sbs_ignores_incr or reset_snaps_to_eff_incr" -v`
 Expected: FAIL — `test_advance_t3_uses_per_lift_incr_over_global`（旧实现传 `incr=profile.incr=2.5` → 42.5 ≠ 45）、`test_recompute_state_t2_reset_snaps_to_eff_incr`（旧实现传 `quantum=profile.rounding=2.5`）。`test_advance_t3_null_incr_falls_back_to_global`、`test_advance_sbs_ignores_incr` 应已绿（向后兼容 characterization）。
 
-- [ ] **Step 3: 改 `sbs_cli/program.py` 的 `advance_lift`**
+- [x] **Step 3: 改 `sbs_cli/program.py` 的 `advance_lift`**
 
 把：
 
@@ -556,7 +556,7 @@ def advance_lift(profile: Profile, lift: Lift, state: LiftState, actual_reps, we
             state.target, state.streak, state.weight = ns.target, ns.streak, ns.weight
 ```
 
-- [ ] **Step 4: 改 `sbs_cli/program.py` 的 `recompute_state`**
+- [x] **Step 4: 改 `sbs_cli/program.py` 的 `recompute_state`**
 
 把 `recompute_state` 中 t3 与 t2 的循环改为使用 eff_incr。把：
 
@@ -614,12 +614,12 @@ def recompute_state(lift: Lift, history: List[SetEntry], profile: Profile) -> Li
     raise ValueError(f"recompute_state not applicable to tier {lift.tier!r}")
 ```
 
-- [ ] **Step 5: 运行测试，确认全绿（含既有零回归）**
+- [x] **Step 5: 运行测试，确认全绿（含既有零回归）**
 
 Run: `conda run -n sbs python -m pytest tests/test_program.py -v`
 Expected: PASS（全部，含既有 `test_advance_t3_uses_profile_target_and_incr`、`test_recompute_state_t3_replays_hits_and_misses`、`test_advance_t2_reset_uses_best_set_est1rm` 等——它们用默认 `profile.incr`/`Lift(incr=None)` → eff_incr 回退到 profile.incr，结果与旧实现一致）。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add sbs_cli/program.py tests/test_program.py
@@ -641,7 +641,7 @@ git commit -m "feat(engine): resolve eff_incr at advance_lift/recompute_state en
 **Interfaces:**
 - Produces: lifts 表多一列 `incr REAL`（nullable）。下游 `repo.py`（Task 5）读写它；`tier.derive_state` 直接从 `repo.get_lift` 返回的 Row 读 `lift["incr"]`（Task 7）。
 
-- [ ] **Step 1: 改 `webapp/db.py` 的 lifts 表 DDL**
+- [x] **Step 1: 改 `webapp/db.py` 的 lifts 表 DDL**
 
 把：
 
@@ -682,7 +682,7 @@ CREATE TABLE IF NOT EXISTS lifts (
 );
 ```
 
-- [ ] **Step 2: 扩展 `tests/test_db.py` 的列断言测试**
+- [x] **Step 2: 扩展 `tests/test_db.py` 的列断言测试**
 
 把 `tests/test_db.py` 中：
 
@@ -711,12 +711,12 @@ def test_init_schema_has_lift_kind_reseeded_cycle_and_incr_columns(tmp_path):
     assert "reseeded_cycle" in state_cols
 ```
 
-- [ ] **Step 3: 运行测试，确认全绿**
+- [x] **Step 3: 运行测试，确认全绿**
 
 Run: `conda run -n sbs python -m pytest tests/test_db.py -v`
 Expected: PASS。
 
-- [ ] **Step 4: 提交**
+- [x] **Step 4: 提交**
 
 ```bash
 git add webapp/db.py tests/test_db.py
@@ -737,7 +737,7 @@ git commit -m "feat(db): add lifts.incr column to schema bootstrap"
 - Consumes: lifts.incr 列（Task 4）。
 - Produces: `create_lift(..., incr=None) -> int`（keyword-only，默认 None）；`_LIFT_COLS` 含 incr，故 `update_lift(conn, lid, incr=...)` / `update_lift(conn, lid, incr=None)` 可用。下游：`advance._lift_from_row`（Task 6，但读 Row 不经 create_lift）、`tier.derive_state`（Task 7，经 `repo.get_lift` Row 读 `lift["incr"]`）、路由（Task 8）。
 
-- [ ] **Step 1: 写失败测试（追加到 `tests/test_repo.py` 末尾）**
+- [x] **Step 1: 写失败测试（追加到 `tests/test_repo.py` 末尾）**
 
 ```python
 # ---------- per-lift incr ----------
@@ -797,12 +797,12 @@ def test_update_lift_rejects_unknown_column(app):
             repo.update_lift(conn, lid, not_a_column=1)
 ```
 
-- [ ] **Step 2: 运行测试，确认红**
+- [x] **Step 2: 运行测试，确认红**
 
 Run: `conda run -n sbs python -m pytest tests/test_repo.py -k "incr or unknown_column" -v`
 Expected: FAIL — `test_create_lift_accepts_incr_and_round_trips`（`create_lift` 不接受 incr kwarg）、`test_update_lift_changes_incr`（`_LIFT_COLS` 不含 incr → `update_lift` 抛 ValueError）。
 
-- [ ] **Step 3: 改 `webapp/repo.py` 的 `_LIFT_COLS` 与 `create_lift`**
+- [x] **Step 3: 改 `webapp/repo.py` 的 `_LIFT_COLS` 与 `create_lift`**
 
 把：
 
@@ -846,12 +846,12 @@ def create_lift(conn: sqlite3.Connection, *, name: str, tier: str, day: int,
     return lid
 ```
 
-- [ ] **Step 4: 运行测试，确认全绿（含既有零回归）**
+- [x] **Step 4: 运行测试，确认全绿（含既有零回归）**
 
 Run: `conda run -n sbs python -m pytest tests/test_repo.py -v`
 Expected: PASS（全部；既有 create_lift 调用因新参数带默认 None 而不受影响）。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add webapp/repo.py tests/test_repo.py
@@ -872,7 +872,7 @@ git commit -m "feat(repo): persist per-lift incr in lifts table"
 - Consumes: `Lift.incr`（Task 2）、`repo.get_lift` 返回的 incr 列（Task 5）。
 - Produces: `_lift_from_row` 产出的 `Lift` 携带 incr；`recompute_on_start_change` 自动按 eff_incr 重放（经 Task 3 的 `recompute_state`）。
 
-- [ ] **Step 1: 改 `webapp/services/advance.py` 的 `_lift_from_row`**
+- [x] **Step 1: 改 `webapp/services/advance.py` 的 `_lift_from_row`**
 
 把：
 
@@ -898,7 +898,7 @@ def _lift_from_row(r) -> Lift:
     )
 ```
 
-- [ ] **Step 2: 写验证测试（追加到 `tests/test_recompute_service.py` 末尾）**
+- [x] **Step 2: 写验证测试（追加到 `tests/test_recompute_service.py` 末尾）**
 
 先读 `tests/test_recompute_service.py` 顶部确认其 import 与 fixture 风格（它用 `tmp_path` + `db.connect`/`db.init_schema` + `repo.create_lift` + `advance.advance_week` 模式）。追加：
 
@@ -923,12 +923,12 @@ def test_recompute_on_start_change_uses_per_lift_incr(tmp_path):
     conn.close()
 ```
 
-- [ ] **Step 3: 运行测试，确认全绿**
+- [x] **Step 3: 运行测试，确认全绿**
 
 Run: `conda run -n sbs python -m pytest tests/test_recompute_service.py tests/test_advance_service.py -v`
 Expected: PASS（`test_recompute_on_start_change_uses_per_lift_incr` 验证了零改动继承路径；既有 `test_advance_service.py` 因默认 incr=None→全局 而零回归）。
 
-- [ ] **Step 4: 提交**
+- [x] **Step 4: 提交**
 
 ```bash
 git add webapp/services/advance.py tests/test_recompute_service.py
@@ -949,7 +949,7 @@ git commit -m "feat(advance): _lift_from_row carries incr; verify recompute auto
 - Consumes: `repo.get_lift` 返回的 Row 含 incr 列（Task 4/5）；`settings["incr"]`（既有 settings 字段）。
 - Produces: `derive_state` 的 t2/t3 起始重量 snap 到 eff_incr 网格。
 
-- [ ] **Step 1: 写失败测试（追加到 `tests/test_tier_service.py` 末尾）**
+- [x] **Step 1: 写失败测试（追加到 `tests/test_tier_service.py` 末尾）**
 
 ```python
 def test_derive_state_t2_snaps_to_eff_incr(tmp_path):
@@ -1004,12 +1004,12 @@ def test_apply_switch_preserves_incr(tmp_path):
 
 > 注：`_seed_with_history` 是 `tests/test_tier_service.py` 既有的 fixture 函数（建一个 sbs Squat + history），这里只为拿到一个 init 过 schema 的 conn；新动作 PD 重建在同一个 conn 里。
 
-- [ ] **Step 2: 运行测试，确认红**
+- [x] **Step 2: 运行测试，确认红**
 
 Run: `conda run -n sbs python -m pytest tests/test_tier_service.py -k "snaps_to_eff_incr or preserves_incr" -v`
 Expected: FAIL — `test_derive_state_t2_snaps_to_eff_incr`（旧实现 `quantum = settings["rounding"]=2.5` → snap 到 2.5 网格，断言要求 5 网格）。`test_apply_switch_preserves_incr` 应已绿（apply_switch 本就不触碰 incr 列——characterization 锁定 D6）。
 
-- [ ] **Step 3: 改 `webapp/services/tier.py` 的 `derive_state`**
+- [x] **Step 3: 改 `webapp/services/tier.py` 的 `derive_state`**
 
 把：
 
@@ -1071,12 +1071,12 @@ Expected: FAIL — `test_derive_state_t2_snaps_to_eff_incr`（旧实现 `quantum
 
 （`apply_switch` 保持不变——D6：incr 在 lifts 列，apply_switch 只 update tier + lift_state。）
 
-- [ ] **Step 4: 运行测试，确认全绿（含既有零回归）**
+- [x] **Step 4: 运行测试，确认全绿（含既有零回归）**
 
 Run: `conda run -n sbs python -m pytest tests/test_tier_service.py -v`
 Expected: PASS（既有 `test_preview_tier_switch_preserves_history_basis`：sbs 默认 lift 无 incr → eff_incr=settings["incr"]=2.5=rounding，t2 weight 与旧实现一致）。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add webapp/services/tier.py tests/test_tier_service.py
@@ -1097,7 +1097,7 @@ git commit -m "feat(tier): derive t2/t3 start weights snap to eff_incr grid"
 - Consumes: `repo.create_lift(..., incr=)` / `repo.update_lift(..., incr=)`（Task 5）。
 - Produces: `/lifts/new` 与 `/lifts/<lid>/edit` 接受 `incr` 表单字段，校验后持久化。
 
-- [ ] **Step 1: 写失败测试（追加到 `tests/test_routes_lifts.py` 末尾）**
+- [x] **Step 1: 写失败测试（追加到 `tests/test_routes_lifts.py` 末尾）**
 
 ```python
 def _t2_lift_with_incr(app, incr=None):
@@ -1183,12 +1183,12 @@ def test_edit_rejects_nonpositive_incr_and_preserves_original(client, app):
         conn.close()
 ```
 
-- [ ] **Step 2: 运行测试，确认红**
+- [x] **Step 2: 运行测试，确认红**
 
 Run: `conda run -n sbs python -m pytest tests/test_routes_lifts.py -k "incr or nonpositive or clears_incr" -v`
 Expected: FAIL — 路由尚未读 incr 字段，断言的 incr 值不匹配（或 `create_lift` 收到意外 kwarg 之前的旧签名——但 Task 5 已让 create_lift 接受 incr，所以这里主要是路由没传）。
 
-- [ ] **Step 3: 改 `webapp/routes/lifts.py` 的 `new`**
+- [x] **Step 3: 改 `webapp/routes/lifts.py` 的 `new`**
 
 在文件顶部、`_f` 之后加一个 incr 解析+校验 helper（供 new/edit 共用）：
 
@@ -1243,7 +1243,7 @@ def new():
     return render_template("_lift_row.html", lift=lift)
 ```
 
-- [ ] **Step 4: 改 `webapp/routes/lifts.py` 的 `edit`**
+- [x] **Step 4: 改 `webapp/routes/lifts.py` 的 `edit`**
 
 把 `edit()` 改为（在通用列循环之外单独处理 incr：空→NULL、非空→>0 校验、非法→保留原值 400）：
 
@@ -1277,12 +1277,12 @@ def edit(lid):
     return render_template("_lift_row.html", lift=lift)
 ```
 
-- [ ] **Step 5: 运行测试，确认全绿（含既有零回归）**
+- [x] **Step 5: 运行测试，确认全绿（含既有零回归）**
 
 Run: `conda run -n sbs python -m pytest tests/test_routes_lifts.py -v`
 Expected: PASS（全部；既有 `test_create_sbs_persists_lift_kind`、`test_edit_changes_lift_kind`、`test_edit_start_t2_recomputes_weight` 等不受影响——它们的表单不带 incr 字段，edit 的 `if "incr" in request.form` 跳过）。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add webapp/routes/lifts.py tests/test_routes_lifts.py
@@ -1302,7 +1302,7 @@ git commit -m "feat(routes): /lifts new/edit accept incr with validation"
 **Interfaces:**
 - Consumes: 路由（Task 8）读写 `incr` 表单字段；`lift.incr`（sqlite Row，经 Jinja2 getattr→getitem fallback 读 `lift["incr"]`）。
 
-- [ ] **Step 1: 改 `webapp/templates/_lift_row.html`（编辑行 + meta 行）**
+- [x] **Step 1: 改 `webapp/templates/_lift_row.html`（编辑行 + meta 行）**
 
 把 meta 行中的 t2/t3 分支：
 
@@ -1341,7 +1341,7 @@ git commit -m "feat(routes): /lifts new/edit accept incr with validation"
 
 > sbs 分支（`{% if lift.tier == 'sbs' %}`）**不动**——incr 框只出现在 `{% else %}`（t2/t3）分支，sbs 行天然不渲染。
 
-- [ ] **Step 2: 改 `webapp/templates/lifts.html`（新建表单）**
+- [x] **Step 2: 改 `webapp/templates/lifts.html`（新建表单）**
 
 把新建表单中的 start 输入：
 
@@ -1356,12 +1356,12 @@ git commit -m "feat(routes): /lifts new/edit accept incr with validation"
   <input name="incr" type="number" step="0.5" placeholder="incr(t2/t3)" style="width:90px">
 ```
 
-- [ ] **Step 3: 跑模板相关测试确认无回归**
+- [x] **Step 3: 跑模板相关测试确认无回归**
 
 Run: `conda run -n sbs python -m pytest tests/test_html.py tests/test_routes_lifts.py -v`
 Expected: PASS（`test_html.py` 渲染页面不涉及 incr 断言；既有 routes 测试的表单不带 incr 字段时，edit 的 `if "incr" in request.form` 跳过，new 的 t2/t3 解析到空→None）。
 
-- [ ] **Step 4: 提交**
+- [x] **Step 4: 提交**
 
 ```bash
 git add webapp/templates/_lift_row.html webapp/templates/lifts.html
@@ -1381,7 +1381,7 @@ git commit -m "feat(ui): incr input on /lifts editor for t2/t3 (hidden for sbs)"
 **Interfaces:**
 - Consumes: `webapp.db.connect` / `webapp.db.init_schema`（既有）。独立可执行脚本，不被其它模块 import。
 
-- [ ] **Step 1: 写失败测试 `tests/test_migrate_incr.py`**
+- [x] **Step 1: 写失败测试 `tests/test_migrate_incr.py`**
 
 ```python
 import sqlite3
@@ -1458,12 +1458,12 @@ def test_migrate_idempotent_on_fresh_schema(tmp_path, monkeypatch):
     conn.close()
 ```
 
-- [ ] **Step 2: 运行测试，确认红**
+- [x] **Step 2: 运行测试，确认红**
 
 Run: `conda run -n sbs python -m pytest tests/test_migrate_incr.py -v`
 Expected: FAIL — `ModuleNotFoundError: No module named 'migrate_incr'`。
 
-- [ ] **Step 3: 创建 `migrate_incr.py`**
+- [x] **Step 3: 创建 `migrate_incr.py`**
 
 ```python
 """One-shot migration: add the nullable ``lifts.incr REAL`` column to a live ``sbs.db``.
@@ -1528,12 +1528,12 @@ if __name__ == "__main__":
     main(a.db, a.backup_dir)
 ```
 
-- [ ] **Step 4: 运行测试，确认全绿**
+- [x] **Step 4: 运行测试，确认全绿**
 
 Run: `conda run -n sbs python -m pytest tests/test_migrate_incr.py -v`
 Expected: PASS（三个：legacy 加列、重复跑幂等、fresh schema 幂等）。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add migrate_incr.py tests/test_migrate_incr.py
@@ -1549,17 +1549,17 @@ git commit -m "feat(migrate): one-shot ALTER to add lifts.incr (idempotent)"
 **Files:**
 - Read-only: `migrate.py`（确认无位置参数 create_lift 调用、无 incr 来源）
 
-- [ ] **Step 1: 跑迁移相关既有测试确认零回归**
+- [x] **Step 1: 跑迁移相关既有测试确认零回归**
 
 Run: `conda run -n sbs python -m pytest tests/test_migrate.py tests/test_migrate_sbs_tm.py tests/test_migrate_recompute.py tests/test_migrate_schedule.py -v`
 Expected: PASS（全部；`create_lift` 加 `incr=None` 默认后，既有调用零影响）。
 
-- [ ] **Step 2: 跑全量回归测试快照（在 UI/迁移完成后、验收前）**
+- [x] **Step 2: 跑全量回归测试快照（在 UI/迁移完成后、验收前）**
 
 Run: `conda run -n sbs python -m pytest -v`
 Expected: PASS（全部测试，含本变更新增的 9 个测试落点）。
 
-- [ ] **Step 3: 若 Step 1/2 全绿则本 task 无代码改动，直接进入 Task 12**
+- [x] **Step 3: 若 Step 1/2 全绿则本 task 无代码改动，直接进入 Task 12**
 
 > 若发现任何 create_lift 位置参数调用（grep `create_lift(conn,` 在 migrate.py 中无位置参数——均 keyword），则按 Design Doc D4 显式补 `incr=None`。当前 `migrate.py:29-32` 与 `migrate.py:77-79` 均 keyword 且末尾为 `lift_kind=l.lift_kind`，默认 None 正确，**不编辑**。
 
@@ -1570,12 +1570,12 @@ Expected: PASS（全部测试，含本变更新增的 9 个测试落点）。
 **Files:**
 - 无（验证 only）
 
-- [ ] **Step 1: 全量测试**
+- [x] **Step 1: 全量测试**
 
 Run: `conda run -n sbs python -m pytest -v`
 Expected: PASS（全部；重点确认 9 个落点的新增测试与既有零回归）。
 
-- [ ] **Step 2: 手动冒烟（本地 webapp）**
+- [x] **Step 2: 手动冒烟（本地 webapp）**
 
 启动 webapp（项目既有启动方式；通常是 `conda run -n sbs python -m webapp` 或等价——按项目 README/既有方式），在 `/lifts` 页面：
 
@@ -1586,7 +1586,7 @@ Expected: PASS（全部；重点确认 9 个落点的新增测试与既有零回
 5. 提交 `incr=0` 或 `incr=abc` → 被 flash 拒绝、原值保留。
 6. 既有流程不回归：`/plan` 渲染、`/reseed`、`/schedule`、advance week 正常。
 
-- [ ] **Step 3: 若已有本地 sbs.db，跑迁移脚本验证**
+- [x] **Step 3: 若已有本地 sbs.db，跑迁移脚本验证**
 
 ```bash
 conda run -n sbs python migrate_incr.py --db sbs.db --backup-dir backups
@@ -1594,7 +1594,7 @@ conda run -n sbs python migrate_incr.py --db sbs.db --backup-dir backups
 
 Expected: 输出 `backup -> ...` 与 `migrated incr (added) -> sbs.db`；重复执行输出 `already present`（幂等）。验证 lifts 表多出 `incr` 列、既有行 incr 为 NULL。
 
-- [ ] **Step 4: 最终提交（如有验收中发现的修复）**
+- [x] **Step 4: 最终提交（如有验收中发现的修复）**
 
 若手动冒烟发现缺陷，回到对应 task 修复并加载 `superpowers:systematic-debugging` skill（根因定位后再改）。无缺陷则无需提交。
 

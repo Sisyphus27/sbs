@@ -21,3 +21,16 @@ def test_setentry_and_liftstate():
 def test_programstate_holds_lifts_by_name():
     ps = ProgramState(week=1, lifts={"Squat": LiftState(name="Squat", tier="sbs", tm=135)})
     assert "Squat" in ps.lifts and ps.lifts["Squat"].tm == 135
+
+from sbs_cli.data.schema import Lift
+
+
+def test_lift_incr_defaults_to_none():
+    # NULL = 继承全局 settings.incr（live inheritance）
+    l = Lift(name="Face Pull", tier="t3", day=2)
+    assert l.incr is None
+
+
+def test_lift_incr_can_be_set():
+    l = Lift(name="Pull-downs", tier="t2", day=1, incr=5.0)
+    assert l.incr == 5.0

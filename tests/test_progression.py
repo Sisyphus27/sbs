@@ -83,3 +83,36 @@ def test_t2_miss_at_4_under_fail_floor_keeps_target():
 def test_t2_no_log_unchanged():
     s = t2_next(T2State(target=8, streak=0, weight=50), actual=None, est1rm=100)
     assert s == T2State(target=8, streak=0, weight=50)
+
+
+# --- T3 命中精确累加（去 rounding snap；D2）---
+def test_t3_hit_adds_incr_without_snapping():
+    # incr=3（非 rounding 倍数）：新实现精确 50+3=53；旧实现 round_weight(53, 2.5)=52.5
+    assert t3_next(weight=50, actual=16, incr=3) == 53
+
+
+def test_t3_hit_default_incr_backcompat():
+    # 默认 incr=2.5：50+2.5=52.5，与本变更前完全一致
+    assert t3_next(weight=50, actual=16) == 52.5
+
+
+def test_t3_next_signature_has_no_quantum():
+    # t3_next 不再接受 quantum 参数（调用方不应再传）
+    import inspect
+    assert "quantum" not in inspect.signature(t3_next).parameters
+
+
+# --- T2 命中精确累加（HIT 去 rounding snap；D2）---
+def test_t2_hit_adds_incr_without_snapping():
+    # incr=3：HIT 时 50+3=53；旧实现 round_weight(53, 2.5)=52.5
+    s = t2_next(T2State(target=8, streak=0, weight=50), actual=8, est1rm=100, incr=3)
+    assert s == T2State(target=8, streak=0, weight=53)
+
+
+def test_t2_reset_snaps_to_provided_quantum():
+    # reset 分支保留 round_weight(est1rm*reset_pct, quantum)：characterization，
+    # 锁定 reset 仍由调用方传入的 quantum 决定（Task 3 把 quantum 从 rounding 改为 eff_incr）。
+    # est1rm=90, reset_pct=0.75 -> 67.5；round_weight(67.5, 5)=70（5kg 堆可加载）
+    s = t2_next(T2State(target=4, streak=2, weight=50), actual=3, est1rm=90,
+                incr=5, reset_pct=0.75, quantum=5)
+    assert s == T2State(target=8, streak=0, weight=70.0)

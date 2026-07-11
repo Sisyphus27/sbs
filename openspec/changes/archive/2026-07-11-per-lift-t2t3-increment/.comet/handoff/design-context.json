@@ -1,0 +1,14 @@
+{
+  "change": "per-lift-t2t3-increment",
+  "phase": "design",
+  "mode": "compact",
+  "canonical_spec": "openspec",
+  "generated_by": "comet-handoff.sh",
+  "context_hash": "f070b0004347fa3951db94fa28c3e9a803f9172629b3538c8a1bf4e9c13e1cd8",
+  "files": [
+    { "path": "openspec/changes/per-lift-t2t3-increment/proposal.md", "sha256": "4e07a785d559aa6815be247209bf72c8c541a19c4f9418fc2442e3903bf49a27" },
+    { "path": "openspec/changes/per-lift-t2t3-increment/design.md", "sha256": "d7b50459cf06d4d15e20bbe6a13a84023b237ed4d58600d8c670713b1a9b7125" },
+    { "path": "openspec/changes/per-lift-t2t3-increment/tasks.md", "sha256": "5e6da025881fbdd0c4d37e0117c379d0fe6039b13ceb58e4b3e8d0d7c86370d8" },
+    { "path": "openspec/changes/per-lift-t2t3-increment/specs/t2t3-progression/spec.md", "sha256": "35b5dee19ef65a553c0ac9508fc63f7a959a6666300bf15fa0df47dba9f95c9f" }
+  ]
+}

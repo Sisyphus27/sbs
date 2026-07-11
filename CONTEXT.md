@@ -20,17 +20,35 @@ The weight actually loaded for a set. Always snapped to the rounding quantum. Fo
 `MROUND(TM × intensity, rounding)`; for T2/T3 = the lift's own progressing weight.
 _Avoid_: load, target weight
 
+**Progression step**:
+The weekly increment added to a T2/T3 lift's working weight on a hit (global default
+`settings.incr`, overridable per lift via `lifts.incr`; NULL = inherit global live).
+Distinct from the rounding quantum — a cable/attachment lift's step is a property of
+the machine's plate stack (e.g. 5 kg jumps), not of the barbell plate grid.
+_Avoid_: increment (ambiguous — see effective step / rounding quantum)
+
+**Effective step (eff_incr)**:
+The resolved progression step actually applied for a given lift: `lifts.incr` when set,
+else the global `settings.incr`. It is both the Δ added on a T2/T3 hit (no further
+rounding — self-quantising arithmetic) AND the grid that lift's T2 resets and tier-switch
+starting weights snap to. Every lift therefore carries its own snap grid.
+_Avoid_: increment (ambiguous)
+
 **Loaded weight vs bookkeeping value**:
-A load-bearing distinction. A *loaded weight* is put on the bar (working weight, T2/T3
-increments and resets) and is therefore always rounded to the rounding quantum. A
+A load-bearing distinction. A *loaded weight* is put on the bar — the sbs working weight (rounded to the
+rounding quantum) and T2/T3 increments and resets (rounded to that lift's
+effective step). The two grids differ only when a lift sets a per-lift incr that
+differs from the global rounding. A
 *bookkeeping value* (TM) is internal state that drives future calculation but is never loaded,
 and is therefore never rounded. Conflating the two is the root cause of the TM-rounding bug
 (see ADR 0001).
 _Avoid_: "round everything"
 
 **Rounding quantum**:
-The gym's minimum plate increment (default 2.5 kg, configurable at `/settings`). The single
-parameter governing snap-to-grid for every loaded weight. Explicitly NOT applied to TM.
+The gym's minimum plate increment (default 2.5 kg, configurable at `/settings`). The parameter governing snap-to-grid for **sbs** loaded weights (working weight).
+Explicitly NOT applied to TM, and NOT applied to T2/T3 increments/resets — those snap to
+the effective step (per-lift incr ?? global incr). Kept as a single global setting for
+configuration continuity; its behavioural scope was narrowed to sbs by ADR 0003.
 _Avoid_: min increment, plate step, gym step
 
 **Rep-out (repout target)**:

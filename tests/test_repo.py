@@ -228,3 +228,60 @@ def test_set_reseed_skip_keeps_tm_advances_cycle(app):
         st = repo.get_lift_state(conn, lid)
         assert st["tm"] == 100.0            # unchanged
         assert st["reseeded_cycle"] == 2
+
+
+# ---------- per-lift incr ----------
+
+def test_create_lift_accepts_incr_and_round_trips(app):
+    from webapp.db import connect
+    with app.app_context():
+        conn = connect(app.config["DB_PATH"])
+        lid = repo.create_lift(conn, name="Face Pull", tier="t3", day=2, sort_order=0,
+                               sets=3, max=None, intensity=None, reps=None, repout=None,
+                               start=30.0, incr=5.0)
+        assert repo.get_lift(conn, lid)["incr"] == 5.0
+
+
+def test_create_lift_incr_defaults_null(app):
+    from webapp.db import connect
+    with app.app_context():
+        conn = connect(app.config["DB_PATH"])
+        lid = repo.create_lift(conn, name="Curls", tier="t3", day=1, sort_order=0,
+                               sets=3, max=None, intensity=None, reps=None, repout=None,
+                               start=40.0)  # no incr -> NULL -> inherit global
+        assert repo.get_lift(conn, lid)["incr"] is None
+
+
+def test_update_lift_changes_incr(app):
+    from webapp.db import connect
+    with app.app_context():
+        conn = connect(app.config["DB_PATH"])
+        lid = repo.create_lift(conn, name="Rows", tier="t2", day=1, sort_order=0,
+                               sets=3, max=None, intensity=None, reps=None, repout=None,
+                               start=85.0)
+        repo.update_lift(conn, lid, incr=5.0)
+        assert repo.get_lift(conn, lid)["incr"] == 5.0
+
+
+def test_update_lift_can_clear_incr_to_null(app):
+    from webapp.db import connect
+    with app.app_context():
+        conn = connect(app.config["DB_PATH"])
+        lid = repo.create_lift(conn, name="Rows", tier="t2", day=1, sort_order=0,
+                               sets=3, max=None, intensity=None, reps=None, repout=None,
+                               start=85.0, incr=5.0)
+        repo.update_lift(conn, lid, incr=None)
+        assert repo.get_lift(conn, lid)["incr"] is None
+
+
+def test_update_lift_rejects_unknown_column(app):
+    # _LIFT_COLS 守卫：incr 已纳入，但拼错的列名仍必须拒绝
+    from webapp.db import connect
+    import pytest
+    with app.app_context():
+        conn = connect(app.config["DB_PATH"])
+        lid = repo.create_lift(conn, name="Rows", tier="t2", day=1, sort_order=0,
+                               sets=3, max=None, intensity=None, reps=None, repout=None,
+                               start=85.0)
+        with pytest.raises(ValueError):
+            repo.update_lift(conn, lid, not_a_column=1)

@@ -11,6 +11,7 @@ def _lift_from_row(r) -> Lift:
         intensity=r["intensity"] or 0.0, reps=r["reps"] or 0,
         repout=r["repout"] or 0, sets=r["sets"] or 3, start=r["start"],
         lift_kind=r["lift_kind"],
+        incr=r["incr"] if "incr" in r.keys() else None,
     )
 
 

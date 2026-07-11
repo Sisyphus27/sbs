@@ -40,8 +40,8 @@
 
 ## 6. 迁移
 
-- [ ] 6.1 新增 `migrate_incr.py`：`ALTER TABLE lifts ADD COLUMN incr REAL`，用 `PRAGMA table_info(lifts)` 守卫幂等（列已存在则跳过）；CLI `--db` 参数
-- [ ] 6.2 写迁移幂等测试：空 DB、已升级 DB（重复跑无错）、有数据 DB（现有行 incr 保持 NULL）
+- [x] 6.1 新增 `migrate_incr.py`：`ALTER TABLE lifts ADD COLUMN incr REAL`，用 `PRAGMA table_info(lifts)` 守卫幂等（列已存在则跳过）；CLI `--db` 参数
+- [x] 6.2 写迁移幂等测试：空 DB、已升级 DB（重复跑无错）、有数据 DB（现有行 incr 保持 NULL）
 - [ ] 6.3 `migrate.py`：`create_lift` 调用显式传 `incr=None`（老 YAML/xlsx 来源无此字段）
 
 ## 7. 验收

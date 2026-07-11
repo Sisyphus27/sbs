@@ -34,8 +34,8 @@
 
 ## 5. UI 模板
 
-- [ ] 5.1 `webapp/templates/_lift_row.html` 编辑行：t2/t3 加 incr number 输入框（值=`lift.incr`），sbs 行隐藏（仿 intensity/reps/repout 条件模式）
-- [ ] 5.2 `webapp/templates/lifts.html` 新建表单：t2/t3 加 incr 输入框，sbs 隐藏
+- [x] 5.1 `webapp/templates/_lift_row.html` 编辑行：t2/t3 加 incr number 输入框（值=`lift.incr`），sbs 行隐藏（仿 intensity/reps/repout 条件模式）
+- [x] 5.2 `webapp/templates/lifts.html` 新建表单：t2/t3 加 incr 输入框，sbs 隐藏
 - [x] 5.3 incr 服务端校验：≤0 或非数字 → flash + 保留原值（路由层）
 
 ## 6. 迁移

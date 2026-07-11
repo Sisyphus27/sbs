@@ -11,15 +11,15 @@
 
 ## Current task
 
-- **Plan task:** Task 9 — 模板 _lift_row.html + lifts.html incr UI
+- **Plan task:** Task 10 — migrate_incr.py 一次性列迁移 + 幂等测试（TDD）
 - **Stage:** dispatching
-- **Risk signals:** 纯 UI 模板（条件渲染 incr 框）。低风险。实现后看自报。
+- **Risk signals:** schema-migration（在线 DB ALTER）→ 必命中。幂等性 + backup 是关键。实现后必派 reviewer。
 - **Review-fix round:** 0
 
 ## Deferred Minors (最终审查 triage)
 
-- Task 1: `??` 注释简写（reviewer 认合理）。非问题。
-- Task 8: `_parse_incr` float() 接受 "inf"/"nan"——number 输入框不可达，spec-verbatim，不值得加固。接受。
+- Task 1: `??` 注释简写。非问题。
+- Task 8: `_parse_incr` float() 接受 inf/nan——不可达，接受。
 
 ## Completion log
 
@@ -31,4 +31,5 @@
 - Task 5 (repo incr): complete (940ca05, reviewer ✅). openspec 3.2/3.3.
 - Task 6 (advance _lift_from_row): complete (96f5aba, 直接勾选). openspec 4.1.
 - Task 7 (tier derive eff_incr): complete (9a9ed89, 直接勾选). openspec 4.4.
-- Task 8 (routes incr+校验): complete (325b65c, reviewer ✅+Approved; 1 Minor inf/nan deferred). openspec 4.2/4.3/5.3. 16/16.
+- Task 8 (routes incr+校验): complete (325b65c, reviewer ✅). openspec 4.2/4.3/5.3.
+- Task 9 (templates incr UI): complete (dfb072e, 直接勾选无信号). openspec 5.1/5.2. 20/20.

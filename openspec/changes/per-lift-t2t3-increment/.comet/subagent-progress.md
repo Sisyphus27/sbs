@@ -11,17 +11,18 @@
 
 ## Current task
 
-- **Plan task:** Task 7 — tier.py derive_state eff_incr snap（TDD）
+- **Plan task:** Task 8 — routes/lifts.py new/edit 接 incr + 校验（TDD）
 - **Stage:** dispatching
-- **Risk signals:** tier 切换逻辑（derive_state t2/t3 起始重量 snap 网格 rounding → eff_incr）。命中「跨子系统/tier 切换路径」可能。实现后看自报 + 复核。
+- **Risk signals:** 路由层 + 用户输入校验（incr ≤0/非数字 拒绝、sbs 强制 None、清空→NULL）。命中「外部输入处理」安全相关信号。→ 实现后必复核，likely 派 reviewer。
 - **Review-fix round:** 0
 
 ## Completion log
 
 - Task 0 (docs): complete (c24b5cb). openspec §0.
-- Task 1 (progression): complete (96de9cb, reviewer ✅+Approved). openspec 1.1/1.2. 23/23.
-- Task 2 (schema Lift.incr): complete (a49ea48). openspec 1.3. 7/7.
-- Task 3 (program eff_incr): complete (77d42d2, reviewer ✅+Approved). openspec 2.1/2.2. 21/21.
-- Task 4 (db schema): complete (bda6827, reviewer ✅+Approved). openspec 3.1. 4/4.
-- Task 5 (repo incr): complete (940ca05, reviewer ✅+Approved). openspec 3.2/3.3. 25/25.
-- Task 6 (advance _lift_from_row + recompute verify): complete (96f5aba, 直接勾选无信号; recompute.py 零改动确认 D3). openspec 4.1. 8/8.
+- Task 1 (progression): complete (96de9cb, reviewer ✅). openspec 1.1/1.2.
+- Task 2 (schema Lift.incr): complete (a49ea48). openspec 1.3.
+- Task 3 (program eff_incr): complete (77d42d2, reviewer ✅). openspec 2.1/2.2.
+- Task 4 (db schema): complete (bda6827, reviewer ✅). openspec 3.1.
+- Task 5 (repo incr): complete (940ca05, reviewer ✅). openspec 3.2/3.3.
+- Task 6 (advance _lift_from_row): complete (96f5aba, 直接勾选). openspec 4.1. recompute.py 零改动.
+- Task 7 (tier derive eff_incr): complete (9a9ed89, 直接勾选无信号; apply_switch/sbs 不动). openspec 4.4. 6/6.

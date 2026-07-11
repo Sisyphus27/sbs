@@ -27,7 +27,7 @@
 
 ## 4. Webapp 服务/路由接线
 
-- [ ] 4.1 `webapp/services/advance.py` 的 `_lift_from_row` 读 `incr` 列传入 `Lift`
+- [x] 4.1 `webapp/services/advance.py` 的 `_lift_from_row` 读 `incr` 列传入 `Lift`
 - [ ] 4.2 `webapp/routes/lifts.py`：`_lift_from_row`（new/edit 共用逻辑若有）读 incr；`new`/`edit` 路由接收 `incr` 字段；sbs 创建时传 `incr=None`
 - [ ] 4.4 `webapp/services/tier.py` 的 `derive_state`：t2/t3 起始重量 snap 网格由 rounding 改为 eff_incr（`lift["incr"] if not None else settings["incr"]`）；`apply_switch` 不动（incr 在 lifts 列，tier 切换不触碰）
 - [ ] 4.3 写 webapp 集成测试：t2/t3 创建带 incr、编辑改 incr、清空写回 NULL、sbs 不写 incr

@@ -11,9 +11,9 @@
 
 ## Current task
 
-- **Plan task:** Task 6 — advance.py _lift_from_row 读 incr + recompute.py 零改动验证
+- **Plan task:** Task 7 — tier.py derive_state eff_incr snap（TDD）
 - **Stage:** dispatching
-- **Risk signals:** advance.py adapter（_lift_from_row 加 incr=r["incr"]）+ recompute_service 验证测试。recompute.py 本身零改动（D3 自动继承）。低风险。实现后看自报。
+- **Risk signals:** tier 切换逻辑（derive_state t2/t3 起始重量 snap 网格 rounding → eff_incr）。命中「跨子系统/tier 切换路径」可能。实现后看自报 + 复核。
 - **Review-fix round:** 0
 
 ## Completion log
@@ -23,4 +23,5 @@
 - Task 2 (schema Lift.incr): complete (a49ea48). openspec 1.3. 7/7.
 - Task 3 (program eff_incr): complete (77d42d2, reviewer ✅+Approved). openspec 2.1/2.2. 21/21.
 - Task 4 (db schema): complete (bda6827, reviewer ✅+Approved). openspec 3.1. 4/4.
-- Task 5 (repo incr): complete (940ca05, reviewer ✅+Approved 无 finding). openspec 3.2/3.3. 25/25.
+- Task 5 (repo incr): complete (940ca05, reviewer ✅+Approved). openspec 3.2/3.3. 25/25.
+- Task 6 (advance _lift_from_row + recompute verify): complete (96f5aba, 直接勾选无信号; recompute.py 零改动确认 D3). openspec 4.1. 8/8.

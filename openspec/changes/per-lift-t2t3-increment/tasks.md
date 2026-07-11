@@ -21,7 +21,7 @@
 
 ## 3. DB schema + repo
 
-- [ ] 3.1 `webapp/db.py` 的 `_SCHEMA` lifts 表加 `incr REAL` 列
+- [x] 3.1 `webapp/db.py` 的 `_SCHEMA` lifts 表加 `incr REAL` 列
 - [ ] 3.2 `webapp/repo.py`：`_LIFT_COLS` 加 `incr`；`create_lift` 加 `incr=None` 参数与 INSERT 列；`update_lift` 经 `_LIFT_COLS` 自动支持
 - [ ] 3.3 写 repo incr 读写测试：create 带 incr、update 改 incr、NULL 读写往返、`_LIFT_COLS` 校验拒绝未知列
 

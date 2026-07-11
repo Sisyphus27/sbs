@@ -11,18 +11,19 @@
 
 ## Current task
 
-- **Plan task:** Task 4 — db.py _SCHEMA lifts.incr + test_db.py 列断言
+- **Plan task:** Task 5 — repo.py _LIFT_COLS + create_lift incr（TDD）
 - **Stage:** dispatching
-- **Risk signals:** DB schema DDL 加一 nullable 列 + 测试断言。命中「schema-migration」信号（DB 列变更）→ 实现后看自报 + 复核；可能需 reviewer。注：仅 init_schema bootstrap（新 DB），在线迁移是 Task 10（migrate_incr.py）。
+- **Risk signals:** repo CRUD（create_lift 签名加 incr=None 默认 + _LIFT_COLS 加 incr）。create_lift 有调用方（migrate.py、routes）——默认 None 向后兼容。命中「公共 API（签名变更，但 additive）」可能。实现后看自报 + 复核。
 - **Review-fix round:** 0
 
-## Deferred Minors (最终审查 triage)
+## Deferred Minors
 
-- Task 1: `??` 注释简写——reviewer Task 3 也认合理。非问题，不改。
+-（无）
 
 ## Completion log
 
-- Task 0 (docs): complete (c24b5cb, 直接勾选). openspec §0.
-- Task 1 (progression 去 snap): complete (96de9cb, reviewer ✅+Approved). openspec 1.1/1.2. 23/23.
-- Task 2 (schema Lift.incr): complete (a49ea48, 直接勾选). openspec 1.3. 7/7.
-- Task 3 (program eff_incr): complete (77d42d2, reviewer ✅+Approved 无 finding). openspec 2.1/2.2. 21/21. 修了 Task 1 遗留 program.py 调用。
+- Task 0 (docs): complete (c24b5cb). openspec §0.
+- Task 1 (progression): complete (96de9cb, reviewer ✅+Approved). openspec 1.1/1.2. 23/23.
+- Task 2 (schema Lift.incr): complete (a49ea48). openspec 1.3. 7/7.
+- Task 3 (program eff_incr): complete (77d42d2, reviewer ✅+Approved). openspec 2.1/2.2. 21/21.
+- Task 4 (db schema incr): complete (bda6827, reviewer ✅+Approved 无 finding). openspec 3.1. 4/4 test_db.

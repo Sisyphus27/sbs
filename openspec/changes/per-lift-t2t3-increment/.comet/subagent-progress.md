@@ -10,14 +10,11 @@
 - **language:** zh-CN
 - **Full suite:** 213 passed / 0 failed
 
-## Current task
+## Current stage: final-review
 
-- **Plan task:** Task 12 — 验收（全量测试 + 手动冒烟）—— 最后一个 task
-- **Stage:** dispatching
-- **Risk signals:** 验收 task（跑全量 + 迁移冒烟；交互式 UI 冒烟交付用户）。低风险。
-- **Review-fix round:** 0
+所有 12 plan task 完成 + openspec tasks.md 全勾选。进入 review_mode standard 的 final whole-branch review（1 次轻量审查，范围 base-ref..HEAD）。通过或接受非 CRITICAL 后回 comet-build 跑 build guard。
 
-## Deferred Minors (最终审查 triage)
+## Deferred Minors (最终审查 triage，交给 final reviewer)
 
 - Task 1: `??` 注释简写。非问题。
 - Task 8: `_parse_incr` float() 接受 inf/nan——number 输入框不可达。接受。
@@ -40,4 +37,7 @@
 - Task 8 (routes incr+校验): complete (325b65c, reviewer ✅). openspec 4.2/4.3/5.3.
 - Task 9 (templates incr UI): complete (dfb072e). openspec 5.1/5.2.
 - Task 10 (migrate_incr): complete (ef28210, reviewer ✅). openspec 6.1/6.2.
-- Task 11 (migrate.py 审计): complete (无 commit，default incr=None 传播正确，migrate.py 不需改). openspec 6.3.
+- Task 11 (migrate.py 审计): complete (无 commit). openspec 6.3.
+- Task 12 (验收): complete (无 commit, 213/0 + 迁移冒烟过). openspec 7.1/7.2.
+
+ALL 12 TASKS COMPLETE. Full suite 213 passed / 0 failed.

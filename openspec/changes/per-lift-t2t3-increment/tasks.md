@@ -46,5 +46,5 @@
 
 ## 7. 验收
 
-- [ ] 7.1 全量测试：`conda run -n sbs python -m pytest`，全绿
-- [ ] 7.2 手动验证：face pull 设 incr=5 命中后 +5；其他 t2/t3 NULL 动作仍 +2.5；sbs 行无 incr 框；清空 incr 回全局；reseed/schedule 等既有流程不回归
+- [x] 7.1 全量测试：`conda run -n sbs python -m pytest`，全绿
+- [x] 7.2 手动验证：face pull 设 incr=5 命中后 +5；其他 t2/t3 NULL 动作仍 +2.5；sbs 行无 incr 框；清空 incr 回全局；reseed/schedule 等既有流程不回归

@@ -11,14 +11,10 @@
 
 ## Current task
 
-- **Plan task:** Task 5 — repo.py _LIFT_COLS + create_lift incr（TDD）
+- **Plan task:** Task 6 — advance.py _lift_from_row 读 incr + recompute.py 零改动验证
 - **Stage:** dispatching
-- **Risk signals:** repo CRUD（create_lift 签名加 incr=None 默认 + _LIFT_COLS 加 incr）。create_lift 有调用方（migrate.py、routes）——默认 None 向后兼容。命中「公共 API（签名变更，但 additive）」可能。实现后看自报 + 复核。
+- **Risk signals:** advance.py adapter（_lift_from_row 加 incr=r["incr"]）+ recompute_service 验证测试。recompute.py 本身零改动（D3 自动继承）。低风险。实现后看自报。
 - **Review-fix round:** 0
-
-## Deferred Minors
-
--（无）
 
 ## Completion log
 
@@ -26,4 +22,5 @@
 - Task 1 (progression): complete (96de9cb, reviewer ✅+Approved). openspec 1.1/1.2. 23/23.
 - Task 2 (schema Lift.incr): complete (a49ea48). openspec 1.3. 7/7.
 - Task 3 (program eff_incr): complete (77d42d2, reviewer ✅+Approved). openspec 2.1/2.2. 21/21.
-- Task 4 (db schema incr): complete (bda6827, reviewer ✅+Approved 无 finding). openspec 3.1. 4/4 test_db.
+- Task 4 (db schema): complete (bda6827, reviewer ✅+Approved). openspec 3.1. 4/4.
+- Task 5 (repo incr): complete (940ca05, reviewer ✅+Approved 无 finding). openspec 3.2/3.3. 25/25.

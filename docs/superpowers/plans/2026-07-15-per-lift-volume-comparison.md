@@ -27,9 +27,9 @@
 |------|------|------|
 | `webapp/services/volume.py`(新)| 单动作单周实际吨位计算:纯公式 + t2 replay + DB 编排 | T1-T3 |
 | `tests/test_volume_service.py`(新)| volume service 单元测试 | T1-T3 |
-| `webapp/routes/plan.py` | `_tonnage_html`/`_live_html` helper + `_by_day` 预渲染 + `save_log` 返回 `_live_html` | T4-T5 |
+| `webapp/routes/plan.py` | `_tonnage_html`/`_live_html` helper + `_by_day` 预渲染 + `save_log` 重构返回 `_live_html` | T4 |
 | `webapp/templates/plan.html` | `.save-ok` 预填 `it.live_html` | T4 |
-| `tests/test_routes_plan.py` | 路由层:初始渲染 + save_log 响应含吨位 | T4-T5 |
+| `tests/test_routes_plan.py` | 路由层:初始渲染 + save_log 响应含吨位 | T4 |
 
 **不改**:`base.html`(片段在 `.save-ok` 内,复用现有 `.save-ok .up/.down/.first` 配色)、引擎、repo、schema。
 
@@ -351,7 +351,7 @@ git commit -m "feat(volume): lift_week_volume DB service (sbs/t2/t3, current/pas
 
 ---
 
-### Task 4: 初始渲染——plan 行预填吨位片段
+### Task 4: 接入 plan UI(初始渲染 + 填末组即时更新)
 
 **Files:**
 - Modify: `webapp/routes/plan.py`
@@ -360,9 +360,11 @@ git commit -m "feat(volume): lift_week_volume DB service (sbs/t2/t3, current/pas
 
 **Interfaces:**
 - Consumes: `lift_week_volume`(T3),`preview.live_preview`
-- Produces: plan.py 模块级 `_tonnage_html(conn, lid) -> str` 与 `_live_html(conn, lid, reps) -> str`;`_by_day` 给每 item 挂 `item.live_html`;plan.html `.save-ok` 渲染 `{{ it.live_html|safe }}`。
+- Produces: plan.py 模块级 `_tonnage_html(conn, lid) -> str` 与 `_live_html(conn, lid, reps) -> str`;`_by_day` 每 item 挂 `item.live_html`;plan.html `.save-ok` 渲染 `{{ it.live_html|safe }}`;`save_log` 返回 `_live_html`(取代原 est1RM-only 串),清空路径返回 `("", 200)`。
 
-- [ ] **Step 1: Write the failing test**
+> 设计说明:`_live_html` 同时被 `_by_day`(初始预渲染)和 `save_log`(HTMX 即时刷新)调用——**单一 helper,零重复**。它合并 est1RM 预览 + 吨位片段,因为两者都活在同一个 `.save-ok` HTMX 目标区,且都依赖刚填入的末组次数。
+
+- [ ] **Step 1: Write the failing tests**
 
 Append to `tests/test_routes_plan.py`:
 
@@ -403,12 +405,42 @@ def test_plan_view_omits_tonnage_when_not_logged(client, app):
         conn.close()
     html = client.get("/").get_data(as_text=True)
     assert "容量" not in html
+
+
+def test_save_log_response_includes_tonnage(client, app):
+    """Filling the last-set returns live est1RM + tonnage in the same fragment."""
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        lid = repo.create_lift(conn, name="Curl", tier="t3", day=1, sort_order=0,
+                               sets=3, max=None, intensity=None, reps=None, repout=None, start=30.0)
+        conn.close()
+    rv = client.post(f"/log/save?lid={lid}", data={f"log_{lid}": "18"})
+    assert rv.status_code == 200
+    body = rv.get_data(as_text=True)
+    assert "≈" in body                       # est1RM preview still present
+    assert "容量" in body and "1440kg" in body   # tonnage computed from the just-typed 18
+    assert "首次" in body                    # week 1, no last week
+
+
+def test_save_log_clear_empties_fragment(client, app):
+    """Clearing the last-set returns 200 with empty body so .save-ok is wiped."""
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        lid = repo.create_lift(conn, name="Curl", tier="t3", day=1, sort_order=0,
+                               sets=3, max=None, intensity=None, reps=None, repout=None, start=30.0)
+        repo.save_log(conn, lid, 1, 18)
+        conn.close()
+    rv = client.post(f"/log/save?lid={lid}", data={f"log_{lid}": ""})
+    assert rv.status_code == 200
+    assert rv.get_data(as_text=True) == ""
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `conda run -n sbs pytest tests/test_routes_plan.py -v`
-Expected: FAIL — `AssertionError: assert '容量' in ...`(尚未渲染)
+Expected: FAIL — `assert '容量' in ...`(初始渲染缺失)+ save_log 响应缺 `容量`
 
 - [ ] **Step 3: Add the helper functions to plan.py**
 
@@ -435,7 +467,11 @@ def _tonnage_html(conn, lid):
 
 
 def _live_html(conn, lid, reps):
-    """.save-ok content: est1RM preview + tonnage WoW. '' when reps is None."""
+    """.save-ok content: est1RM preview + tonnage WoW. '' when reps is None.
+
+    Single helper used by both _by_day (initial pre-render) and save_log
+    (HTMX live refresh), so the est1RM HTML exists in exactly one place.
+    """
     if reps is None:
         return ""
     from ..services.preview import live_preview
@@ -467,90 +503,7 @@ Change to compute `live_html` from the logged reps:
         rows_by_day.setdefault(r["day"], []).append(item)
 ```
 
-- [ ] **Step 5: Render the fragment in plan.html**
-
-In `webapp/templates/plan.html`, change the empty `.save-ok` span:
-
-```html
-          <span class="save-ok"></span>
-```
-
-to pre-fill from the server:
-
-```html
-          <span class="save-ok">{{ it.live_html|safe }}</span>
-```
-
-- [ ] **Step 6: Run test to verify it passes**
-
-Run: `conda run -n sbs pytest tests/test_routes_plan.py -v`
-Expected: PASS (all, incl. the 3 new)
-
-- [ ] **Step 7: Run full suite to confirm no regression**
-
-Run: `conda run -n sbs pytest -q`
-Expected: PASS (no failures; existing est1RM preview tests still green — `_live_html` reproduces the prior est1RM HTML)
-
-- [ ] **Step 8: Commit**
-
-```bash
-git add webapp/routes/plan.py webapp/templates/plan.html tests/test_routes_plan.py
-git commit -m "feat(plan): pre-render per-lift tonnage WoW on initial load"
-```
-
----
-
-### Task 5: `save_log` 即时更新吨位
-
-**Files:**
-- Modify: `webapp/routes/plan.py::save_log`
-- Test: `tests/test_routes_plan.py`
-
-**Interfaces:**
-- Consumes: `_live_html`(T4)
-- Produces: `save_log` POST `/log/save` 响应含 est1RM + 吨位;清空输入返回 `("", 200)`(原 204)使 `.save-ok` 被清空。
-
-- [ ] **Step 1: Write the failing test**
-
-Append to `tests/test_routes_plan.py`:
-
-```python
-def test_save_log_response_includes_tonnage(client, app):
-    """Filling the last-set returns live est1RM + tonnage in the same fragment."""
-    with app.app_context():
-        from webapp.db import connect
-        conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Curl", tier="t3", day=1, sort_order=0,
-                               sets=3, max=None, intensity=None, reps=None, repout=None, start=30.0)
-        conn.close()
-    rv = client.post(f"/log/save?lid={lid}", data={f"log_{lid}": "18"})
-    assert rv.status_code == 200
-    body = rv.get_data(as_text=True)
-    assert "≈" in body            # est1RM preview still present
-    assert "容量" in body and "1440kg" in body   # tonnage computed from the just-typed 18
-    assert "首次" in body         # week 1, no last week
-
-
-def test_save_log_clear_empties_fragment(client, app):
-    """Clearing the last-set returns 200 with empty body so .save-ok is wiped."""
-    with app.app_context():
-        from webapp.db import connect
-        conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Curl", tier="t3", day=1, sort_order=0,
-                               sets=3, max=None, intensity=None, reps=None, repout=None, start=30.0)
-        repo.save_log(conn, lid, 1, 18)
-        conn.close()
-    rv = client.post(f"/log/save?lid={lid}", data={f"log_{lid}": ""})
-    assert rv.status_code == 200
-    assert rv.get_data(as_text=True) == ""
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `conda run -n sbs pytest tests/test_routes_plan.py::test_save_log_response_includes_tonnage tests/test_routes_plan.py::test_save_log_clear_empties_fragment -v`
-Expected: FAIL — body lacks `容量`(current `save_log` returns est1RM-only string);clear returns 204 not 200.
-
-- [ ] **Step 3: Refactor `save_log` to use `_live_html`**
+- [ ] **Step 5: Refactor `save_log` to use `_live_html`**
 
 In `webapp/routes/plan.py::save_log`, replace the est1RM-building tail:
 
@@ -590,23 +543,35 @@ change to:
         return ("", 200)
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 6: Render the fragment in plan.html**
+
+In `webapp/templates/plan.html`, change the empty `.save-ok` span:
+
+```html
+          <span class="save-ok"></span>
+```
+
+to pre-fill from the server:
+
+```html
+          <span class="save-ok">{{ it.live_html|safe }}</span>
+```
+
+- [ ] **Step 7: Run test to verify it passes**
 
 Run: `conda run -n sbs pytest tests/test_routes_plan.py -v`
-Expected: PASS (all, incl. the 2 new)
+Expected: PASS (all, incl. the 5 new). 现有 `test_autosave_persists_and_prefills_then_advances` 仍绿——`_live_html` 复刻原 est1RM HTML,响应仍含 `≈` 与 `(首次)`。
 
-- [ ] **Step 5: Run full suite + manual smoke**
+- [ ] **Step 8: Run full suite to confirm no regression**
 
 Run: `conda run -n sbs pytest -q`
-Expected: PASS.
+Expected: PASS (no failures).
 
-Manual smoke (optional, requires running app): `conda run -n sbs python -m webapp`, open `/`, fill a lift's 末组 → confirm `容量 ...kg ↗/↘` appears immediately in the `.save-ok` area.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add webapp/routes/plan.py tests/test_routes_plan.py
-git commit -m "feat(plan): save_log returns est1RM + tonnage (live WoW update)"
+git add webapp/routes/plan.py webapp/templates/plan.html tests/test_routes_plan.py
+git commit -m "feat(plan): per-lift tonnage WoW inline + live update on save_log"
 ```
 
 ---
@@ -614,19 +579,18 @@ git commit -m "feat(plan): save_log returns est1RM + tonnage (live WoW update)"
 ## Self-Review
 
 **1. Spec coverage:**
-- Q1 per lift-row → `lift_week_volume` keyed by `lift_id`, route loops items by id ✓
-- Q2 green/red → `_tonnage_html` uses `.up`/`.down`/`.first` ✓
-- Q3 live update → T5 `save_log` returns `_live_html`; initial pre-render T4 ✓
-- Q4 last-set = logged reps → formula consumes `last_set` from week_log/history, no AMRAP classification ✓
+- Q1 per lift-row → `lift_week_volume` keyed by `lift_id`, route 按 item id 循环 ✓
+- Q2 green/red → `_tonnage_html` 用 `.up`/`.down`/`.first` ✓
+- Q3 live update → T4 `save_log` 返回 `_live_html` + `_by_day` 初始预渲染(同一 helper,零重复)✓
+- Q4 last-set = logged reps → 公式消费 `last_set`(来自 week_log/history),无 AMRAP 分类 ✓
 - 公式 `weight×((sets-1)×planned+last)` → `_actual_tonnage` ✓
 - t2 上周 target replay → `_t2_target_as_of` ✓
 - 跳过未填 / 首次 → `lift_week_volume` None / `_tonnage_html` 首次 ✓
 - 零引擎/repo/schema 改动 → 仅 volume.py(新)+ plan.py + plan.html ✓
-- D9 CSS → 不需要(片段在 `.save-ok` 内复用现有配色),spec 偏差已注明 ✓
-- Risks(tier 切换/减载红/非末组近似)→ 属 inherent,spec 记,无 task 需要 ✓
+- Risks(tier 切换/减载红/非末组近似)→ inherent,spec 记,无 task 需要 ✓
 
-**2. Placeholder scan:** 无 TBD/TODO。T3 Step 1 测试里有一处占位行(`save_lift_state(conn, 1, ...)`),已在该 step 内显式标出删除并给出正确 `_sbs`——实现者须用修正版。
+**2. Placeholder scan:** 无 TBD/TODO/占位行。所有 step 含完整代码。
 
-**3. Type consistency:** `_actual_tonnage`/`_t2_target_as_of`/`lift_week_volume` 签名跨 T1-T3 一致;`_tonnage_html`/`_live_html` 在 T4 定义、T5 消费,签名 `(conn, lid[, reps])` 一致;`item.live_html` 在 `_by_day` 设、plan.html 读,键名一致。
+**3. Type consistency:** `_actual_tonnage`/`_t2_target_as_of`/`lift_week_volume` 签名跨 T1-T3 一致;`_tonnage_html`/`_live_html` 在 T4 定义并同 task 内被 `_by_day` 与 `save_log` 消费,签名 `(conn, lid[, reps])` 一致;`item.live_html` 在 `_by_day` 设、plan.html 读,键名一致。
 
-**Spec 偏差记录(实现时遵守):** spec D9 原要求 `.up/.down/.first` 提到根级——因 grilling 决策 3 把片段放进 HTMX 目标区 `.save-ok` 内,现有 `.save-ok .up/.down/.first` 配色已覆盖,故 **不需要改 base.html**。回写 spec D9 为「无 CSS 改动」属后续 build task 0(若走 comet);当前 superpowers 流程下记于此。
+**Spec 偏差记录:** spec D9 原要求 `.up/.down/.first` 提到根级——因 grilling 决策 3 把片段放进 HTMX 目标区 `.save-ok` 内,现有 `.save-ok .up/.down/.first` 配色已覆盖,故 **不需要改 base.html**。D9 偏差记于此;若后续回写 spec,改 D9 为「无 CSS 改动」。

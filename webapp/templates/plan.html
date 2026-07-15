@@ -26,7 +26,7 @@
         <label>末组: <input type="number" name="log_{{ it.id }}" value="{{ it.logged }}"
                hx-post="{{ url_for('plan.save_log', lid=it.id) }}" hx-trigger="change"
                hx-target="next .save-ok" hx-swap="innerHTML">
-          <span class="save-ok"></span></label>
+          <span class="save-ok">{{ it.live_html|safe }}</span></label>
       </div>
     {% endfor %}
   {% endfor %}

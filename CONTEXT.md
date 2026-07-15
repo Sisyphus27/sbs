@@ -7,6 +7,14 @@ implementation detail.
 
 ## Language
 
+**Lift**:
+A single scheduled instance of an exercise on a specific day — the atomic unit of progression,
+logging, and state. The same exercise scheduled on two different days (e.g. Face Pull on Day 2
+and Day 4) is **two lifts**, each with its own working weight, tier state, and history. All
+per-lift comparisons (e.g. tonnage WoW) are per lift-row, never aggregated by exercise name.
+_Avoid_: exercise, movement (those name the movement pattern; a lift is one scheduled instance
+of it); 动作 (colloquial — maps to a lift-row here, not the exercise name)
+
 **Training Max (TM)**:
 The internal reference ceiling for an sbs lift, from which each week's working weight derives
 (`working weight = MROUND(TM × intensity, rounding)`). Seeded from the lift's `max` on week 1
@@ -61,6 +69,16 @@ Estimated one-rep max — the mean of the Epley, Brzycki, and Wathan formulas ov
 historical set. Used to seed T2 resets (`reset_pct × est1RM`) and displayed for trend tracking.
 Full-precision in storage; displayed to 2 decimals.
 _Avoid_: 1RM (that denotes an actual, measured max — a different concept)
+
+**Training volume (tonnage)**:
+The total load lifted by one lift in one week: working weight × total reps across all sets,
+in kg. Computed as `weight × ((sets−1) × plannedReps + lastSetReps)` — every set but the last
+is taken at its planned rep count (sbs: the scheduled reps; t2: target; t3: t3_target), and the
+last set uses the reps actually logged for that week (the 末组 entry, whatever was filled in).
+A per-lift, per-week quantity; the plan view shows each lift's tonnage against the previous
+program week (WoW Δ%). An indicator of training load, not of progress — volume rises and falls
+deliberately across a cycle (e.g. deload weeks).
+_Avoid_: load (the weight on the bar for a single set), intensity
 
 **Tier**:
 Which progression rule a lift follows: `sbs` (TM autoregulation by rep-out), `t2` (1-strike

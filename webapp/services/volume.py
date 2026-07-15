@@ -41,3 +41,46 @@ def _t2_target_as_of(conn: sqlite3.Connection, lift_id: int, target_week: int) -
     lift = advance_service._lift_from_row(lift_row)
     profile = advance_service._profile_from_rows(settings, [], schedule)
     return recompute_state(lift, hist, profile).target
+
+
+from typing import Optional
+
+from sbs_cli.engine.progression import lookup_schedule
+from . import preview
+
+
+def lift_week_volume(conn: sqlite3.Connection, lift_id: int, week: int,
+                     is_current: bool) -> Optional[float]:
+    """Actual tonnage for one lift in one program week.
+
+    weight x ((sets-1) x plannedReps + lastSetReps). Returns None when there
+    is no logged last-set reps for that week (current: week_log empty; past:
+    no history row) so the caller can skip rendering.
+    """
+    lift = repo.get_lift(conn, lift_id)
+    state = repo.get_lift_state(conn, lift_id)
+    settings = repo.get_settings(conn)
+    schedule = repo.load_schedule(conn)
+    tier = lift["tier"]
+    sets = lift["sets"] or 3
+
+    if is_current:
+        last_set = repo.get_week_logs(conn, week).get(lift_id)
+        if last_set is None:
+            return None
+        weight = preview._working_weight(lift, state, settings, schedule)
+    else:
+        row = next((h for h in repo.list_history(conn, lift_id) if h["week"] == week), None)
+        if row is None:
+            return None
+        last_set = row["reps"]
+        weight = row["weight"]
+
+    if tier == "sbs":
+        planned = lookup_schedule(schedule, lift["lift_kind"], week).reps
+    elif tier == "t3":
+        planned = settings["t3_target"]
+    else:  # t2
+        planned = state["target"] if is_current else _t2_target_as_of(conn, lift_id, week)
+
+    return _actual_tonnage(weight, sets, planned, last_set)

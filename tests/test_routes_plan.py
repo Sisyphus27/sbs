@@ -179,3 +179,29 @@ def test_save_log_clear_empties_fragment(client, app):
     rv = client.post(f"/log/save?lid={lid}", data={f"log_{lid}": ""})
     assert rv.status_code == 200
     assert rv.get_data(as_text=True) == ""
+
+
+def test_plan_view_shows_tonnage_wow_delta_for_t2(client, app):
+    """Two-week t2: past tonnage uses the replayed target; Δ% renders with arrow + color.
+
+    Setup does NOT call advance_week (state.target stays at the initial 8), so:
+    - current (week3): planned = state.target = 8, weight = 50, last-set logged 8
+      -> 50 * (2*8 + 8) = 1200
+    - past (week2): planned = _t2_target_as_of(2) which replays week1 (reps 5 < 8 = miss)
+      -> target drops 8->6; past tonnage = 50 * (2*6 + 5) = 850
+    - Δ = (1200-850)/850 = +41%
+    """
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        lid = repo.create_lift(conn, name="Rows", tier="t2", day=1, sort_order=0,
+                               sets=3, max=None, intensity=None, reps=None, repout=None, start=50.0)
+        repo.append_history(conn, lid, week=1, weight=50.0, reps=5)
+        repo.append_history(conn, lid, week=2, weight=50.0, reps=5)
+        repo.set_week(conn, 3)
+        repo.save_log(conn, lid, 3, 8)
+        conn.close()
+    html = client.get("/").get_data(as_text=True)
+    assert "1200kg" in html        # current tonnage
+    assert "↗+41%" in html         # WoW delta: up arrow, +sign, 41%
+    assert "首次" not in html       # both weeks present -> no 首次 marker

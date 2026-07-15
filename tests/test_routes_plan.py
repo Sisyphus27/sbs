@@ -111,3 +111,71 @@ def test_autosave_persists_and_prefills_then_advances(client, app):
         assert repo.get_settings(conn)["week"] == 2
         assert repo.get_week_logs(conn, 1) == {}   # cleared after advance
         conn.close()
+
+
+def test_plan_view_shows_tonnage_for_logged_lift(client, app):
+    """A lift with this week's last-set logged renders its tonnage inline."""
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        lid = repo.create_lift(conn, name="Curl", tier="t3", day=1, sort_order=0,
+                               sets=3, max=None, intensity=None, reps=None, repout=None, start=30.0)
+        repo.save_log(conn, lid, 1, 18)   # 30 * (2*15 + 18) = 1440
+        conn.close()
+    html = client.get("/").get_data(as_text=True)
+    assert "容量" in html and "1440kg" in html
+
+
+def test_plan_view_shows_first_time_when_no_last_week(client, app):
+    """Week 1 -> no last week -> tonnage shows 首次."""
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        lid = repo.create_lift(conn, name="Curl", tier="t3", day=1, sort_order=0,
+                               sets=3, max=None, intensity=None, reps=None, repout=None, start=30.0)
+        repo.save_log(conn, lid, 1, 18)
+        conn.close()
+    html = client.get("/").get_data(as_text=True)
+    assert "首次" in html
+
+
+def test_plan_view_omits_tonnage_when_not_logged(client, app):
+    """A lift whose last-set is not yet logged shows no tonnage fragment."""
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        repo.create_lift(conn, name="Curl", tier="t3", day=1, sort_order=0,
+                         sets=3, max=None, intensity=None, reps=None, repout=None, start=30.0)
+        conn.close()
+    html = client.get("/").get_data(as_text=True)
+    assert "容量" not in html
+
+
+def test_save_log_response_includes_tonnage(client, app):
+    """Filling the last-set returns live est1RM + tonnage in the same fragment."""
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        lid = repo.create_lift(conn, name="Curl", tier="t3", day=1, sort_order=0,
+                               sets=3, max=None, intensity=None, reps=None, repout=None, start=30.0)
+        conn.close()
+    rv = client.post(f"/log/save?lid={lid}", data={f"log_{lid}": "18"})
+    assert rv.status_code == 200
+    body = rv.get_data(as_text=True)
+    assert "≈" in body                       # est1RM preview still present
+    assert "容量" in body and "1440kg" in body   # tonnage computed from the just-typed 18
+    assert "首次" in body                    # week 1, no last week
+
+
+def test_save_log_clear_empties_fragment(client, app):
+    """Clearing the last-set returns 200 with empty body so .save-ok is wiped."""
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        lid = repo.create_lift(conn, name="Curl", tier="t3", day=1, sort_order=0,
+                               sets=3, max=None, intensity=None, reps=None, repout=None, start=30.0)
+        repo.save_log(conn, lid, 1, 18)
+        conn.close()
+    rv = client.post(f"/log/save?lid={lid}", data={f"log_{lid}": ""})
+    assert rv.status_code == 200
+    assert rv.get_data(as_text=True) == ""

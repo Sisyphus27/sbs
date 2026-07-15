@@ -8,6 +8,44 @@ from ..services import advance, tier  # tier imported for completeness; used in 
 bp = Blueprint("plan", __name__)
 
 
+def _tonnage_html(conn, lid):
+    """容量 WoW fragment, or '' if this week's last-set isn't logged yet."""
+    from ..services.volume import lift_week_volume
+    week = repo.get_settings(conn)["week"]
+    this = lift_week_volume(conn, lid, week, is_current=True)
+    if this is None:
+        return ""
+    last = lift_week_volume(conn, lid, week - 1, is_current=False) if week > 1 else None
+    kg = f'容量 {this:.0f}kg'
+    if not last:  # None (no history) or 0 -> avoid div-by-zero
+        return f'{kg} <span class="first">首次</span>'
+    pct = (this - last) / last * 100
+    if pct >= 0:
+        cls, arrow, sign = "up", "↗", "+"
+    else:
+        cls, arrow, sign = "down", "↘", ""
+    return f'{kg} <span class="{cls}">{arrow}{sign}{pct:.0f}%</span>'
+
+
+def _live_html(conn, lid, reps):
+    """.save-ok content: est1RM preview + tonnage WoW. '' when reps is None.
+
+    Single helper used by both _by_day (initial pre-render) and save_log
+    (HTMX live refresh), so the est1RM HTML exists in exactly one place.
+    """
+    if reps is None:
+        return ""
+    from ..services.preview import live_preview
+    p = live_preview(conn, lid, reps)
+    if p["delta"] is None:
+        delta_html = '<span class="first">(首次)</span>'
+    else:
+        cls = "up" if p["delta"] >= 0 else "down"
+        sign = "+" if p["delta"] >= 0 else ""
+        delta_html = f'<span class="{cls}">{sign}{p["delta"]:.2f}</span>'
+    return f'≈{p["est1rm"]:.2f} {delta_html} {_tonnage_html(conn, lid)}'.strip()
+
+
 def _by_day(conn):
     # NOTE: the engine's week_plan() looks state up by lift NAME, so it cannot
     # distinguish two rows that share a name (e.g. Face Pull on day 2 and day 4).
@@ -38,6 +76,8 @@ def _by_day(conn):
                                    reps=settings["t3_target"], sets=r["sets"], repout=None,
                                    target=settings["t3_target"], streak=0, est1rm=est1rm)
         item.logged = logged.get(r["id"], "")
+        reps = item.logged if item.logged not in (None, "") else None
+        item.live_html = _live_html(conn, item.id, reps)
         rows_by_day.setdefault(r["day"], []).append(item)
     by_day = [(d, rows_by_day[d]) for d in sorted(rows_by_day)
               if d <= settings["days_per_week"] and rows_by_day[d]]
@@ -65,7 +105,7 @@ def save_log():
     week = repo.get_settings(conn)["week"]
     if raw == "":
         repo.clear_one_log(conn, lid, week)
-        return ("", 204)
+        return ("", 200)
     try:
         reps = int(raw)
     except ValueError:
@@ -73,15 +113,7 @@ def save_log():
     if reps < 0:
         return ("negative", 400)
     repo.save_log(conn, lid, week, reps)
-    from ..services.preview import live_preview
-    p = live_preview(conn, lid, reps)
-    if p["delta"] is None:
-        delta_html = '<span class="first">(首次)</span>'
-    else:
-        cls = "up" if p["delta"] >= 0 else "down"
-        sign = "+" if p["delta"] >= 0 else ""
-        delta_html = f'<span class="{cls}">{sign}{p["delta"]:.2f}</span>'
-    return f'≈{p["est1rm"]:.2f} {delta_html}'
+    return _live_html(conn, lid, reps)
 
 
 @bp.route("/log", methods=["POST"])

@@ -6,19 +6,20 @@ uses the logged reps (the 末组 entry). Read-only; writes nothing.
 See docs/superpowers/specs/2026-07-15-per-lift-volume-comparison-design.md
 """
 
+import sqlite3
+from typing import Optional
+
+from sbs_cli.data.schema import SetEntry
+from sbs_cli.engine.progression import lookup_schedule
+from sbs_cli.program import recompute_state
+from .. import repo
+from . import advance as advance_service, preview
+
 
 def _actual_tonnage(weight: float, sets: int, planned_reps: int, last_set_reps: int) -> float:
     """weight x total reps: (sets-1) sets at planned_reps + last set at last_set_reps."""
     sets = sets or 3
     return weight * ((sets - 1) * planned_reps + last_set_reps)
-
-
-import sqlite3
-
-from sbs_cli.data.schema import SetEntry
-from sbs_cli.program import recompute_state
-from .. import repo
-from . import advance as advance_service
 
 
 def _t2_target_as_of(conn: sqlite3.Connection, lift_id: int, target_week: int) -> int:
@@ -41,12 +42,6 @@ def _t2_target_as_of(conn: sqlite3.Connection, lift_id: int, target_week: int) -
     lift = advance_service._lift_from_row(lift_row)
     profile = advance_service._profile_from_rows(settings, [], schedule)
     return recompute_state(lift, hist, profile).target
-
-
-from typing import Optional
-
-from sbs_cli.engine.progression import lookup_schedule
-from . import preview
 
 
 def lift_week_volume(conn: sqlite3.Connection, lift_id: int, week: int,

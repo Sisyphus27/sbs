@@ -152,13 +152,6 @@ def export_week():
     Self-contained (no nav/HTMX/server-relative URLs) so it opens offline after copy to phone."""
     conn = get_db()
     week, by_day = _by_day(conn)
-    from ..services.preview import live_preview
-    for day, items in by_day:
-        for it in items:
-            if it.logged not in ("", None):
-                it.live = live_preview(conn, it.id, int(it.logged))["est1rm"]
-            else:
-                it.live = None
     html = render_template("week_export.html", week=week, by_day=by_day)
     return Response(html, mimetype="text/html",
                     headers={"Content-Disposition": f'attachment; filename="week-{week}.html"'})

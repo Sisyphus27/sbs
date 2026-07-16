@@ -13,6 +13,10 @@
     .meta{color:#444;font-size:0.9em;display:block;margin-top:2px}
     .log{font-size:0.9em;margin-top:2px;color:#2e7d32}
     .log.empty{color:#999}
+    .save-ok{color:#4caf50;font-size:0.85em;margin-left:4px}
+    .save-ok .up{color:#2e7d32;font-weight:bold}
+    .save-ok .down{color:#c62828;font-weight:bold}
+    .save-ok .first{color:#888}
     @media print{body{max-width:none}}
   </style>
 </head>
@@ -32,7 +36,9 @@
         | 最佳 1RM {{ "%.2f"|format(it.est1rm) if it.est1rm is not none else '—' }}
       </span>
       {% if it.logged not in (None, '') %}
-        <span class="log">本周末组: {{ it.logged }} → est1RM ≈{{ "%.2f"|format(it.live) }}</span>
+        <span class="log">本周末组: {{ it.logged }}
+          <span class="save-ok">{{ it.live_html|safe }}</span>
+        </span>
       {% else %}
         <span class="log empty">本周末组: 未填</span>
       {% endif %}

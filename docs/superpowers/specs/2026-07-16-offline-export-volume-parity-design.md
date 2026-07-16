@@ -14,7 +14,7 @@ webapp 另有手机离线导出：`plan.export_week`（`/export/week.html`）→
 
 ## 目标（用户决策）
 
-- 手机离线版显示**与桌面端 plan 视图完全一致**的容量信息（P1：严格一致）。
+- 手机离线版显示**与桌面端 plan 视图片段一致**的容量信息：est1RM + delta + 容量 WoW 串由同一个 `_live_html` helper 产出，与桌面逐字相同（P1：片段一致）。标签（`末组` vs `本周末组`）、rep 呈现（input `[12]` vs bare `12`）、字体大小（手机 `.save-ok` 嵌在 `.log{0.9em}` 内 ≈ 0.765em，桌面裸 0.85em）属手机端有意取舍，**不计入**一致性目标。
 - 手机版定位为**只读参考**（用户练前/练中看，不在手机填末组次数，回家在 app 填 → A）。因此未填末组时容量为空，与桌面未填时一致，不做投影兜底（否决 P2）。
 
 ## 非目标
@@ -60,7 +60,7 @@ webapp 另有手机离线导出：`plan.export_week`（`/export/week.html`）→
 
 ### A3 — 路由清理
 
-`export_week` 中 155–161 行单独计算 `it.live`（仅 est1RM 数值）的循环删除——`live_html` 已含 est1RM，`it.live` 不再被模板引用。
+`export_week` 中 155–161 行整段删除：含 `from ..services.preview import live_preview` 本地导入（155 行）+ 计算 `it.live` 的循环（156–161 行）。`live_html` 已含 est1RM，`it.live` 不再被模板引用；本地导入只服务该循环（`_live_html` 有自己的导入，38 行），一并清理避免死代码。
 
 ## 数据流
 
@@ -98,9 +98,9 @@ sbs | 100 kg × 5 × 5 | rep-out 10 | 最佳 1RM 120.00
 
 ## 测试（TDD）
 
-新增 webapp 导出测试（仿现有 `tests/` 中 webapp route 测试风格）：
+新增 webapp 导出测试（仿现有 `tests/` 中 webapp route 测试风格）。导出路由是薄胶水层——`_by_day` 硬编码正确的 `week` / `is_current`，WoW% 计算由 `lift_week_volume` + `_tonnage_html` 负责，已在 `test_preview_service.py` / 容量服务测试覆盖。新测试职责 = 证明 `live_html` 确实接到导出 HTML：
 
-1. **logged → 含容量**：某 lift 本周已 log 末组次数，`export_week` 输出 HTML 含 `容量` 字样 + 正确 WoW% 符号（`↗+` / `↘`）。
+1. **logged → 含容量**（presence-only，单周 fixture）：某 lift 本周已 log 末组次数，`export_week` 输出 HTML 含 `容量` 字样 + `≈`（est1RM 标记）。
 2. **未 log → 不含容量**：无任何 log 时，输出含 `未填`，不含 `容量`。
 3. **week 1**：`首次` 标记出现，不报除零。
 
@@ -109,5 +109,5 @@ sbs | 100 kg × 5 × 5 | rep-out 10 | 最佳 1RM 120.00
 ## 改动文件清单
 
 - `webapp/templates/week_export.html`（A1：模板 + CSS）
-- `webapp/routes/plan.py`（A3：删 `it.live` 循环，155–161 行）
+- `webapp/routes/plan.py`（A3：删 `it.live` 循环 + 现已冗余的 `live_preview` 本地导入，155–161 行）
 - `tests/`（新增导出测试）

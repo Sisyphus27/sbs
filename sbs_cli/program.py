@@ -2,22 +2,28 @@
 from typing import Optional, List
 from .data.schema import Lift, Profile, SetEntry, LiftState, ProgramState
 from .engine.onerm import estimate_1rm
+from .engine.load import working_weight
 from .engine.progression import sbs_next, t3_next, t2_next, T2State, round_weight, lookup_schedule
 
 
-def best_1rm(history: List[SetEntry]):
-    """Return (weight, reps) of the history entry with the highest estimate_1rm, or None."""
+def best_1rm(history: List[SetEntry], bodyweight: float = 0.0,
+             bodyweight_pct: float = 0.0):
+    """Return (working_weight, reps) of the history entry with the highest
+    estimate_1rm, or None. ``weight`` from each entry is treated as ADDED
+    weight and converted to working weight via the seam (ADR 0004)."""
     best = None
     best_e = -1.0
     for h in history:
-        e = estimate_1rm(h.weight, h.reps)
+        w = working_weight(h.weight, bodyweight, bodyweight_pct)
+        e = estimate_1rm(w, h.reps)
         if e > best_e:
-            best_e, best = e, (h.weight, h.reps)
+            best_e, best = e, (w, h.reps)
     return best
 
 
-def _est1rm_from_history(history: List[SetEntry]) -> Optional[float]:
-    b = best_1rm(history)
+def _est1rm_from_history(history: List[SetEntry], bodyweight: float = 0.0,
+                         bodyweight_pct: float = 0.0) -> Optional[float]:
+    b = best_1rm(history, bodyweight, bodyweight_pct)
     return estimate_1rm(b[0], b[1]) if b else None
 
 

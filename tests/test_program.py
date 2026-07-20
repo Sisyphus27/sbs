@@ -1,5 +1,6 @@
 from sbs_cli.data.schema import Lift, Profile, SetEntry, LiftState, ProgramState, ScheduleRow
-from sbs_cli.program import (best_1rm, initial_state, advance_lift, week_plan,
+from sbs_cli.program import (best_1rm, _est1rm_from_history, initial_state,
+                             advance_lift, week_plan,
                              recompute_state, recompute_sbs_tm)
 
 
@@ -245,3 +246,30 @@ def test_recompute_state_t2_reset_snaps_to_eff_incr():
     est = _est1rm_from_history(hist)
     assert ls.weight == round_weight(est * 0.75, 5)       # NEW: eff_incr 网格
     assert ls.weight != round_weight(est * 0.75, 2.5)     # OLD: 全局 rounding 会给不同值
+
+
+# -- Task 3: bodyweight working-weight seam (best_1rm / _est1rm_from_history) --
+
+from sbs_cli.engine.onerm import estimate_1rm
+
+
+def test_best_1rm_bodyweight_uses_working_weight_not_added():
+    # chin-up: added 0, bw 75, pct 1.0, reps 5 -> working weight 75
+    hist = [SetEntry(week=1, weight=0.0, reps=5)]
+    bw, reps = best_1rm(hist, bodyweight=75.0, bodyweight_pct=1.0)
+    assert bw == 75.0
+    assert reps == 5
+
+
+def test_est1rm_from_history_bodyweight_nonzero():
+    hist = [SetEntry(week=1, weight=0.0, reps=5)]
+    est = _est1rm_from_history(hist, bodyweight=75.0, bodyweight_pct=1.0)
+    assert est == estimate_1rm(75.0, 5)
+    assert est > 0.0
+
+
+def test_est1rm_from_history_ordinary_lift_unchanged():
+    # pct 0 -> working weight == added; legacy behavior preserved
+    hist = [SetEntry(week=1, weight=100.0, reps=5)]
+    est = _est1rm_from_history(hist, bodyweight=75.0, bodyweight_pct=0.0)
+    assert est == estimate_1rm(100.0, 5)

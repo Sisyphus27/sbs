@@ -53,6 +53,7 @@ def _by_day(conn):
     # mapping. Each item carries its id so the log form targets the right row.
     from types import SimpleNamespace
     from sbs_cli.engine.progression import round_weight, lookup_schedule
+    from sbs_cli.engine.load import working_weight
     settings = repo.get_settings(conn)
     lift_rows = repo.list_lifts(conn)
     logged = repo.get_week_logs(conn, settings["week"])
@@ -61,18 +62,28 @@ def _by_day(conn):
     for r in lift_rows:
         st = repo.get_lift_state(conn, r["id"])
         est1rm = st["est1rm"]
+        bw = settings["bodyweight"] if "bodyweight" in settings.keys() else 0.0
+        pct = r["bodyweight_pct"] if "bodyweight_pct" in r.keys() else 0.0
         if r["tier"] == "sbs":
             sc = lookup_schedule(schedule, r["lift_kind"], settings["week"])
             w = round_weight((st["tm"] or 0) * sc.intensity, settings["rounding"])
             item = SimpleNamespace(id=r["id"], name=r["name"], tier="sbs", weight=w,
+                                   working_weight=working_weight(w, bw, pct),
+                                   is_bodyweight=pct > 0,
                                    reps=sc.reps, sets=r["sets"], repout=sc.repout,
                                    target=None, streak=0, est1rm=est1rm)
         elif r["tier"] == "t2":
-            item = SimpleNamespace(id=r["id"], name=r["name"], tier="t2", weight=st["weight"],
+            added = st["weight"] or 0.0
+            item = SimpleNamespace(id=r["id"], name=r["name"], tier="t2", weight=added,
+                                   working_weight=working_weight(added, bw, pct),
+                                   is_bodyweight=pct > 0,
                                    reps=st["target"], sets=r["sets"], repout=None,
                                    target=st["target"], streak=st["streak"], est1rm=est1rm)
         else:  # t3
-            item = SimpleNamespace(id=r["id"], name=r["name"], tier="t3", weight=st["weight"],
+            added = st["weight"] or 0.0
+            item = SimpleNamespace(id=r["id"], name=r["name"], tier="t3", weight=added,
+                                   working_weight=working_weight(added, bw, pct),
+                                   is_bodyweight=pct > 0,
                                    reps=settings["t3_target"], sets=r["sets"], repout=None,
                                    target=settings["t3_target"], streak=0, est1rm=est1rm)
         item.logged = logged.get(r["id"], "")

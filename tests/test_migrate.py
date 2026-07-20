@@ -49,6 +49,32 @@ def test_migrate_refuses_overwrite(tmp_path):
         migrate.migrate_from_yaml(dbp, "profile.yaml", "state.yaml")
 
 
+def test_migrate_seeds_bodyweight_and_lift_bodyweight_fields(tmp_path):
+    # Task 14: seed(conn, p) must sync Profile.bodyweight -> settings.bodyweight
+    # and Lift.bodyweight_pct/progression -> lifts.columns from profile.yaml.
+    import migrate
+    from webapp.db import init_schema
+    import sqlite3
+    profile_yaml = tmp_path / "profile.yaml"
+    profile_yaml.write_text(
+        "bodyweight: 75.0\nrounding: 2.5\nlifts:\n"
+        "- name: Chin-ups\n  tier: t2\n  day: 2\n  start: 0.0\n"
+        "  bodyweight_pct: 1.0\n  progression: none\n",
+        encoding="utf-8")
+    db_path = tmp_path / "sbs.db"
+    conn = sqlite3.connect(str(db_path)); conn.row_factory = sqlite3.Row
+    init_schema(conn)
+    from sbs_cli.data.io import load_profile
+    p = load_profile(str(profile_yaml))
+    migrate.seed(conn, p)
+    from webapp.repo import get_settings, list_lifts
+    assert get_settings(conn)["bodyweight"] == 75.0
+    chin = next(r for r in list_lifts(conn) if r["name"] == "Chin-ups")
+    assert chin["bodyweight_pct"] == 1.0
+    assert chin["progression"] == "none"
+    conn.close()
+
+
 def test_migrate_from_xlsx_sets_sbs_lift_kind(tmp_path):
     # Regression: migrate_from_xlsx must pass the importer's lift_kind through to
     # the DB, else every sbs read path KeyErrors on lookup_schedule.

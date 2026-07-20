@@ -7,6 +7,31 @@ from sbs_cli.data import io as dio
 from webapp import db, repo
 
 
+def seed(conn, p):
+    """Apply a Profile to an already-open DB: settings + lifts.
+
+    Writes the global settings row (rounding/incr/etc. + bodyweight) and
+    creates one row per lift with its initial per-row state. Idempotent only
+    against a fresh schema — does not clear existing rows. Returns the
+    ordered list of lift ids matching ``p.lifts`` order so callers applying
+    legacy state can address rows by index.
+    """
+    repo.update_settings(
+        conn, days_per_week=p.days_per_week, rounding=p.rounding,
+        incr=p.incr, t2_reset_pct=p.t2_reset_pct, t2_fail=p.t2_fail, t3_target=p.t3_target,
+        bodyweight=p.bodyweight,
+    )
+    lids = []
+    for i, l in enumerate(p.lifts):
+        lid = repo.create_lift(
+            conn, name=l.name, tier=l.tier, day=l.day, sort_order=i, sets=l.sets,
+            max=l.max, intensity=l.intensity, reps=l.reps, repout=l.repout, start=l.start,
+            lift_kind=l.lift_kind, incr=l.incr,
+            bodyweight_pct=l.bodyweight_pct, progression=l.progression)
+        lids.append(lid)
+    return lids
+
+
 def migrate_from_yaml(db_path: str, profile_path: str, state_path: str, *, force: bool = False) -> None:
     if os.path.exists(db_path) and not force:
         sys.exit(f"refusing to overwrite existing {db_path} (pass --force)")
@@ -19,18 +44,8 @@ def migrate_from_yaml(db_path: str, profile_path: str, state_path: str, *, force
     s = dio.load_state(state_path)
     conn = db.connect(db_path)
     db.init_schema(conn)
-    repo.update_settings(
-        conn, week=s.week, days_per_week=p.days_per_week, rounding=p.rounding,
-        incr=p.incr, t2_reset_pct=p.t2_reset_pct, t2_fail=p.t2_fail, t3_target=p.t3_target,
-    )
-    # Pass 1: create every lift row with its correct per-row initial state.
-    lids = []
-    for i, l in enumerate(p.lifts):
-        lid = repo.create_lift(
-            conn, name=l.name, tier=l.tier, day=l.day, sort_order=i, sets=l.sets,
-            max=l.max, intensity=l.intensity, reps=l.reps, repout=l.repout, start=l.start,
-            lift_kind=l.lift_kind)
-        lids.append(lid)
+    lids = seed(conn, p)
+    repo.update_settings(conn, week=s.week)
     # Pass 2: apply YAML state. The old state.yaml is name-keyed, so for a name
     # shared by multiple rows (e.g. Face Pull on day 2 + day 4) assign the YAML
     # state to the single row whose configured start/max matches the YAML value;
@@ -63,20 +78,13 @@ def migrate_from_yaml(db_path: str, profile_path: str, state_path: str, *, force
 
 def migrate_from_xlsx(db_path: str, xlsx_path: str, *, force: bool = False) -> None:
     from sbs_cli.importer import import_profile
-    from sbs_cli.program import initial_state
     if os.path.exists(db_path) and not force:
         sys.exit(f"refusing to overwrite existing {db_path} (pass --force)")
     p = import_profile(xlsx_path)
-    s = initial_state(p)
     conn = db.connect(db_path)
     db.init_schema(conn)
-    repo.update_settings(conn, week=1, days_per_week=p.days_per_week, rounding=p.rounding,
-                         incr=p.incr, t2_reset_pct=p.t2_reset_pct, t2_fail=p.t2_fail,
-                         t3_target=p.t3_target)
-    for i, l in enumerate(p.lifts):
-        repo.create_lift(conn, name=l.name, tier=l.tier, day=l.day, sort_order=i, sets=l.sets,
-                         max=l.max, intensity=l.intensity, reps=l.reps, repout=l.repout, start=l.start,
-                         lift_kind=l.lift_kind)
+    seed(conn, p)
+    repo.update_settings(conn, week=1)
     conn.close()
     print(f"imported {len(p.lifts)} lifts from xlsx -> {db_path}")
 

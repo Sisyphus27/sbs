@@ -3,20 +3,28 @@ import sqlite3
 from sbs_cli.data.schema import SetEntry
 from sbs_cli.engine.onerm import estimate_1rm
 from sbs_cli.engine.progression import round_weight, lookup_schedule
+from sbs_cli.engine.load import working_weight
 from sbs_cli.program import _est1rm_from_history
 from .. import repo
 
 
 def _working_weight(lift, state, settings, schedule) -> float:
-    """Same working-weight logic as the plan view (sbs = tm*intensity, else state.weight).
+    """Same working-weight logic as the plan view, routed through the
+    ``working_weight`` seam (ADR 0004).
 
-    For sbs, intensity is pulled from sbs_schedule (single loader) by (lift_kind,
-    program week) — the lifts.intensity column is a stale seed, ignored at read.
+    - sbs: ``round_weight((state.tm or 0) * intensity, rounding)`` — intensity
+      comes from sbs_schedule (single loader) keyed by (lift_kind, program week);
+      the lifts.intensity column is a stale seed, ignored at read.
+    - t2/t3: ``working_weight(state.weight or 0, bodyweight, bodyweight_pct)`` —
+      bodyweight term is added back in for bodyweight lifts (pull-up/dip), zero
+      for ordinary lifts so legacy behavior is unchanged.
     """
     if lift["tier"] == "sbs":
         sc = lookup_schedule(schedule, lift["lift_kind"], settings["week"])
         return round_weight((state["tm"] or 0) * sc.intensity, settings["rounding"])
-    return state["weight"]
+    bw = settings["bodyweight"] if "bodyweight" in settings.keys() else 0.0
+    pct = lift["bodyweight_pct"] if "bodyweight_pct" in lift.keys() else 0.0
+    return working_weight(state["weight"] or 0.0, bw, pct)
 
 
 def live_preview(conn: sqlite3.Connection, lift_id: int, reps: int) -> dict:

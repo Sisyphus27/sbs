@@ -50,3 +50,22 @@ def test_live_preview_t2_uses_state_weight(tmp_path):
     assert r["weight"] == 85.0   # t2 working weight = state.weight
     assert r["est1rm"] == estimate_1rm(85.0, 10)
     conn.close()
+
+
+def test_live_preview_bodyweight_est1rm_uses_working_weight(tmp_path):
+    """Bodyweight lift (t2 Chin-ups, bw=75, pct=1.0): working weight is 75, not 0.
+
+    Pre-fix the t2/t3 branch returned raw state.weight (0.0 for a pure-bodyweight
+    lift), so est1RM was computed off 0. Routing t2/t3 through the working_weight
+    seam adds bodyweight * bodyweight_pct back in.
+    """
+    conn = db.connect(str(tmp_path / "t.db"))
+    db.init_schema(conn)
+    repo.update_settings(conn, bodyweight=75.0)
+    lid = repo.create_lift(conn, name="Chin-ups", tier="t2", day=2, sort_order=1,
+                           sets=3, max=None, intensity=None, reps=None, repout=None,
+                           start=0.0, bodyweight_pct=1.0)
+    r = preview.live_preview(conn, lid, 5)
+    assert r["weight"] == 75.0                       # working weight, not 0
+    assert r["est1rm"] == estimate_1rm(75.0, 5)
+    conn.close()

@@ -329,3 +329,17 @@ def test_advance_lift_bodyweight_history_stores_added_not_working():
     p = _bw_profile(schedule=[])
     advance_lift(p, lift, state, actual_reps=10, week=1)
     assert state.history[-1].weight == 0.0    # added, NOT 75
+
+
+# -- Task 6: week_plan exposes working weight for bodyweight lifts (CLI display) --
+
+def test_week_plan_bodyweight_t2_shows_working_weight_not_zero():
+    # Chin-ups (t2, pct 1.0): ls.weight=0 (added) -> PlanItem.weight must be
+    # working weight = 0 + 75*1.0 = 75, not the legacy raw 0.
+    lift = Lift(name="Chin-ups", tier="t2", day=2, start=0.0, bodyweight_pct=1.0)
+    p = Profile(bodyweight=75.0, incr=2.5, lifts=[lift], schedule=[])
+    st = ProgramState(week=1, lifts={"Chin-ups":
+        LiftState(name="Chin-ups", tier="t2", weight=0.0, target=8)})
+    items = week_plan(p, st, day=2)
+    assert len(items) == 1
+    assert items[0].weight == 75.0    # working weight, not 0.0

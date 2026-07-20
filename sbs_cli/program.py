@@ -93,9 +93,11 @@ def week_plan(profile: Profile, state: ProgramState, day: Optional[int] = None) 
             w = round_weight((ls.tm or 0) * sc.intensity, profile.rounding)
             out.append(PlanItem(l.name, "sbs", w, sc.reps, l.sets, sc.repout, None, 0, ls.est1rm))
         elif l.tier == "t2":
-            out.append(PlanItem(l.name, "t2", ls.weight, ls.target, l.sets, None, ls.target, ls.streak, ls.est1rm))
+            w = working_weight(ls.weight or 0.0, profile.bodyweight, l.bodyweight_pct)
+            out.append(PlanItem(l.name, "t2", w, ls.target, l.sets, None, ls.target, ls.streak, ls.est1rm))
         elif l.tier == "t3":
-            out.append(PlanItem(l.name, "t3", ls.weight, profile.t3_target, l.sets, None, profile.t3_target, 0, ls.est1rm))
+            w = working_weight(ls.weight or 0.0, profile.bodyweight, l.bodyweight_pct)
+            out.append(PlanItem(l.name, "t3", w, profile.t3_target, l.sets, None, profile.t3_target, 0, ls.est1rm))
     return out
 
 

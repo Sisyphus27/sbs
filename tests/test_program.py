@@ -294,3 +294,38 @@ def test_recompute_state_t2_bodyweight_reset_uses_working_weight():
     # reset weight should be on the order of est1rm(75, 3) * 0.75 ~ 60 kg,
     # NOT near 0. Assert it is plainly bodyweight-driven:
     assert ls.weight > 50.0
+
+
+# -- Task 5: advance_lift progression="none" + working-weight est1RM --
+
+def _bw_profile(**kw):
+    return Profile(bodyweight=75.0, incr=2.5, t3_target=15, **kw)
+
+
+def test_advance_lift_progression_none_skips_weight_progression():
+    # High Crunch: t3, pct 1.0, progression none. Hit target (15) -> state.weight
+    # must NOT gain incr (no phantom added weight).
+    lift = Lift(name="High Crunch", tier="t3", day=4, start=0.0,
+                bodyweight_pct=1.0, progression="none")
+    state = LiftState(name="High Crunch", tier="t3", weight=0.0)
+    p = _bw_profile(schedule=[])  # t3 doesn't need schedule
+    advance_lift(p, lift, state, actual_reps=20, week=1)
+    assert state.weight == 0.0           # unchanged -- no +2.5 phantom added
+    assert state.est1rm is not None and state.est1rm > 0.0   # est1rm from bw
+
+
+def test_advance_lift_progression_weight_still_increments_added():
+    # Dips: t3, pct 1.0, progression weight (default). Hit target -> +incr to added.
+    lift = Lift(name="Dips", tier="t3", day=4, start=0.0, bodyweight_pct=1.0)
+    state = LiftState(name="Dips", tier="t3", weight=0.0)
+    p = _bw_profile(schedule=[])
+    advance_lift(p, lift, state, actual_reps=20, week=1)
+    assert state.weight == 2.5           # added grew by incr
+
+
+def test_advance_lift_bodyweight_history_stores_added_not_working():
+    lift = Lift(name="Dips", tier="t3", day=4, start=0.0, bodyweight_pct=1.0)
+    state = LiftState(name="Dips", tier="t3", weight=0.0)
+    p = _bw_profile(schedule=[])
+    advance_lift(p, lift, state, actual_reps=10, week=1)
+    assert state.history[-1].weight == 0.0    # added, NOT 75

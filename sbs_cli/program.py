@@ -49,10 +49,13 @@ def advance_lift(profile: Profile, lift: Lift, state: LiftState, actual_reps, we
         w = state.weight
     if actual_reps is not None:
         state.history.append(SetEntry(week=week, weight=w, reps=actual_reps))
-        state.est1rm = _est1rm_from_history(state.history)
+        state.est1rm = _est1rm_from_history(state.history,
+                                            profile.bodyweight, lift.bodyweight_pct)
     # progress
     if lift.tier == "sbs":
         state.tm = sbs_next(state.tm, sc.repout, actual_reps)
+    elif lift.progression == "none":
+        pass   # pure bodyweight: record only, no auto weight progression (ADR 0004)
     else:
         # effective step: per-lift incr ?? global incr (ADR 0003). It is both the hit-add Δ
         # and the snap grid for this lift's T2 reset. sbs ignores incr entirely.

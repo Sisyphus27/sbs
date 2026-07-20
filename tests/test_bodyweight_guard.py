@@ -59,3 +59,27 @@ def test_guard_advance_t2_reset_uses_working_weight():
     for _ in range(3):
         advance_lift(p, lift, state, 3, 1)   # miss each time
     assert state.weight > 50.0   # reset to ~est1rm(75,3)*0.75, not near 0
+
+
+def test_guard_tier_switch_derive_state_is_bodyweight_driven():
+    """ADR 0004 guard: tier.derive_state (preview + apply path) must thread
+    bodyweight into _est1rm_from_history. A bodyweight lift (bw=75, pct=1.0,
+    added=0) switched to t2 must derive est1rm == estimate_1rm(75, reps), NOT
+    estimate_1rm(0, reps) ~= 0. Regression for the call-site inventory miss in
+    the bodyweight-working-weight plan (whole-branch review finding)."""
+    from webapp.services.tier import derive_state
+    from webapp.repo import get_settings
+    conn = _seed_bodyweight_db()
+    lid = create_lift(conn, name="Chin-ups", tier="t3", day=2, sort_order=1, sets=3,
+                      max=None, intensity=None, reps=None, repout=None, start=0.0,
+                      bodyweight_pct=1.0)
+    # history.weight is ADDED weight (ADR 0004 seam) — 0 for a pure-bodyweight lift.
+    append_history(conn, lid, week=1, weight=0.0, reps=5)  # added=0, bw=75 -> ww=75
+    settings = get_settings(conn)
+    derived = derive_state(conn, lid, "t2", settings)
+    # Load-bearing claim: est1rm is bodyweight-driven, not 0.
+    assert derived["est1rm"] == estimate_1rm(75.0, 5)
+    # User-visible consequence: the t2 reset/start weight snaps onto a
+    # bodyweight-scale grid, NOT 0. (estimate_1rm(75,5)*0.75 ~= 65.)
+    assert derived["weight"] > 50.0
+    conn.close()

@@ -12,6 +12,8 @@ def _lift_from_row(r) -> Lift:
         repout=r["repout"] or 0, sets=r["sets"] or 3, start=r["start"],
         lift_kind=r["lift_kind"],
         incr=r["incr"] if "incr" in r.keys() else None,
+        bodyweight_pct=r["bodyweight_pct"] if "bodyweight_pct" in r.keys() else 0.0,
+        progression=r["progression"] if "progression" in r.keys() else "weight",
     )
 
 
@@ -20,6 +22,7 @@ def _profile_from_rows(settings, lift_rows, schedule) -> Profile:
         rounding=settings["rounding"], days_per_week=settings["days_per_week"],
         incr=settings["incr"], t2_reset_pct=settings["t2_reset_pct"],
         t2_fail=settings["t2_fail"], t3_target=settings["t3_target"],
+        bodyweight=settings["bodyweight"] if "bodyweight" in settings.keys() else 0.0,
         lifts=[_lift_from_row(r) for r in lift_rows],
         schedule=schedule,
     )

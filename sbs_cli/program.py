@@ -99,9 +99,10 @@ def week_plan(profile: Profile, state: ProgramState, day: Optional[int] = None) 
 def recompute_state(lift: Lift, history: List[SetEntry], profile: Profile) -> LiftState:
     """Re-derive a t2/t3 lift's state by replaying progression from ``lift.start``
     over ``history``. History rows are immutable facts; only their reps drive the
-    replay. ``est1rm`` is computed from the real history weights (unchanged by the
-    new start). Not applicable to sbs (sbs has no start-based progression)."""
-    est = _est1rm_from_history(history)
+    replay. ``est1rm`` is computed from working weight (added + bodyweight * pct,
+    per ADR 0004). Not applicable to sbs (sbs has no start-based progression)."""
+    bw, pct = profile.bodyweight, lift.bodyweight_pct
+    est = _est1rm_from_history(history, bw, pct)
     # effective step: per-lift incr ?? global incr (ADR 0003).
     eff_incr = lift.incr if lift.incr is not None else profile.incr
     if lift.tier == "t3":
@@ -113,7 +114,7 @@ def recompute_state(lift: Lift, history: List[SetEntry], profile: Profile) -> Li
     if lift.tier == "t2":
         target, streak, weight = 8, 0, lift.start or 0.0
         for k, h in enumerate(history):
-            est_k = _est1rm_from_history(history[:k + 1]) or 0.0
+            est_k = _est1rm_from_history(history[:k + 1], bw, pct) or 0.0
             ns = t2_next(T2State(target, streak, weight), h.reps, est_k,
                          fail=profile.t2_fail, incr=eff_incr,
                          reset_pct=profile.t2_reset_pct, quantum=eff_incr)

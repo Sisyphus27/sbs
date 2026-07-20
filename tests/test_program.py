@@ -273,3 +273,24 @@ def test_est1rm_from_history_ordinary_lift_unchanged():
     hist = [SetEntry(week=1, weight=100.0, reps=5)]
     est = _est1rm_from_history(hist, bodyweight=75.0, bodyweight_pct=0.0)
     assert est == estimate_1rm(100.0, 5)
+
+
+# -- Task 4: recompute_state threads bodyweight into est1RM + T2 reset --
+
+def test_recompute_state_t2_bodyweight_reset_uses_working_weight():
+    # Chin-ups (t2, pct 1.0). Force 3 consecutive misses -> reset to
+    # round(est1rm * 0.75, incr). est1rm must be computed from working weight
+    # (bodyweight + added), not added alone -- otherwise reset weight collapses
+    # toward 0. DEViation from brief: reps=3 (not 5) so week 3 at target=4 is
+    # still a MISS; with reps=5 the ladder cascade makes W3 a HIT at target=4
+    # (5>=4) so the reset path never fires and the fix would not be exercised.
+    lift = Lift(name="Chin-ups", tier="t2", day=2, start=0.0,
+                bodyweight_pct=1.0, incr=2.5)
+    profile = Profile(bodyweight=75.0, incr=2.5, t2_fail=3, t2_reset_pct=0.75)
+    hist = [SetEntry(week=1, weight=0.0, reps=3),
+            SetEntry(week=2, weight=0.0, reps=3),
+            SetEntry(week=3, weight=0.0, reps=3)]
+    ls = recompute_state(lift, hist, profile)
+    # reset weight should be on the order of est1rm(75, 3) * 0.75 ~ 60 kg,
+    # NOT near 0. Assert it is plainly bodyweight-driven:
+    assert ls.weight > 50.0

@@ -7,7 +7,8 @@ from .. import repo
 bp = Blueprint("settings", __name__)
 
 _NUM = {"rounding": float, "incr": float, "t2_reset_pct": float,
-        "t2_fail": int, "t3_target": int, "days_per_week": int}
+        "t2_fail": int, "t3_target": int, "days_per_week": int,
+        "bodyweight": float}
 
 
 @bp.route("/settings")

@@ -60,7 +60,9 @@ def new():
             sets=_f("sets", 3, int), max=_f("max", cast=float),
             intensity=_f("intensity", cast=float), reps=_f("reps", cast=int),
             repout=_f("repout", cast=int), start=_f("start", cast=float),
-            lift_kind=_f("lift_kind") if tier == "sbs" else None, incr=incr)
+            lift_kind=_f("lift_kind") if tier == "sbs" else None, incr=incr,
+            bodyweight_pct=_f("bodyweight_pct", 0.0, float) or 0.0,
+            progression=request.form.get("progression", "weight"))
     except Exception as e:
         flash(f"创建失败: {e}")
         return render_template("_lift_row.html", lift=None, error=str(e)), 400
@@ -74,7 +76,8 @@ def edit(lid):
     fields = {}
     for col, cast in (("name", str), ("tier", str), ("day", int), ("sets", int),
                       ("max", float), ("intensity", float), ("reps", int),
-                      ("repout", int), ("start", float), ("lift_kind", str)):
+                      ("repout", int), ("start", float), ("lift_kind", str),
+                      ("bodyweight_pct", float), ("progression", str)):
         if col in request.form and request.form[col].strip() != "":
             fields[col] = cast(request.form[col])
     # incr：表单出现即处理。空串 -> NULL（清除覆盖回全局）；非空 -> 必须 >0 数字（D7）。

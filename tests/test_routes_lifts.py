@@ -219,3 +219,23 @@ def test_edit_rejects_nonpositive_incr_and_preserves_original(client, app):
         conn = connect(app.config["DB_PATH"])
         assert repo.get_lift(conn, lid)["incr"] == 5.0  # original preserved
         conn.close()
+
+
+def test_edit_lift_sets_bodyweight_pct_and_progression(client, app):
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        lid = repo.create_lift(conn, name="Crunch", tier="t3", day=4, sort_order=1,
+                               sets=3, max=None, intensity=None, reps=None,
+                               repout=None, start=0.0)
+        conn.close()
+    rv = client.post(f"/lifts/{lid}/edit", data={"bodyweight_pct": "1.0",
+                                                 "progression": "none"})
+    assert rv.status_code == 200
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        row = repo.get_lift(conn, lid)
+        assert row["bodyweight_pct"] == 1.0
+        assert row["progression"] == "none"
+        conn.close()

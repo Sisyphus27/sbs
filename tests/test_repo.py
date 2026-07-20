@@ -285,3 +285,40 @@ def test_update_lift_rejects_unknown_column(app):
                                start=85.0)
         with pytest.raises(ValueError):
             repo.update_lift(conn, lid, not_a_column=1)
+
+
+# ---------- Task 7: bodyweight_pct + progression ----------
+
+def test_create_lift_stores_bodyweight_pct_and_progression(app):
+    """create_lift accepts bodyweight_pct + progression and round-trips them (Task 7)."""
+    from webapp.db import connect
+    with app.app_context():
+        conn = connect(app.config["DB_PATH"])
+        lid = repo.create_lift(conn, name="Dips", tier="t3", day=4, sort_order=1, sets=3,
+                               max=None, intensity=None, reps=None, repout=None, start=0.0,
+                               bodyweight_pct=1.0, progression="none")
+        row = repo.get_lift(conn, lid)
+        assert row["bodyweight_pct"] == 1.0
+        assert row["progression"] == "none"
+
+
+def test_create_lift_bodyweight_pct_and_progression_have_defaults(app):
+    """Omitting the new kwargs must keep legacy callers green (Task 7)."""
+    from webapp.db import connect
+    with app.app_context():
+        conn = connect(app.config["DB_PATH"])
+        lid = repo.create_lift(conn, name="Pull-up", tier="t3", day=2, sort_order=0,
+                               sets=3, max=None, intensity=None, reps=None, repout=None,
+                               start=30.0)
+        row = repo.get_lift(conn, lid)
+        assert row["bodyweight_pct"] == 0.0
+        assert row["progression"] == "weight"
+
+
+def test_get_settings_returns_bodyweight_default(app):
+    """Fresh DB seeds settings.bodyweight = 0.0 (Task 7)."""
+    from webapp.db import connect
+    with app.app_context():
+        conn = connect(app.config["DB_PATH"])
+        s = repo.get_settings(conn)
+        assert s["bodyweight"] == 0.0

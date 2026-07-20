@@ -236,3 +236,23 @@ def test_export_week_omits_tonnage_when_not_logged(client, app):
     html = client.get("/export/week.html").get_data(as_text=True)
     assert "未填" in html
     assert "容量" not in html
+
+
+def test_plan_view_renders_bodyweight_added_plus_working_weight(client, app):
+    """Bodyweight lift renders '+added (working)' meta format (Task 11).
+
+    Chin-ups t2, start=0, bodyweight=75, pct=1.0 -> working_weight = 0 + 75*1.0 = 75.
+    Meta line shows '+0 (75.0) kg' — added is the user's load, working_weight is the
+    parenthetical. Non-bodyweight lifts keep the plain '{{ weight }} kg' format.
+    """
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        repo.update_settings(conn, bodyweight=75.0)
+        repo.create_lift(conn, name="Chin-ups", tier="t2", day=1, sort_order=1, sets=3,
+                         max=None, intensity=None, reps=None, repout=None, start=0.0,
+                         bodyweight_pct=1.0)
+        conn.close()
+    body = client.get("/").get_data(as_text=True)
+    assert "+0" in body              # added load shown with + prefix
+    assert "(75" in body             # working_weight shown in parens

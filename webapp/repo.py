@@ -3,7 +3,7 @@ from typing import Optional
 import sqlite3
 
 _SETTINGS_COLS = ("week", "days_per_week", "rounding", "incr",
-                  "t2_reset_pct", "t2_fail", "t3_target")
+                  "t2_reset_pct", "t2_fail", "t3_target", "bodyweight")
 
 
 # ---------- settings ----------
@@ -29,16 +29,19 @@ def update_settings(conn: sqlite3.Connection, **fields) -> None:
 
 # ---------- lifts ----------
 _LIFT_COLS = ("name", "tier", "day", "sort_order", "sets",
-              "max", "intensity", "reps", "repout", "start", "lift_kind", "incr")
+              "max", "intensity", "reps", "repout", "start", "lift_kind", "incr",
+              "bodyweight_pct", "progression")
 
 
 def create_lift(conn: sqlite3.Connection, *, name: str, tier: str, day: int,
                 sort_order: int, sets: int, max, intensity, reps, repout,
-                start, lift_kind=None, incr=None) -> int:
+                start, lift_kind=None, incr=None,
+                bodyweight_pct: float = 0.0, progression: str = "weight") -> int:
     cur = conn.execute(
-        "INSERT INTO lifts (name, tier, day, sort_order, sets, max, intensity, reps, repout, start, lift_kind, incr) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (name, tier, day, sort_order, sets, max, intensity, reps, repout, start, lift_kind, incr),
+        "INSERT INTO lifts (name, tier, day, sort_order, sets, max, intensity, reps, repout, start, lift_kind, incr, bodyweight_pct, progression) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (name, tier, day, sort_order, sets, max, intensity, reps, repout, start, lift_kind, incr,
+         bodyweight_pct, progression),
     )
     lid = cur.lastrowid
     _init_lift_state(conn, lid, tier, max, start)

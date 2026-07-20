@@ -103,3 +103,31 @@ def test_lift_from_row_tolerates_missing_incr_column():
     assert lift.name == "Rows"
     assert lift.incr is None  # no IndexError; inherits global
 
+
+def test_lift_from_row_maps_bodyweight_pct_and_progression(tmp_path):
+    """_lift_from_row must carry bodyweight_pct + progression from the DB row
+    into the Lift dataclass so downstream engine code (advance_lift, volume,
+    preview) receives them. Guards with `in r.keys()` for older rows."""
+    conn = db.connect(str(tmp_path / "t.db"))
+    db.init_schema(conn)
+    lid = repo.create_lift(conn, name="Chin-ups", tier="t2", day=2, sort_order=1, sets=3,
+                           max=None, intensity=None, reps=None, repout=None, start=0.0,
+                           bodyweight_pct=1.0, progression="none")
+    row = repo.get_lift(conn, lid)
+    lift = advance._lift_from_row(row)
+    assert lift.bodyweight_pct == 1.0
+    assert lift.progression == "none"
+    conn.close()
+
+
+def test_profile_from_rows_maps_bodyweight(tmp_path):
+    """_profile_from_rows must carry bodyweight from settings into Profile so
+    the engine's working_weight() can use it. Guards with `in settings.keys()`
+    for older rows."""
+    conn = db.connect(str(tmp_path / "t.db"))
+    db.init_schema(conn)
+    repo.update_settings(conn, bodyweight=75.0)
+    p = advance._profile_from_rows(repo.get_settings(conn), [], [])
+    assert p.bodyweight == 75.0
+    conn.close()
+

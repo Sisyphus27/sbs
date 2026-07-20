@@ -1,4 +1,5 @@
 import sqlite3
+from webapp.db import init_schema
 from webapp import db
 
 
@@ -56,4 +57,38 @@ def test_foreign_keys_enforced(tmp_path):
     db.init_schema(conn)
     fk = conn.execute("PRAGMA foreign_keys").fetchone()[0]
     assert fk == 1
+    conn.close()
+
+
+# ---------- Task 7: bodyweight / bodyweight_pct / progression ----------
+
+def test_init_schema_adds_bodyweight_columns_to_legacy_db():
+    """A DB created with the OLD schema (no bodyweight cols) must gain them on
+    the next init_schema call, so existing user DBs upgrade in place."""
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    # build OLD-shape schema (pre-bodyweight)
+    conn.executescript("""
+        CREATE TABLE settings (id INTEGER PRIMARY KEY CHECK (id=1), week INTEGER,
+            days_per_week INTEGER, rounding REAL, incr REAL, t2_reset_pct REAL,
+            t2_fail INTEGER, t3_target INTEGER);
+        CREATE TABLE lifts (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, tier TEXT,
+            day INTEGER, sort_order INTEGER, sets INTEGER, max REAL, intensity REAL,
+            reps INTEGER, repout INTEGER, start REAL, lift_kind TEXT, incr REAL);
+        CREATE TABLE lift_state (lift_id INTEGER PRIMARY KEY, tier TEXT, tm REAL,
+            weight REAL, target INTEGER, streak INTEGER, est1rm REAL, reseeded_cycle INTEGER);
+        CREATE TABLE history (id INTEGER PRIMARY KEY AUTOINCREMENT, lift_id INTEGER,
+            week INTEGER, weight REAL, reps INTEGER, ts TEXT);
+        CREATE TABLE week_log (lift_id INTEGER, week INTEGER, reps INTEGER,
+            PRIMARY KEY (lift_id, week));
+        CREATE TABLE sbs_schedule (kind TEXT, week INTEGER, intensity REAL, reps INTEGER,
+            repout INTEGER, PRIMARY KEY (kind, week));
+        INSERT INTO settings VALUES (1,1,4,2.5,2.5,0.75,3,15);
+    """)
+    init_schema(conn)   # should ALTER missing columns into existence
+    s_cols = {r["name"] for r in conn.execute("PRAGMA table_info(settings)")}
+    l_cols = {r["name"] for r in conn.execute("PRAGMA table_info(lifts)")}
+    assert "bodyweight" in s_cols
+    assert "bodyweight_pct" in l_cols
+    assert "progression" in l_cols
     conn.close()

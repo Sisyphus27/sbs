@@ -1,5 +1,6 @@
 from sbs_cli.data.schema import Lift, Profile, SetEntry, LiftState, ProgramState, ScheduleRow
-from sbs_cli.program import (best_1rm, initial_state, advance_lift, week_plan,
+from sbs_cli.program import (best_1rm, _est1rm_from_history, initial_state,
+                             advance_lift, week_plan,
                              recompute_state, recompute_sbs_tm)
 
 
@@ -245,3 +246,100 @@ def test_recompute_state_t2_reset_snaps_to_eff_incr():
     est = _est1rm_from_history(hist)
     assert ls.weight == round_weight(est * 0.75, 5)       # NEW: eff_incr 网格
     assert ls.weight != round_weight(est * 0.75, 2.5)     # OLD: 全局 rounding 会给不同值
+
+
+# -- Task 3: bodyweight working-weight seam (best_1rm / _est1rm_from_history) --
+
+from sbs_cli.engine.onerm import estimate_1rm
+
+
+def test_best_1rm_bodyweight_uses_working_weight_not_added():
+    # chin-up: added 0, bw 75, pct 1.0, reps 5 -> working weight 75
+    hist = [SetEntry(week=1, weight=0.0, reps=5)]
+    bw, reps = best_1rm(hist, bodyweight=75.0, bodyweight_pct=1.0)
+    assert bw == 75.0
+    assert reps == 5
+
+
+def test_est1rm_from_history_bodyweight_nonzero():
+    hist = [SetEntry(week=1, weight=0.0, reps=5)]
+    est = _est1rm_from_history(hist, bodyweight=75.0, bodyweight_pct=1.0)
+    assert est == estimate_1rm(75.0, 5)
+    assert est > 0.0
+
+
+def test_est1rm_from_history_ordinary_lift_unchanged():
+    # pct 0 -> working weight == added; legacy behavior preserved
+    hist = [SetEntry(week=1, weight=100.0, reps=5)]
+    est = _est1rm_from_history(hist, bodyweight=75.0, bodyweight_pct=0.0)
+    assert est == estimate_1rm(100.0, 5)
+
+
+# -- Task 4: recompute_state threads bodyweight into est1RM + T2 reset --
+
+def test_recompute_state_t2_bodyweight_reset_uses_working_weight():
+    # Chin-ups (t2, pct 1.0). Force 3 consecutive misses -> reset to
+    # round(est1rm * 0.75, incr). est1rm must be computed from working weight
+    # (bodyweight + added), not added alone -- otherwise reset weight collapses
+    # toward 0. DEViation from brief: reps=3 (not 5) so week 3 at target=4 is
+    # still a MISS; with reps=5 the ladder cascade makes W3 a HIT at target=4
+    # (5>=4) so the reset path never fires and the fix would not be exercised.
+    lift = Lift(name="Chin-ups", tier="t2", day=2, start=0.0,
+                bodyweight_pct=1.0, incr=2.5)
+    profile = Profile(bodyweight=75.0, incr=2.5, t2_fail=3, t2_reset_pct=0.75)
+    hist = [SetEntry(week=1, weight=0.0, reps=3),
+            SetEntry(week=2, weight=0.0, reps=3),
+            SetEntry(week=3, weight=0.0, reps=3)]
+    ls = recompute_state(lift, hist, profile)
+    # reset weight should be on the order of est1rm(75, 3) * 0.75 ~ 60 kg,
+    # NOT near 0. Assert it is plainly bodyweight-driven:
+    assert ls.weight > 50.0
+
+
+# -- Task 5: advance_lift progression="none" + working-weight est1RM --
+
+def _bw_profile(**kw):
+    return Profile(bodyweight=75.0, incr=2.5, t3_target=15, **kw)
+
+
+def test_advance_lift_progression_none_skips_weight_progression():
+    # High Crunch: t3, pct 1.0, progression none. Hit target (15) -> state.weight
+    # must NOT gain incr (no phantom added weight).
+    lift = Lift(name="High Crunch", tier="t3", day=4, start=0.0,
+                bodyweight_pct=1.0, progression="none")
+    state = LiftState(name="High Crunch", tier="t3", weight=0.0)
+    p = _bw_profile(schedule=[])  # t3 doesn't need schedule
+    advance_lift(p, lift, state, actual_reps=20, week=1)
+    assert state.weight == 0.0           # unchanged -- no +2.5 phantom added
+    assert state.est1rm is not None and state.est1rm > 0.0   # est1rm from bw
+
+
+def test_advance_lift_progression_weight_still_increments_added():
+    # Dips: t3, pct 1.0, progression weight (default). Hit target -> +incr to added.
+    lift = Lift(name="Dips", tier="t3", day=4, start=0.0, bodyweight_pct=1.0)
+    state = LiftState(name="Dips", tier="t3", weight=0.0)
+    p = _bw_profile(schedule=[])
+    advance_lift(p, lift, state, actual_reps=20, week=1)
+    assert state.weight == 2.5           # added grew by incr
+
+
+def test_advance_lift_bodyweight_history_stores_added_not_working():
+    lift = Lift(name="Dips", tier="t3", day=4, start=0.0, bodyweight_pct=1.0)
+    state = LiftState(name="Dips", tier="t3", weight=0.0)
+    p = _bw_profile(schedule=[])
+    advance_lift(p, lift, state, actual_reps=10, week=1)
+    assert state.history[-1].weight == 0.0    # added, NOT 75
+
+
+# -- Task 6: week_plan exposes working weight for bodyweight lifts (CLI display) --
+
+def test_week_plan_bodyweight_t2_shows_working_weight_not_zero():
+    # Chin-ups (t2, pct 1.0): ls.weight=0 (added) -> PlanItem.weight must be
+    # working weight = 0 + 75*1.0 = 75, not the legacy raw 0.
+    lift = Lift(name="Chin-ups", tier="t2", day=2, start=0.0, bodyweight_pct=1.0)
+    p = Profile(bodyweight=75.0, incr=2.5, lifts=[lift], schedule=[])
+    st = ProgramState(week=1, lifts={"Chin-ups":
+        LiftState(name="Chin-ups", tier="t2", weight=0.0, target=8)})
+    items = week_plan(p, st, day=2)
+    assert len(items) == 1
+    assert items[0].weight == 75.0    # working weight, not 0.0

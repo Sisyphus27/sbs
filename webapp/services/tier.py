@@ -13,8 +13,15 @@ def derive_state(conn: sqlite3.Connection, lift_id: int, new_tier: str,
         raise ValueError(f"unknown tier: {new_tier}")
     hist_rows = repo.list_history(conn, lift_id)
     history = [SetEntry(week=h["week"], weight=h["weight"], reps=h["reps"]) for h in hist_rows]
-    est1rm = _est1rm_from_history(history)
     lift = repo.get_lift(conn, lift_id)
+    # ADR 0004: history.weight is ADDED weight — thread bodyweight through the
+    # working-weight seam so a pure-bodyweight lift (added=0, bw=75, pct=1.0)
+    # yields est1rm ~= estimate_1rm(75, reps), NOT ~0. Same guard pattern as
+    # Tasks 8-11 (preview/volume/advance). Without this, the t2/t3 derived
+    # start weight collapses to 0 — the exact raw-added leak ADR 0004 prevents.
+    pct = lift["bodyweight_pct"] if "bodyweight_pct" in lift.keys() else 0.0
+    bw = settings["bodyweight"] if "bodyweight" in settings.keys() else 0.0
+    est1rm = _est1rm_from_history(history, bw, pct)
     # ADR 0003: t2/t3 derived start weights snap to this lift's effective-step grid
     # (per-lift incr ?? global incr), NOT the global rounding. sbs ignores incr.
     # Guard: legacy DBs pre-migrate_incr.py have no incr column — fall back to

@@ -10,6 +10,7 @@ import sqlite3
 from typing import Optional
 
 from sbs_cli.data.schema import SetEntry
+from sbs_cli.engine.load import working_weight
 from sbs_cli.engine.progression import lookup_schedule
 from sbs_cli.program import recompute_state
 from .. import repo
@@ -69,7 +70,9 @@ def lift_week_volume(conn: sqlite3.Connection, lift_id: int, week: int,
         if row is None:
             return None
         last_set = row["reps"]
-        weight = row["weight"]
+        bw = settings["bodyweight"] if "bodyweight" in settings.keys() else 0.0
+        pct = lift["bodyweight_pct"] if "bodyweight_pct" in lift.keys() else 0.0
+        weight = working_weight(row["weight"], bw, pct)
 
     if tier == "sbs":
         planned = lookup_schedule(schedule, lift["lift_kind"], week).reps

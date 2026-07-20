@@ -45,3 +45,13 @@ def test_reset_rounding_is_not_a_route(client):
 def test_reset_unknown_field_is_404(client):
     rv = client.post("/settings/nope/reset")
     assert rv.status_code == 404
+
+
+def test_update_settings_bodyweight(client, app):
+    rv = client.post("/settings", data={"bodyweight": "75.5"})
+    assert rv.status_code == 302
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        assert repo.get_settings(conn)["bodyweight"] == 75.5
+        conn.close()

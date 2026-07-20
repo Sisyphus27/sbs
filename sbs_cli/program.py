@@ -2,22 +2,28 @@
 from typing import Optional, List
 from .data.schema import Lift, Profile, SetEntry, LiftState, ProgramState
 from .engine.onerm import estimate_1rm
+from .engine.load import working_weight
 from .engine.progression import sbs_next, t3_next, t2_next, T2State, round_weight, lookup_schedule
 
 
-def best_1rm(history: List[SetEntry]):
-    """Return (weight, reps) of the history entry with the highest estimate_1rm, or None."""
+def best_1rm(history: List[SetEntry], bodyweight: float = 0.0,
+             bodyweight_pct: float = 0.0):
+    """Return (working_weight, reps) of the history entry with the highest
+    estimate_1rm, or None. ``weight`` from each entry is treated as ADDED
+    weight and converted to working weight via the seam (ADR 0004)."""
     best = None
     best_e = -1.0
     for h in history:
-        e = estimate_1rm(h.weight, h.reps)
+        w = working_weight(h.weight, bodyweight, bodyweight_pct)
+        e = estimate_1rm(w, h.reps)
         if e > best_e:
-            best_e, best = e, (h.weight, h.reps)
+            best_e, best = e, (w, h.reps)
     return best
 
 
-def _est1rm_from_history(history: List[SetEntry]) -> Optional[float]:
-    b = best_1rm(history)
+def _est1rm_from_history(history: List[SetEntry], bodyweight: float = 0.0,
+                         bodyweight_pct: float = 0.0) -> Optional[float]:
+    b = best_1rm(history, bodyweight, bodyweight_pct)
     return estimate_1rm(b[0], b[1]) if b else None
 
 
@@ -43,10 +49,13 @@ def advance_lift(profile: Profile, lift: Lift, state: LiftState, actual_reps, we
         w = state.weight
     if actual_reps is not None:
         state.history.append(SetEntry(week=week, weight=w, reps=actual_reps))
-        state.est1rm = _est1rm_from_history(state.history)
+        state.est1rm = _est1rm_from_history(state.history,
+                                            profile.bodyweight, lift.bodyweight_pct)
     # progress
     if lift.tier == "sbs":
         state.tm = sbs_next(state.tm, sc.repout, actual_reps)
+    elif lift.progression == "none":
+        pass   # pure bodyweight: record only, no auto weight progression (ADR 0004)
     else:
         # effective step: per-lift incr ?? global incr (ADR 0003). It is both the hit-add Δ
         # and the snap grid for this lift's T2 reset. sbs ignores incr entirely.
@@ -84,18 +93,21 @@ def week_plan(profile: Profile, state: ProgramState, day: Optional[int] = None) 
             w = round_weight((ls.tm or 0) * sc.intensity, profile.rounding)
             out.append(PlanItem(l.name, "sbs", w, sc.reps, l.sets, sc.repout, None, 0, ls.est1rm))
         elif l.tier == "t2":
-            out.append(PlanItem(l.name, "t2", ls.weight, ls.target, l.sets, None, ls.target, ls.streak, ls.est1rm))
+            w = working_weight(ls.weight or 0.0, profile.bodyweight, l.bodyweight_pct)
+            out.append(PlanItem(l.name, "t2", w, ls.target, l.sets, None, ls.target, ls.streak, ls.est1rm))
         elif l.tier == "t3":
-            out.append(PlanItem(l.name, "t3", ls.weight, profile.t3_target, l.sets, None, profile.t3_target, 0, ls.est1rm))
+            w = working_weight(ls.weight or 0.0, profile.bodyweight, l.bodyweight_pct)
+            out.append(PlanItem(l.name, "t3", w, profile.t3_target, l.sets, None, profile.t3_target, 0, ls.est1rm))
     return out
 
 
 def recompute_state(lift: Lift, history: List[SetEntry], profile: Profile) -> LiftState:
     """Re-derive a t2/t3 lift's state by replaying progression from ``lift.start``
     over ``history``. History rows are immutable facts; only their reps drive the
-    replay. ``est1rm`` is computed from the real history weights (unchanged by the
-    new start). Not applicable to sbs (sbs has no start-based progression)."""
-    est = _est1rm_from_history(history)
+    replay. ``est1rm`` is computed from working weight (added + bodyweight * pct,
+    per ADR 0004). Not applicable to sbs (sbs has no start-based progression)."""
+    bw, pct = profile.bodyweight, lift.bodyweight_pct
+    est = _est1rm_from_history(history, bw, pct)
     # effective step: per-lift incr ?? global incr (ADR 0003).
     eff_incr = lift.incr if lift.incr is not None else profile.incr
     if lift.tier == "t3":
@@ -107,7 +119,7 @@ def recompute_state(lift: Lift, history: List[SetEntry], profile: Profile) -> Li
     if lift.tier == "t2":
         target, streak, weight = 8, 0, lift.start or 0.0
         for k, h in enumerate(history):
-            est_k = _est1rm_from_history(history[:k + 1]) or 0.0
+            est_k = _est1rm_from_history(history[:k + 1], bw, pct) or 0.0
             ns = t2_next(T2State(target, streak, weight), h.reps, est_k,
                          fail=profile.t2_fail, incr=eff_incr,
                          reset_pct=profile.t2_reset_pct, quantum=eff_incr)

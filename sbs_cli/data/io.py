@@ -8,11 +8,13 @@ def profile_to_dict(p: Profile) -> dict:
     return {
         "rounding": p.rounding, "days_per_week": p.days_per_week, "incr": p.incr,
         "t2_reset_pct": p.t2_reset_pct, "t2_fail": p.t2_fail, "t3_target": p.t3_target,
+        "bodyweight": p.bodyweight,
         "lifts": [
             {k: v for k, v in {
                 "name": l.name, "tier": l.tier, "day": l.day, "max": l.max,
                 "intensity": l.intensity, "reps": l.reps, "repout": l.repout,
                 "sets": l.sets, "start": l.start, "lift_kind": l.lift_kind,
+                "bodyweight_pct": l.bodyweight_pct, "progression": l.progression,
             }.items() if v is not None and v != 0}
             for l in p.lifts
         ],
@@ -35,11 +37,14 @@ def profile_from_dict(d: dict) -> Profile:
         # Default sbs lifts to "main" so a legacy YAML still renders; re-running
         # `sbs init` from the xlsx importer repopulates the proper main/aux split.
         lift_kind=x.get("lift_kind") or ("main" if x.get("tier") == "sbs" else None),
+        bodyweight_pct=x.get("bodyweight_pct", 0.0),
+        progression=x.get("progression", "weight"),
     ) for x in d.get("lifts", [])]
     return Profile(
         rounding=d.get("rounding", 2.5), days_per_week=d.get("days_per_week", 4),
         incr=d.get("incr", 2.5), t2_reset_pct=d.get("t2_reset_pct", 0.70),
         t2_fail=d.get("t2_fail", 3), t3_target=d.get("t3_target", 15), lifts=lifts,
+        bodyweight=d.get("bodyweight", 0.0),
         schedule=list(DEFAULT_SCHEDULE),
     )
 

@@ -108,3 +108,22 @@ def test_volume_current_t2(tmp_path):
     repo.save_log(conn, lid, 1, 8)
     assert lift_week_volume(conn, lid, 1, is_current=True) == 1200.0
     conn.close()
+
+
+def test_lift_week_volume_bodyweight_past_week_uses_working_weight(tmp_path):
+    # Dips, t3, bodyweight_pct=1.0, settings.bodyweight=75.
+    # Prior-week history row: added 0, reps 12, t3_target=15 (default), sets=3.
+    # working weight = 0 + 75*1.0 = 75 -> 75 * (2*15 + 12) = 75 * 42 = 3150.
+    # RED until history branch routes through working_weight seam (was raw row["weight"]=0 -> 0).
+    conn = db.connect(str(tmp_path / "t.db"))
+    db.init_schema(conn)
+    repo.update_settings(conn, bodyweight=75.0)
+    lid = repo.create_lift(conn, name="Dips", tier="t3", day=4, sort_order=1, sets=3,
+                           max=None, intensity=None, reps=None, repout=None, start=0.0,
+                           bodyweight_pct=1.0)
+    repo.save_lift_state(conn, lid, tier="t3", tm=None, weight=0.0, target=None,
+                         streak=0, est1rm=None)
+    repo.append_history(conn, lid, week=1, weight=0.0, reps=12)
+    tonnage = lift_week_volume(conn, lid, week=1, is_current=False)
+    assert tonnage == 75.0 * (2 * 15 + 12)
+    conn.close()

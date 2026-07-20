@@ -24,8 +24,10 @@ kept at full float precision.
 _Avoid_: 1RM, max (the lift's `max` is the seed, not the TM itself)
 
 **Working Weight**:
-The weight actually loaded for a set. Always snapped to the rounding quantum. For sbs =
-`MROUND(TM × intensity, rounding)`; for T2/T3 = the lift's own progressing weight.
+The weight actually moved for a set — the value fed to every engine computation (est1RM,
+tonnage, progression resets). For sbs = `MROUND(TM × intensity, rounding)`; for T2/T3 = the
+lift's own progressing weight; for a bodyweight lift = `Added weight + bodyweight × bodyweight_pct`.
+Snapped to the rounding quantum where it is a loaded bar weight.
 _Avoid_: load, target weight
 
 **Progression step**:
@@ -51,6 +53,26 @@ differs from the global rounding. A
 and is therefore never rounded. Conflating the two is the root cause of the TM-rounding bug
 (see ADR 0001).
 _Avoid_: "round everything"
+
+**Added weight (附加)**:
+The extra external load on a bodyweight lift beyond the lifter's own body — a weighted belt,
+dumbbell, vest, etc. What a bodyweight lift's `weight` / `start` field and `history.weight`
+store. Zero for purely bodyweight reps. Distinct from Working Weight, which adds the bodyweight
+component back in at the computation seam (ADR 0004).
+_Avoid_: load, total weight
+
+**Bodyweight**:
+The lifter's measured body mass (kg) — a single global value (`settings.bodyweight` /
+`Profile.bodyweight`), held static across history. Combined with a lift's bodyweight_pct to form
+the bodyweight component of its working weight. Stored added weights are stable against
+bodyweight drift by design (ADR 0004).
+_Avoid_: body mass, user weight
+
+**Bodyweight percentage (bodyweight_pct)**:
+The fraction of the lifter's bodyweight that a bodyweight lift actually moves: ~1.0 for
+pull-ups / dips / chin-ups, ~0.64 for push-ups, 0.0 for an ordinary barbell lift (no bodyweight
+component). Stored per lift. The working weight's bodyweight term = `bodyweight × bodyweight_pct`.
+_Avoid_: bodyweight fraction, load factor
 
 **Rounding quantum**:
 The gym's minimum plate increment (default 2.5 kg, configurable at `/settings`). The parameter governing snap-to-grid for **sbs** loaded weights (working weight).
@@ -83,7 +105,11 @@ _Avoid_: load (the weight on the bar for a single set), intensity
 **Tier**:
 Which progression rule a lift follows: `sbs` (TM autoregulation by rep-out), `t2` (1-strike
 rep cascade with est1RM-based reset), or `t3` (threshold accessories). A lift can be
-switched between tiers; history is preserved across switches.
+switched between tiers; history is preserved across switches. A lift's `progression` field
+(`"weight"` default | `"none"`) overrides whether it auto-progresses at all — orthogonal to
+tier; `"none"` skips the tier's progression rule (used for bodyweight lifts that progress by
+manual rep targets, e.g. crunches), while still recording history and est1RM.
+_Avoid_: level
 
 **Kind (main / aux)**:
 Which of the two sbs progression tracks a lift follows, selecting its schedule ladder. Main

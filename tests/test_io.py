@@ -1,5 +1,8 @@
+import tempfile
+import os
 from sbs_cli.data.schema import Lift, Profile, SetEntry, LiftState, ProgramState
 from sbs_cli.data import io as dio
+from sbs_cli.data.io import save_profile, load_profile
 
 def test_profile_roundtrip(tmp_path):
     p = Profile(rounding=2.5, days_per_week=4, lifts=[
@@ -31,3 +34,38 @@ def test_state_roundtrip(tmp_path):
     assert len(t.lifts["Squat"].history) == 2
     assert t.lifts["Squat"].history[1].reps == 10
     assert t.lifts["Barbell rows"].target == 10 and t.lifts["Barbell rows"].streak == 0
+
+
+def test_profile_bodyweight_and_lift_bodyweight_pct_roundtrip():
+    p = Profile(bodyweight=75.0, lifts=[
+        Lift(name="Chin-ups", tier="t2", day=2, start=0.0,
+             bodyweight_pct=1.0, progression="none"),
+        Lift(name="Squat", tier="sbs", day=1, max=135.0),  # ordinary: pct 0
+    ])
+    fd, path = tempfile.mkstemp(suffix=".yaml")
+    os.close(fd)
+    try:
+        save_profile(p, path)
+        back = load_profile(path)
+    finally:
+        os.remove(path)
+    assert back.bodyweight == 75.0
+    chin = back.lift("Chin-ups")
+    assert chin.bodyweight_pct == 1.0
+    assert chin.progression == "none"
+    squat = back.lift("Squat")
+    assert squat.bodyweight_pct == 0.0           # default for ordinary lifts
+    assert squat.progression == "weight"         # default
+
+
+def test_legacy_yaml_without_bodyweight_fields_loads_defaults():
+    fd, path = tempfile.mkstemp(suffix=".yaml")
+    os.write(fd, b"rounding: 2.5\nlifts:\n- name: Squat\n  tier: sbs\n  day: 1\n  max: 100\n")
+    os.close(fd)
+    try:
+        back = load_profile(path)
+    finally:
+        os.remove(path)
+    assert back.bodyweight == 0.0
+    assert back.lift("Squat").bodyweight_pct == 0.0
+    assert back.lift("Squat").progression == "weight"

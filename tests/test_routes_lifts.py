@@ -301,3 +301,18 @@ def test_row_partial_renders_readonly(client, app):
     assert b"Squat" in rv.data
     # read-only row has no editable form inputs
     assert b'hx-post' not in rv.data or b'name=' not in rv.data
+
+
+def test_edit_partial_renders_form(client, app):
+    lid = _lift(app)
+    rv = client.get(f"/lifts/{lid}/edit")
+    assert rv.status_code == 200
+    assert b'name="name"' in rv.data  # edit form has inputs
+
+
+def test_edit_failure_keeps_edit_state(client, app):
+    lid = _t2_lift_with_incr(app, incr=5.0)
+    rv = client.post(f"/lifts/{lid}/edit", data={"incr": "-1"})
+    assert rv.status_code == 400
+    # edit state preserved: form re-rendered, not the read-only row
+    assert b'name="incr"' in rv.data

@@ -44,6 +44,12 @@ def row(lid):
     return render_template("_lift_row.html", lift=repo.get_lift(conn, lid))
 
 
+@bp.route("/lifts/<int:lid>/edit")
+def row_edit(lid):
+    conn = get_db()
+    return render_template("_lift_edit.html", lift=repo.get_lift(conn, lid))
+
+
 @bp.route("/lifts/new", methods=["POST"])
 def new():
     conn = get_db()
@@ -107,15 +113,15 @@ def edit(lid):
         from sbs_cli.data.schema import is_legal_combo
         if not is_legal_combo(cur["load_model"], fields["mode"]):
             flash("load_model 与 mode 组合非法", "error")
-            return render_template("_lift_row.html", lift=cur, error="bad combo"), 400
+            return render_template("_lift_edit.html", lift=cur, error="load_model 与 mode 组合非法"), 400
     # incr：表单出现即处理。空串 -> NULL（清除覆盖回全局）；非空 -> 必须 >0 数字（D7）。
     # 校验在 update 之前，非法时保留原值并返回 400。
     if "incr" in request.form:
         incr, err = _parse_incr(request.form["incr"])
         if err is not None:
             flash(err, "error")
-            return render_template("_lift_row.html", lift=repo.get_lift(conn, lid),
-                                   error="bad incr"), 400
+            return render_template("_lift_edit.html", lift=repo.get_lift(conn, lid),
+                                   error=err), 400
         fields["incr"] = incr  # None 表示清除（update_lift 经 _LIFT_COLS 支持 incr=None）
     repo.update_lift(conn, lid, **fields)
     lift = repo.get_lift(conn, lid)

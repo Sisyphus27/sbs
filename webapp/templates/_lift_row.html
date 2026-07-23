@@ -12,7 +12,9 @@
       </span>
     </div>
     <div class="row-actions">
-      {# Edit button lands in Task 5 (hx-get lifts.row_edit). Placeholder omitted to avoid url_for BuildError. #}
+      <button type="button" class="btn-ghost"
+              hx-get="{{ url_for('lifts.row_edit', lid=lift.id) }}"
+              hx-target="#lift-{{ lift.id }}" hx-swap="outerHTML">编辑</button>
     </div>
   </div>
 </div>

@@ -26,7 +26,7 @@ def update():
             try:
                 fields[col] = cast(request.form[col])
             except ValueError:
-                flash(f"非法值: {col}")
+                flash(f"非法值: {col}", "error")
                 return redirect(url_for("settings.view"))
     repo.update_settings(conn, **fields)
     flash("参数已更新")

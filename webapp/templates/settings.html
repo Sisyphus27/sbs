@@ -2,22 +2,41 @@
 {% block title %}全局参数{% endblock %}
 {% block content %}
 <h1>全局参数</h1>
-<form method="post" action="{{ url_for('settings.update') }}">
-  <div class="row"><label>最小变动 (kg): <input type="number" step="0.5" name="rounding" value="{{ s.rounding }}"></label></div>
-  <div class="row"><label>days_per_week: <input type="number" name="days_per_week" value="{{ s.days_per_week }}"></label>
-    <button type="submit" formaction="{{ url_for('settings.reset_field', field='days_per_week') }}" formnovalidate>↺ 默认</button>
-  </div>
-  <div class="row"><label>incr (kg): <input type="number" step="{{ s.rounding }}" name="incr" value="{{ s.incr }}"></label></div>
-  <div class="row"><label>t2_reset_pct: <input type="number" step="0.05" name="t2_reset_pct" value="{{ s.t2_reset_pct }}"></label>
-    <button type="submit" formaction="{{ url_for('settings.reset_field', field='t2_reset_pct') }}" formnovalidate>↺ 默认</button>
-  </div>
-  <div class="row"><label>t2_fail: <input type="number" name="t2_fail" value="{{ s.t2_fail }}"></label>
-    <button type="submit" formaction="{{ url_for('settings.reset_field', field='t2_fail') }}" formnovalidate>↺ 默认</button>
-  </div>
-  <div class="row"><label>t3_target: <input type="number" name="t3_target" value="{{ s.t3_target }}"></label>
-    <button type="submit" formaction="{{ url_for('settings.reset_field', field='t3_target') }}" formnovalidate>↺ 默认</button>
-  </div>
-  <div class="row"><label>体重 (kg): <input type="number" step="0.1" name="bodyweight" value="{{ s.bodyweight }}"></label></div>
-  <button>保存</button>
-</form>
+
+<div class="card">
+  <h2 style="margin-top:0">基础</h2>
+  <form method="post" action="{{ url_for('settings.update') }}">
+    <div class="field-row">
+      <div class="field"><label>取整粒度 (kg) <span class="sub">rounding</span></label>
+        <input type="number" step="0.5" name="rounding" value="{{ s.rounding }}"></div>
+      <div class="field"><label>默认步进 (kg) <span class="sub">incr</span></label>
+        <input type="number" step="{{ s.rounding }}" name="incr" value="{{ s.incr }}"></div>
+      <div class="field"><label>体重 (kg) <span class="sub">bodyweight</span></label>
+        <input type="number" step="0.1" name="bodyweight" value="{{ s.bodyweight }}"></div>
+    </div>
+    <button type="submit" class="btn-primary">保存</button>
+  </form>
+  {# 可重置的基础字段 days_per_week: 独立 form 使 ↺ 不牵连主表单 #}
+  <form method="post" action="{{ url_for('settings.update') }}" class="field-row" style="margin-top:12px;align-items:flex-end">
+    <div class="field"><label>每周天数 <span class="sub">days_per_week</span></label>
+      <input type="number" name="days_per_week" value="{{ s.days_per_week }}"></div>
+    <button type="submit" class="btn-primary">保存</button>
+    <button type="submit" class="btn-ghost" formaction="{{ url_for('settings.reset_field', field='days_per_week') }}" formnovalidate>↺ 默认</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2 style="margin-top:0">进阶 (T2/T3)</h2>
+  {% for field, label, step in [
+      ('t2_reset_pct', 'T2 重置比例', '0.05'),
+      ('t2_fail', 'T2 失败次数上限', '1'),
+      ('t3_target', 'T3 目标次数', '1')] %}
+  <form method="post" action="{{ url_for('settings.update') }}" class="field-row" style="align-items:flex-end">
+    <div class="field"><label>{{ label }} <span class="sub">{{ field }}</span></label>
+      <input type="number" step="{{ step }}" name="{{ field }}" value="{{ s[field] }}"></div>
+    <button type="submit" class="btn-primary">保存</button>
+    <button type="submit" class="btn-ghost" formaction="{{ url_for('settings.reset_field', field=field) }}" formnovalidate>↺ 默认</button>
+  </form>
+  {% endfor %}
+</div>
 {% endblock %}

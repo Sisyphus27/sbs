@@ -292,3 +292,38 @@ def test_edit_changes_bodyweight_pct(client, app):
         conn = connect(app.config["DB_PATH"])
         assert repo.get_lift(conn, lid)["bodyweight_pct"] == 1.0
         conn.close()
+
+
+def test_row_partial_renders_readonly(client, app):
+    lid = _lift(app)
+    rv = client.get(f"/lifts/{lid}/row")
+    assert rv.status_code == 200
+    assert b"Squat" in rv.data
+    # read-only row has no editable form inputs
+    assert b'hx-post' not in rv.data or b'name=' not in rv.data
+
+
+def test_edit_partial_renders_form(client, app):
+    lid = _lift(app)
+    rv = client.get(f"/lifts/{lid}/edit")
+    assert rv.status_code == 200
+    assert b'name="name"' in rv.data  # edit form has inputs
+
+
+def test_edit_failure_keeps_edit_state(client, app):
+    lid = _t2_lift_with_incr(app, incr=5.0)
+    rv = client.post(f"/lifts/{lid}/edit", data={"incr": "-1"})
+    assert rv.status_code == 400
+    # edit state preserved: form re-rendered, not the read-only row
+    assert b'name="incr"' in rv.data
+
+
+def test_lifts_page_includes_legal_map_json(client, app):
+    rv = client.get("/lifts")
+    assert rv.status_code == 200
+    # legal_map injected as JSON via `{{ legal_map | tojson }}` inside
+    # <script id="legal-map" type="application/json">. Lock the JSON container
+    # shape ({"barbell": [...]) so the assertion does not match legacy
+    # <option value="linear_t2"> HTML or the bare script tag id.
+    assert b'id="legal-map"' in rv.data
+    assert b'{"barbell"' in rv.data

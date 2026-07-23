@@ -44,7 +44,7 @@ def apply(lid):
     try:
         new_max = float(raw)
     except ValueError:
-        flash("max 必须是数字")
+        flash("max 必须是数字", "error")
         return redirect(url_for("reseed.view"))
     cyc = cycle_number(repo.get_settings(conn)["week"])
     repo.set_reseed(conn, lid, new_max=new_max, cycle=cyc)

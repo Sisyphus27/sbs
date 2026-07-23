@@ -1,0 +1,60 @@
+{% if lift %}
+<div class="card" id="lift-{{ lift.id }}">
+  {% if error %}<div class="flash flash-error">{{ error }}</div>{% endif %}
+  <form hx-post="{{ url_for('lifts.edit', lid=lift.id) }}" hx-target="#lift-{{ lift.id }}" hx-swap="outerHTML">
+    <div class="field-row">
+      <div class="field"><label>动作名</label>
+        <input name="name" value="{{ lift.name }}"></div>
+      <div class="field"><label>Day</label>
+        <input name="day" type="number" value="{{ lift.day }}"></div>
+      <div class="field"><label>组数</label>
+        <input name="sets" type="number" value="{{ lift.sets }}"></div>
+      <div class="field"><label>载荷模型 <span class="sub">(不可改)</span></label>
+        <input name="load_model" value="{{ lift.load_model }}" readonly style="color:var(--muted)"></div>
+      <div class="field"><label>Mode</label>
+        <select name="mode">
+          {% for m in legal_map.get(lift.load_model, []) %}
+          <option value="{{ m }}" {{ 'selected' if lift.mode == m }}>{{ m }}</option>
+          {% endfor %}
+        </select></div>
+    </div>
+    <div class="field-row">
+      {% if lift.mode == 'sbs' %}
+      <div class="field"><label>类型</label>
+        <select name="lift_kind">
+          <option value="main" {{ 'selected' if lift.lift_kind == 'main' }}>main</option>
+          <option value="aux" {{ 'selected' if lift.lift_kind == 'aux' }}>aux</option>
+        </select></div>
+      <div class="field"><label>Max</label>
+        <input name="max" type="number" step="0.5" value="{{ lift.max or '' }}"></div>
+      {% elif lift.mode in ('linear_t2','linear_t3') %}
+      <div class="field"><label>强度</label>
+        <input name="intensity" type="number" step="0.05" value="{{ lift.intensity or '' }}"></div>
+      <div class="field"><label>次数</label>
+        <input name="reps" type="number" value="{{ lift.reps or '' }}"></div>
+      <div class="field"><label>Repout</label>
+        <input name="repout" type="number" value="{{ lift.repout or '' }}"></div>
+      <div class="field"><label>步进 <span class="sub">(空=全局)</span></label>
+        <input name="incr" type="number" step="0.5" value="{{ lift.incr if lift.incr is not none else '' }}"></div>
+      {% endif %}
+      <div class="field"><label>Start</label>
+        <input name="start" type="number" step="0.5" value="{{ lift.start or '' }}"></div>
+      {% if lift.load_model in ('bodyweight','pure_bodyweight') %}
+      <div class="field"><label>体重比例</label>
+        <input name="bodyweight_pct" type="number" step="0.01" min="0" max="1"
+               value="{{ lift.bodyweight_pct if lift.bodyweight_pct else '' }}"></div>
+      {% endif %}
+    </div>
+    <div class="field-row" style="margin-top:12px">
+      <button type="submit" class="btn-primary">保存</button>
+      <button type="button" class="btn-ghost" hx-get="{{ url_for('lifts.row', lid=lift.id) }}"
+              hx-target="#lift-{{ lift.id }}" hx-swap="outerHTML">取消</button>
+      <a class="btn" href="{{ url_for('lifts.mode_preview', lid=lift.id) }}">换 mode</a>
+      <button type="button" class="btn-danger" style="margin-left:auto"
+              hx-post="{{ url_for('lifts.delete', lid=lift.id) }}"
+              hx-target="#lift-{{ lift.id }}" hx-swap="outerHTML"
+              hx-confirm="删除 {{ lift.name }}?">删除</button>
+    </div>
+  </form>
+</div>
+{% endif %}

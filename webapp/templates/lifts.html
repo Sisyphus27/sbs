@@ -2,62 +2,48 @@
 {% block title %}动作管理{% endblock %}
 {% block content %}
 <h1>动作管理</h1>
-<h2>新增动作</h2>
-<form hx-post="{{ url_for('lifts.new') }}" hx-target="#lift-list" hx-swap="beforeend" class="row">
-  <input name="name" placeholder="动作名">
-  <select name="load_model" id="new-load-model">
-    <option value="barbell">barbell</option>
-    <option value="bodyweight">bodyweight</option>
-    <option value="pure_bodyweight">pure_bodyweight</option>
-  </select>
-  <select name="mode" id="new-mode">
-    <option value="sbs">sbs</option>
-    <option value="linear_t2">linear_t2</option>
-    <option value="linear_t3">linear_t3</option>
-    <option value="none">none</option>
-  </select>
-  <select name="lift_kind"><option value="main">main</option><option value="aux">aux</option></select>
-  <input name="day" type="number" placeholder="day" value="1" style="width:60px">
-  <input name="sets" type="number" placeholder="sets" value="3" style="width:60px">
-  <input name="max" type="number" step="0.5" placeholder="max(sbs)" style="width:80px">
-  <input name="start" type="number" step="0.5" placeholder="start(t2/t3)" style="width:90px">
-  <input name="incr" type="number" step="0.5" placeholder="incr(t2/t3)" style="width:90px">
-  <button>添加</button>
-</form>
 
-{# ADR 0005: 新建表单按 load_model 级联过滤合法 mode（is_legal_combo）。
-   保留当前选中项；切 load_model 时自动选该 load_model 的首选项。 #}
-<script>
-(function () {
-  var LEGAL = {
-    barbell:        ['sbs', 'linear_t2', 'linear_t3'],
-    bodyweight:     ['linear_t2', 'linear_t3'],
-    pure_bodyweight:['none']
-  };
-  var lm = document.getElementById('new-load-model');
-  var mode = document.getElementById('new-mode');
-  if (!lm || !mode) return;
-  function sync() {
-    var allowed = LEGAL[lm.value] || [];
-    var opts = mode.options;
-    var still_legal = false;
-    for (var i = 0; i < opts.length; i++) {
-      var on = allowed.indexOf(opts[i].value) !== -1;
-      opts[i].hidden = !on;
-      opts[i].disabled = !on;
-      if (opts[i].selected && on) still_legal = true;
-    }
-    if (!still_legal) mode.value = allowed[0];
-  }
-  lm.addEventListener('change', sync);
-  sync();
-})();
-</script>
+<div class="card">
+  <h2 style="margin-top:0">新增动作</h2>
+  <form hx-post="{{ url_for('lifts.new') }}" hx-target="#lift-list" hx-swap="beforeend">
+    <div class="field-row">
+      <div class="field"><label>动作名</label><input name="name" placeholder="动作名"></div>
+      <div class="field"><label>载荷模型</label>
+        <select name="load_model" id="new-load-model">
+          <option value="barbell">barbell</option>
+          <option value="bodyweight">bodyweight</option>
+          <option value="pure_bodyweight">pure_bodyweight</option>
+        </select></div>
+      <div class="field"><label>Mode</label>
+        <select name="mode" id="new-mode"></select></div>
+      <div class="field"><label>类型</label>
+        <select name="lift_kind"><option value="main">main</option><option value="aux">aux</option></select></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Day</label><input name="day" type="number" value="1"></div>
+      <div class="field"><label>组数</label><input name="sets" type="number" value="3"></div>
+      <div class="field"><label>Max <span class="sub">(sbs)</span></label>
+        <input name="max" type="number" step="0.5" placeholder="max"></div>
+      <div class="field"><label>Start <span class="sub">(t2/t3)</span></label>
+        <input name="start" type="number" step="0.5" placeholder="start"></div>
+      <div class="field"><label>步进 <span class="sub">(t2/t3, 空=全局)</span></label>
+        <input name="incr" type="number" step="0.5" placeholder="incr"></div>
+      <div class="field"><label>体重比例 <span class="sub">(负重)</span></label>
+        <input name="bodyweight_pct" type="number" step="0.01" min="0" max="1" placeholder="bw%"></div>
+    </div>
+    <button type="submit" class="btn-primary" style="margin-top:8px">添加</button>
+  </form>
+</div>
+
+<script id="legal-map" type="application/json">{{ legal_map | tojson }}</script>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
 
 <h2>现有动作</h2>
 <div id="lift-list">
   {% for lift in lifts %}
     {% include "_lift_row.html" %}
+  {% else %}
+    <p class="meta">暂无动作， 上方新增。</p>
   {% endfor %}
 </div>
 {% endblock %}

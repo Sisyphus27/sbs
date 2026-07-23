@@ -171,3 +171,31 @@ configurable number of consecutive misses the lift resets to target 8 at a lower
 from est1RM. A hit adds weight and stays at the current level. Replaces an earlier 3-strike
 per-level cascade.
 _Avoid_: GZCLP cascade (ambiguous — several variants exist)
+
+## Presentation
+
+Display-layer terms for the webapp. These name what the user sees and manipulates; they carry
+no engine semantics (those live above) and no implementation detail.
+
+**Lift row**:
+The webapp's visual unit for one Lift — a single card line in the 动作 list. Renders read-only
+by default (name, mode/load-model tags, day·sets·weight); expands in place to an edit form.
+_Avoid_: exercise card, lift form (the form is the row's expanded state, not a separate thing)
+
+**Progression tag (mode tag)**:
+The small badge on a lift row showing its Progression Mode. Only `sbs` is accent-highlighted
+(the primary progression); `linear_t2`/`linear_t3`/`none` render neutral. The Load Model is a
+separate, quieter annotation — never a competing colour.
+_Avoid_: status pill, badge colour-coding (no rainbow: one accent only)
+
+**Accent**:
+The single highlight colour (deep blue) reserved for primary actions, the current navigation
+item, and interactive focus. Deliberately NOT used for destructive actions (red), tonnage deltas
+(green/red), or neutral tags. Restraint is the point: accent always means "the main thing to act on".
+_Avoid_: theme colour, brand colour scattered across elements
+
+**Section (sidebar group)**:
+One of three navigation groups in the left sidebar — 训练 (本周计划/进度表), 动作 (动作/重测),
+配置 (全局参数). The 重测 lives under 动作 because a Reseed is a per-Lift operation, not a
+program-level view.
+_Avoid_: menu, page category

@@ -38,6 +38,18 @@ def view():
     return render_template("lifts.html", lifts=lifts, settings=settings)
 
 
+@bp.route("/lifts/<int:lid>/row")
+def row(lid):
+    conn = get_db()
+    return render_template("_lift_row.html", lift=repo.get_lift(conn, lid))
+
+
+@bp.route("/lifts/<int:lid>/edit")
+def row_edit(lid):
+    conn = get_db()
+    return render_template("_lift_edit.html", lift=repo.get_lift(conn, lid))
+
+
 @bp.route("/lifts/new", methods=["POST"])
 def new():
     conn = get_db()
@@ -46,19 +58,19 @@ def new():
     mode = request.form.get("mode", "")
     from sbs_cli.data.schema import is_legal_combo, LOAD_MODELS
     if load_model not in LOAD_MODELS:
-        flash("load_model 非法")
+        flash("load_model 非法", "error")
         return render_template("_lift_row.html", lift=None, error="bad load_model"), 400
     if not is_legal_combo(load_model, mode):
-        flash("load_model 与 mode 组合非法")
+        flash("load_model 与 mode 组合非法", "error")
         return render_template("_lift_row.html", lift=None, error="bad combo"), 400
     if not name:
-        flash("动作名不能为空")
+        flash("动作名不能为空", "error")
         return render_template("_lift_row.html", lift=None, error="name required"), 400
     # incr 仅 linear_t2/t3 生效；sbs/none 强制 None（ADR 0005）。
     # 空=None=继承全局；>0 数值；≤0/非数字 拒绝（D7）。
     incr, err = (None, None) if mode in ("sbs", "none") else _parse_incr(request.form.get("incr"))
     if err is not None:
-        flash(err)
+        flash(err, "error")
         return render_template("_lift_row.html", lift=None, error="bad incr"), 400
     # pct 按载荷模型: barbell=0；pure_bodyweight 手填默认 1.0；bodyweight 手填。
     if load_model == "barbell":
@@ -77,7 +89,7 @@ def new():
             lift_kind=_f("lift_kind") if mode == "sbs" else None, incr=incr,
             bodyweight_pct=pct)
     except Exception as e:
-        flash(f"创建失败: {e}")
+        flash(f"创建失败: {e}", "error")
         return render_template("_lift_row.html", lift=None, error=str(e)), 400
     lift = repo.get_lift(conn, lid)
     return render_template("_lift_row.html", lift=lift)
@@ -100,16 +112,16 @@ def edit(lid):
         cur = repo.get_lift(conn, lid)
         from sbs_cli.data.schema import is_legal_combo
         if not is_legal_combo(cur["load_model"], fields["mode"]):
-            flash("load_model 与 mode 组合非法")
-            return render_template("_lift_row.html", lift=cur, error="bad combo"), 400
+            flash("load_model 与 mode 组合非法", "error")
+            return render_template("_lift_edit.html", lift=cur, error="load_model 与 mode 组合非法"), 400
     # incr：表单出现即处理。空串 -> NULL（清除覆盖回全局）；非空 -> 必须 >0 数字（D7）。
     # 校验在 update 之前，非法时保留原值并返回 400。
     if "incr" in request.form:
         incr, err = _parse_incr(request.form["incr"])
         if err is not None:
-            flash(err)
-            return render_template("_lift_row.html", lift=repo.get_lift(conn, lid),
-                                   error="bad incr"), 400
+            flash(err, "error")
+            return render_template("_lift_edit.html", lift=repo.get_lift(conn, lid),
+                                   error=err), 400
         fields["incr"] = incr  # None 表示清除（update_lift 经 _LIFT_COLS 支持 incr=None）
     repo.update_lift(conn, lid, **fields)
     lift = repo.get_lift(conn, lid)
@@ -139,7 +151,7 @@ def mode_preview(lid):
     try:
         preview = mode_service.derive_state(conn, lid, new_mode, repo.get_settings(conn))
     except ValueError as e:
-        flash(str(e))
+        flash(str(e), "error")
         return redirect(url_for("lifts.view"))
     lift = repo.get_lift(conn, lid)
     return render_template("mode_preview.html", lift=lift, preview=preview)
@@ -152,7 +164,7 @@ def mode_apply(lid):
     try:
         preview = mode_service.derive_state(conn, lid, new_mode, repo.get_settings(conn))
     except ValueError as e:
-        flash(str(e))
+        flash(str(e), "error")
         return redirect(url_for("lifts.view"))
     # user may override derived start values
     try:
@@ -161,7 +173,7 @@ def mode_apply(lid):
         if "tm" in request.form and request.form["tm"].strip():
             preview["tm"] = float(request.form["tm"])
     except ValueError:
-        flash("重量 / TM 必须是数字")
+        flash("重量 / TM 必须是数字", "error")
         return redirect(url_for("lifts.view"))
     mode_service.apply_switch(conn, lid, preview)
     return redirect(url_for("lifts.view"))

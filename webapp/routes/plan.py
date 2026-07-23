@@ -152,10 +152,10 @@ def submit():
                 lid = int(key[4:])
                 reps = int(val)
             except ValueError:
-                flash(f"非法输入: {key} = {val}")
+                flash(f"非法输入: {key} = {val}", "error")
                 return redirect(url_for("plan.view"))
             if reps < 0:
-                flash(f"次数不能为负: {key}")
+                flash(f"次数不能为负: {key}", "error")
                 return redirect(url_for("plan.view"))
             repo.save_log(conn, lid, week, reps)
     logs = repo.get_week_logs(conn, week)

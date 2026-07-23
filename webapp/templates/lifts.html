@@ -5,7 +5,17 @@
 <h2>新增动作</h2>
 <form hx-post="{{ url_for('lifts.new') }}" hx-target="#lift-list" hx-swap="beforeend" class="row">
   <input name="name" placeholder="动作名">
-  <select name="tier"><option value="sbs">sbs</option><option value="t2">t2</option><option value="t3">t3</option></select>
+  <select name="load_model">
+    <option value="barbell">barbell</option>
+    <option value="bodyweight">bodyweight</option>
+    <option value="pure_bodyweight">pure_bodyweight</option>
+  </select>
+  <select name="mode">
+    <option value="sbs">sbs</option>
+    <option value="linear_t2">linear_t2</option>
+    <option value="linear_t3">linear_t3</option>
+    <option value="none">none</option>
+  </select>
   <select name="lift_kind"><option value="main">main</option><option value="aux">aux</option></select>
   <input name="day" type="number" placeholder="day" value="1" style="width:60px">
   <input name="sets" type="number" placeholder="sets" value="3" style="width:60px">

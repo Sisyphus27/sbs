@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% block title %}换 tier{% endblock %}
+{% block title %}换 mode{% endblock %}
 {% block content %}
-<h1>{{ lift.name }} → {{ preview.tier }}</h1>
-<p>历史保留, est1rm 从历史重算。下面是新 tier 的起点状态, 可改后确认:</p>
-<form method="post" action="{{ url_for('lifts.tier_apply', lid=lift.id) }}">
-  <input type="hidden" name="tier" value="{{ preview.tier }}">
+<h1>{{ lift.name }} → {{ preview.mode }}</h1>
+<p>历史保留, est1rm 从历史重算。下面是新 mode 的起点状态, 可改后确认:</p>
+<form method="post" action="{{ url_for('lifts.mode_apply', lid=lift.id) }}">
+  <input type="hidden" name="mode" value="{{ preview.mode }}">
   <ul>
     <li>est1RM (从历史): {{ "%.2f"|format(preview.est1rm) if preview.est1rm is not none else '—' }}</li>
-    {% if preview.tier == 'sbs' %}
+    {% if preview.mode == 'sbs' %}
       <li>新 TM: <input name="tm" type="number" step="0.5" value="{{ preview.tm }}"></li>
     {% else %}
       <li>新重量: <input name="weight" type="number" step="0.5" value="{{ preview.weight }}"></li>

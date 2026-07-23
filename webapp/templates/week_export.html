@@ -28,9 +28,9 @@
   {% for it in items %}
     <div class="lift">
       <span class="name">{{ it.name }}</span>
-      <span class="meta">{{ it.tier }} | {{ it.weight }} kg
-        {% if it.tier=='sbs' %} × {{ it.reps }} × {{ it.sets }} | rep-out {{ it.repout }}
-        {% elif it.tier=='t2' %} × {{ it.target }} × {{ it.sets }} | streak {{ it.streak }}
+      <span class="meta">{{ it.mode }} | {{ it.weight }} kg
+        {% if it.mode=='sbs' %} × {{ it.reps }} × {{ it.sets }} | rep-out {{ it.repout }}
+        {% elif it.mode=='linear_t2' %} × {{ it.target }} × {{ it.sets }} | streak {{ it.streak }}
         {% else %} × {{ it.target }} × {{ it.sets }}
         {% endif %}
         | 最佳 1RM {{ "%.2f"|format(it.est1rm) if it.est1rm is not none else '—' }}

@@ -42,27 +42,40 @@ def view():
 def new():
     conn = get_db()
     name = request.form.get("name", "").strip()
-    tier = request.form.get("tier", "sbs")
-    if tier not in ("sbs", "t2", "t3"):
-        flash("tier 必须是 sbs / t2 / t3")
-        return render_template("_lift_row.html", lift=None, error="bad tier"), 400
+    load_model = request.form.get("load_model", "barbell")
+    mode = request.form.get("mode", "")
+    from sbs_cli.data.schema import is_legal_combo, LOAD_MODELS
+    if load_model not in LOAD_MODELS:
+        flash("load_model 非法")
+        return render_template("_lift_row.html", lift=None, error="bad load_model"), 400
+    if not is_legal_combo(load_model, mode):
+        flash("load_model 与 mode 组合非法")
+        return render_template("_lift_row.html", lift=None, error="bad combo"), 400
     if not name:
         flash("动作名不能为空")
         return render_template("_lift_row.html", lift=None, error="name required"), 400
-    # incr 仅 t2/t3 生效；sbs 强制 None（D5）。空=None=继承全局；>0 数值；≤0/非数字 拒绝（D7）。
-    incr, err = (None, None) if tier == "sbs" else _parse_incr(request.form.get("incr"))
+    # incr 仅 linear_t2/t3 生效；sbs/none 强制 None（ADR 0005）。
+    # 空=None=继承全局；>0 数值；≤0/非数字 拒绝（D7）。
+    incr, err = (None, None) if mode in ("sbs", "none") else _parse_incr(request.form.get("incr"))
     if err is not None:
         flash(err)
         return render_template("_lift_row.html", lift=None, error="bad incr"), 400
+    # pct 按载荷模型: barbell=0；pure_bodyweight 手填默认 1.0；bodyweight 手填。
+    if load_model == "barbell":
+        pct = 0.0
+    elif load_model == "pure_bodyweight":
+        pct = _f("bodyweight_pct", 1.0, float) or 1.0
+    else:
+        pct = _f("bodyweight_pct", 0.0, float) or 0.0
     try:
         lid = repo.create_lift(
-            conn, name=name, tier=tier, day=_f("day", 1, int), sort_order=999,
+            conn, name=name, load_model=load_model, mode=mode,
+            day=_f("day", 1, int), sort_order=999,
             sets=_f("sets", 3, int), max=_f("max", cast=float),
             intensity=_f("intensity", cast=float), reps=_f("reps", cast=int),
             repout=_f("repout", cast=int), start=_f("start", cast=float),
-            lift_kind=_f("lift_kind") if tier == "sbs" else None, incr=incr,
-            bodyweight_pct=_f("bodyweight_pct", 0.0, float) or 0.0,
-            progression=request.form.get("progression", "weight"))
+            lift_kind=_f("lift_kind") if mode == "sbs" else None, incr=incr,
+            bodyweight_pct=pct)
     except Exception as e:
         flash(f"创建失败: {e}")
         return render_template("_lift_row.html", lift=None, error=str(e)), 400
@@ -74,12 +87,21 @@ def new():
 def edit(lid):
     conn = get_db()
     fields = {}
-    for col, cast in (("name", str), ("tier", str), ("day", int), ("sets", int),
+    # load_model 不可切（ADR 0005）— 不收 load_model 字段。
+    # tier/progression 已删，mode 走合法组合校验。
+    for col, cast in (("name", str), ("mode", str), ("day", int), ("sets", int),
                       ("max", float), ("intensity", float), ("reps", int),
                       ("repout", int), ("start", float), ("lift_kind", str),
-                      ("bodyweight_pct", float), ("progression", str)):
+                      ("bodyweight_pct", float)):
         if col in request.form and request.form[col].strip() != "":
             fields[col] = cast(request.form[col])
+    # mode 改动需校验 is_legal_combo（取当前 load_model）
+    if "mode" in fields:
+        cur = repo.get_lift(conn, lid)
+        from sbs_cli.data.schema import is_legal_combo
+        if not is_legal_combo(cur["load_model"], fields["mode"]):
+            flash("load_model 与 mode 组合非法")
+            return render_template("_lift_row.html", lift=cur, error="bad combo"), 400
     # incr：表单出现即处理。空串 -> NULL（清除覆盖回全局）；非空 -> 必须 >0 数字（D7）。
     # 校验在 update 之前，非法时保留原值并返回 400。
     if "incr" in request.form:
@@ -91,10 +113,10 @@ def edit(lid):
         fields["incr"] = incr  # None 表示清除（update_lift 经 _LIFT_COLS 支持 incr=None）
     repo.update_lift(conn, lid, **fields)
     lift = repo.get_lift(conn, lid)
-    # start is the progression basis for t2/t3: replay from the new start over
-    # history to resync the working weight. Idempotent (no-op effect if start
-    # unchanged). sbs has no start-based progression -> skipped.
-    if lift["tier"] in ("t2", "t3") and "start" in fields:
+    # start is the progression basis for linear_t2/t3: replay from the new start
+    # over history to resync the working weight. Idempotent (no-op if start
+    # unchanged). sbs/none have no start-based progression -> skipped.
+    if lift["mode"] in ("linear_t2", "linear_t3") and "start" in fields:
         from ..services import recompute as recompute_service
         recompute_service.recompute_on_start_change(conn, lid, lift["start"])
     return render_template("_lift_row.html", lift=lift)
@@ -110,20 +132,28 @@ def delete(lid):
 from ..services import mode as mode_service
 
 
-@bp.route("/lifts/<int:lid>/tier")
-def tier_preview(lid):
+@bp.route("/lifts/<int:lid>/mode")
+def mode_preview(lid):
     conn = get_db()
-    new_tier = request.args.get("tier", "sbs")
-    preview = mode_service.derive_state(conn, lid, new_tier, repo.get_settings(conn))
+    new_mode = request.args.get("mode", "sbs")
+    try:
+        preview = mode_service.derive_state(conn, lid, new_mode, repo.get_settings(conn))
+    except ValueError as e:
+        flash(str(e))
+        return redirect(url_for("lifts.view"))
     lift = repo.get_lift(conn, lid)
-    return render_template("tier_preview.html", lift=lift, preview=preview)
+    return render_template("mode_preview.html", lift=lift, preview=preview)
 
 
-@bp.route("/lifts/<int:lid>/tier", methods=["POST"])
-def tier_apply(lid):
+@bp.route("/lifts/<int:lid>/mode", methods=["POST"])
+def mode_apply(lid):
     conn = get_db()
-    new_tier = request.form.get("tier", "sbs")
-    preview = mode_service.derive_state(conn, lid, new_tier, repo.get_settings(conn))
+    new_mode = request.form.get("mode", "sbs")
+    try:
+        preview = mode_service.derive_state(conn, lid, new_mode, repo.get_settings(conn))
+    except ValueError as e:
+        flash(str(e))
+        return redirect(url_for("lifts.view"))
     # user may override derived start values
     try:
         if "weight" in request.form and request.form["weight"].strip():

@@ -16,10 +16,10 @@
     {% for it in items %}
       <div class="row">
         <span class="name">{{ it.name }}</span>
-        <span class="meta">{{ it.tier }} |
+        <span class="meta">{{ it.mode }} |
           {%- if it.is_bodyweight %} +{{ it.weight }} ({{ it.working_weight }}){% else %} {{ it.weight }}{% endif %} kg
-          {% if it.tier=='sbs' %} x {{ it.reps }} x {{ it.sets }} | rep-out {{ it.repout }}
-          {% elif it.tier=='t2' %} x {{ it.target }} x {{ it.sets }} | streak {{ it.streak }}
+          {% if it.mode=='sbs' %} x {{ it.reps }} x {{ it.sets }} | rep-out {{ it.repout }}
+          {% elif it.mode=='linear_t2' %} x {{ it.target }} x {{ it.sets }} | streak {{ it.streak }}
           {% else %} x {{ it.target }} x {{ it.sets }}
           {% endif %}
           | est 1RM {{ "%.2f"|format(it.est1rm) if it.est1rm is not none else '—' }}

@@ -3,6 +3,26 @@ from dataclasses import dataclass, field
 from typing import Optional, List, Dict
 
 
+# --- Training-mode unification (ADR 0005) ---
+# load_model: how resistance is expressed; mode: how progression is driven.
+# LEGAL_COMBOS binds them 1:1 for pure_bodyweight (must pair with "none") and
+# otherwise allows only legal (load_model, mode) pairings.
+LOAD_MODELS = ("barbell", "bodyweight", "pure_bodyweight")
+MODES = ("sbs", "linear_t2", "linear_t3", "none")
+
+# Legal (load_model, mode) combos (ADR 0005). none<->pure_bodyweight bound 1:1;
+# barbell/bodyweight must follow some progression; sbs is barbell-only.
+LEGAL_COMBOS = frozenset({
+    ("barbell", "sbs"), ("barbell", "linear_t2"), ("barbell", "linear_t3"),
+    ("bodyweight", "linear_t2"), ("bodyweight", "linear_t3"),
+    ("pure_bodyweight", "none"),
+})
+
+
+def is_legal_combo(load_model: str, mode: str) -> bool:
+    return (load_model, mode) in LEGAL_COMBOS
+
+
 @dataclass(frozen=True)
 class ScheduleRow:
     kind: str            # "main" | "aux"
@@ -16,24 +36,20 @@ class ScheduleRow:
 class Lift:
     """A lift definition in profile.yaml (static)."""
     name: str
-    tier: str           # "sbs" | "t2" | "t3"
     day: int
-    # sbs tier
+    load_model: str = "barbell"   # "barbell" | "bodyweight" | "pure_bodyweight"
+    mode: str = "none"            # "sbs" | "linear_t2" | "linear_t3" | "none"
     max: Optional[float] = None
     intensity: float = 0.0
     reps: int = 0
     repout: int = 0
     sets: int = 3
-    # t2 / t3
     start: Optional[float] = None
-    lift_kind: Optional[str] = None   # "main" | "aux" for sbs; None for t2/t3
-    incr: Optional[float] = None      # t2/t3 per-lift progression step; None = inherit global incr
-    # bodyweight lift modeling (ADR 0004). bodyweight_pct == 0.0 -> ordinary lift
-    # (working weight == added, unchanged). >0 -> fraction of bodyweight moved
-    # (1.0 pull-up/dip, ~0.64 push-up). progression "none" skips auto-progression
-    # (pure-bodyweight lifts like crunches progressed by hand).
+    lift_kind: Optional[str] = None   # "main" | "aux" for sbs; None otherwise
+    incr: Optional[float] = None      # linear_t2/t3 per-lift step; None = inherit global
+    # Load parameter (ADR 0004), NOT a mode marker. 0.0 barbell; >0 bodyweight
+    # fraction (1.0 pull-up/dip, ~0.64 push-up). Hand-entered, default 1.0 for pure.
     bodyweight_pct: float = 0.0
-    progression: str = "weight"
 
 
 @dataclass
@@ -66,7 +82,7 @@ class SetEntry:
 class LiftState:
     """Per-lift dynamic state in state.yaml."""
     name: str
-    tier: str
+    mode: str
     # sbs
     tm: Optional[float] = None
     # t2 / t3

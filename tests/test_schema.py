@@ -34,3 +34,42 @@ def test_lift_incr_defaults_to_none():
 def test_lift_incr_can_be_set():
     l = Lift(name="Pull-downs", tier="t2", day=1, incr=5.0)
     assert l.incr == 5.0
+
+
+# --- Task 1 (ADR 0005): dual load_model/mode enums ---
+from sbs_cli.data.schema import (Lift, LiftState, LOAD_MODELS, MODES,
+                                 LEGAL_COMBOS, is_legal_combo)
+
+
+def test_lift_has_load_model_and_mode():
+    l = Lift(name="Pull-up", load_model="pure_bodyweight", mode="none", day=1)
+    assert l.load_model == "pure_bodyweight"
+    assert l.mode == "none"
+    assert l.bodyweight_pct == 0.0
+
+
+def test_lift_defaults():
+    l = Lift(name="Bench", day=1)
+    assert l.load_model == "barbell"
+    assert l.mode == "none"  # default; caller sets a legal one
+
+
+def test_liftstate_mode_field():
+    s = LiftState(name="x", mode="sbs", tm=100.0)
+    assert s.mode == "sbs"
+
+
+def test_legal_combos():
+    assert is_legal_combo("barbell", "sbs")
+    assert is_legal_combo("barbell", "linear_t2")
+    assert is_legal_combo("barbell", "linear_t3")
+    assert is_legal_combo("bodyweight", "linear_t2")
+    assert is_legal_combo("bodyweight", "linear_t3")
+    assert is_legal_combo("pure_bodyweight", "none")
+    # illegal
+    assert not is_legal_combo("barbell", "none")
+    assert not is_legal_combo("bodyweight", "none")
+    assert not is_legal_combo("bodyweight", "sbs")
+    assert not is_legal_combo("pure_bodyweight", "sbs")
+    assert not is_legal_combo("pure_bodyweight", "linear_t2")
+    assert not is_legal_combo("pure_bodyweight", "linear_t3")

@@ -38,6 +38,12 @@ def view():
     return render_template("lifts.html", lifts=lifts, settings=settings)
 
 
+@bp.route("/lifts/<int:lid>/row")
+def row(lid):
+    conn = get_db()
+    return render_template("_lift_row.html", lift=repo.get_lift(conn, lid))
+
+
 @bp.route("/lifts/new", methods=["POST"])
 def new():
     conn = get_db()

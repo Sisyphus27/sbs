@@ -292,3 +292,12 @@ def test_edit_changes_bodyweight_pct(client, app):
         conn = connect(app.config["DB_PATH"])
         assert repo.get_lift(conn, lid)["bodyweight_pct"] == 1.0
         conn.close()
+
+
+def test_row_partial_renders_readonly(client, app):
+    lid = _lift(app)
+    rv = client.get(f"/lifts/{lid}/row")
+    assert rv.status_code == 200
+    assert b"Squat" in rv.data
+    # read-only row has no editable form inputs
+    assert b'hx-post' not in rv.data or b'name=' not in rv.data

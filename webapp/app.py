@@ -26,6 +26,23 @@ def create_app(db_path: str | None = None, backup_dir: str | None = None,
     app.register_blueprint(schedule_bp)
     from .routes.reseed import bp as reseed_bp
     app.register_blueprint(reseed_bp)
+
+    from .routes.reseed import _due_lifts
+    from sbs_cli.data.schema import LEGAL_COMBOS, LOAD_MODELS, MODES
+
+    @app.context_processor
+    def inject_globals():
+        from .db import get_db
+        conn = get_db()
+        try:
+            due, _ = _due_lifts(conn)
+            reseed_count = len(due)
+        except Exception:
+            reseed_count = 0
+        legal_map = {lm: [m for m in MODES if (lm, m) in LEGAL_COMBOS]
+                     for lm in LOAD_MODELS}
+        return {"reseed_count": reseed_count, "legal_map": legal_map}
+
     app.teardown_appcontext(close_db)
     return app
 

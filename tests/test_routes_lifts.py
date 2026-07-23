@@ -321,5 +321,9 @@ def test_edit_failure_keeps_edit_state(client, app):
 def test_lifts_page_includes_legal_map_json(client, app):
     rv = client.get("/lifts")
     assert rv.status_code == 200
-    # legal_map injected as JSON for the cascade (barbell -> its legal modes)
-    assert b"legal-map" in rv.data or b"linear_t2" in rv.data
+    # legal_map injected as JSON via `{{ legal_map | tojson }}` inside
+    # <script id="legal-map" type="application/json">. Lock the JSON container
+    # shape ({"barbell": [...]) so the assertion does not match legacy
+    # <option value="linear_t2"> HTML or the bare script tag id.
+    assert b'id="legal-map"' in rv.data
+    assert b'{"barbell"' in rv.data

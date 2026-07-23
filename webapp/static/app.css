@@ -1,0 +1,78 @@
+/* SBS webapp design system — 极简工具风 (ADR 0006). Single accent, monochrome base. */
+:root{
+  --bg:#ffffff; --ink:#1a1a1a; --muted:#6b6b6b; --line:#e2e2e2;
+  --accent:#1f4e79;
+  --up:#2e7d32; --down:#c62828; --danger:#c62828;
+  --space:8px; --radius:3px;
+  --font:system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:ui-monospace,"SF Mono","Cascadia Code",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--font);font-size:15px;line-height:1.5;color:var(--ink);background:var(--bg)}
+h1{font-size:1.4em;margin:0 0 .5em}
+h2{font-size:1.2em;margin:1.4em 0 .5em;border-bottom:1px solid var(--line);padding-bottom:.2em}
+h3{font-size:1.05em;margin:1em 0 .4em}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* numbers in columns align monospace; prose numbers stay sans */
+.num,input[type=number]{font-family:var(--mono)}
+.meta{color:var(--muted);font-size:.92em}
+
+/* buttons */
+.btn,button{display:inline-block;font:inherit;padding:6px 14px;border:1px solid var(--line);
+  border-radius:var(--radius);background:#fff;color:var(--ink);cursor:pointer;margin:0}
+.btn:hover,button:hover{border-color:var(--muted)}
+.btn-primary,button.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-danger,button.btn-danger{background:#fff;border-color:var(--danger);color:var(--danger)}
+.btn-ghost,button.btn-ghost{border:none;background:none;color:var(--muted);padding:6px 8px}
+.btn-ghost:hover{color:var(--ink)}
+button:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* card + field grid */
+.card{border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin:0 0 16px;background:#fff}
+.field{display:flex;flex-direction:column;gap:2px;margin-bottom:10px}
+.field label{font-size:.85em;color:var(--muted)}
+.field .sub{font-size:.78em;color:var(--muted)}
+.field input,.field select{padding:5px 8px;border:1px solid var(--line);border-radius:var(--radius);font:inherit;width:100%;max-width:220px}
+.field input:focus,.field select:focus{outline:none;border-color:var(--accent)}
+.field-row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end}
+
+/* tags */
+.tag{display:inline-block;padding:1px 7px;border:1px solid var(--line);border-radius:10px;
+  font-size:.8em;color:var(--muted);font-family:var(--mono)}
+.tag-accent{border-color:var(--accent);color:var(--accent)}
+.tag-muted{border:none;background:#f2f2f2;color:var(--muted)}
+
+/* table */
+.table{border-collapse:collapse;width:100%}
+.table th,.table td{border-bottom:1px solid var(--line);padding:5px 8px;text-align:left}
+.table th{font-size:.85em;color:var(--muted);font-weight:normal}
+.table input{width:72px}
+
+/* flash */
+.flash{border:1px solid var(--line);border-left:3px solid var(--muted);border-radius:var(--radius);
+  padding:8px 12px;margin:0 0 12px;color:var(--ink)}
+.flash-error{border-left-color:var(--danger);color:var(--danger)}
+
+/* layout */
+body{display:flex;min-height:100vh}
+.sidebar{width:180px;flex:0 0 180px;border-right:1px solid var(--line);padding:20px 14px;position:sticky;top:0;height:100vh}
+.sidebar .brand{font-weight:bold;font-size:1.1em;margin-bottom:18px}
+.sidebar .group{margin-bottom:16px}
+.sidebar .group-name{font-size:.78em;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.sidebar a{display:block;padding:4px 8px;border-radius:var(--radius);color:var(--ink)}
+.sidebar a.active{background:#eef3f8;color:var(--accent);font-weight:600}
+.sidebar a .badge{float:right;background:var(--accent);color:#fff;border-radius:9px;font-size:.75em;padding:0 6px}
+.main{flex:1;min-width:0;padding:24px 32px}
+.content{max-width:1100px}
+
+@media (max-width:900px){
+  body{flex-direction:column}
+  .sidebar{width:100%;flex:none;height:auto;border-right:none;border-bottom:1px solid var(--line);
+    position:static;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+  .sidebar .brand{margin:0 12px 0 0}
+  .sidebar .group{margin:0;display:flex;gap:2px;align-items:center}
+  .sidebar .group-name{display:none}
+  .main{padding:16px}
+}

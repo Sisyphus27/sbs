@@ -31,10 +31,16 @@ def _old_schema_db(tmp_path):
     conn.execute("INSERT INTO lifts (name,tier,day,start) VALUES ('Bench','t2',1,60)")
     conn.execute("INSERT INTO lifts (name,tier,day,start,bodyweight_pct) VALUES ('Pull-up','t2',2,10,1.0)")
     conn.execute("INSERT INTO lifts (name,tier,day,bodyweight_pct,progression) VALUES ('Crunch','t3',2,1.0,'none')")
+    # t3 barbell (progression='weight', pct=0) -> ('barbell','linear_t3') — covers _MAP[('t3',False)]
+    conn.execute("INSERT INTO lifts (name,tier,day,start,progression) VALUES ('Curl','t3',3,20,'weight')")
+    # t3 bodyweight (progression='weight', pct>0) -> ('bodyweight','linear_t3') — covers _MAP[('t3',True)]
+    conn.execute("INSERT INTO lifts (name,tier,day,start,bodyweight_pct,progression) VALUES ('Hip Thrust','t3',4,50,0.6,'weight')")
     conn.execute("INSERT INTO lift_state VALUES (1,'sbs',100,NULL,NULL,0,NULL,0)")
     conn.execute("INSERT INTO lift_state VALUES (2,'t2',NULL,60,8,0,NULL,0)")
     conn.execute("INSERT INTO lift_state VALUES (3,'t2',NULL,10,8,0,NULL,0)")
     conn.execute("INSERT INTO lift_state VALUES (4,'t3',NULL,NULL,NULL,0,NULL,0)")
+    conn.execute("INSERT INTO lift_state VALUES (5,'t3',NULL,20,NULL,0,NULL,0)")
+    conn.execute("INSERT INTO lift_state VALUES (6,'t3',NULL,50,NULL,0,NULL,0)")
     conn.commit()
     return p, conn
 
@@ -48,9 +54,13 @@ def test_migrate_maps_rows(tmp_path):
     assert rows["Bench"] == ("barbell", "linear_t2")
     assert rows["Pull-up"] == ("bodyweight", "linear_t2")
     assert rows["Crunch"] == ("pure_bodyweight", "none")
+    # t3 branches (progression='weight'): _MAP[('t3',False)] and _MAP[('t3',True)]
+    assert rows["Curl"] == ("barbell", "linear_t3")
+    assert rows["Hip Thrust"] == ("bodyweight", "linear_t3")
     # lift_state tier -> mode
     st = {r["lift_id"]: r["mode"] for r in conn.execute("SELECT lift_id, mode FROM lift_state")}
     assert st[1] == "sbs" and st[2] == "linear_t2" and st[4] == "none"
+    assert st[5] == "linear_t3" and st[6] == "linear_t3"
     # old columns gone
     cols = {r["name"] for r in conn.execute("PRAGMA table_info(lifts)")}
     assert "tier" not in cols and "progression" not in cols
@@ -76,7 +86,7 @@ def test_migrate_handles_pathological_sbs_with_bodyweight_pct(tmp_path):
         "VALUES ('Squat-BW','sbs',3,100,1.0,'main')"
     )
     conn.execute(
-        "INSERT INTO lift_state (lift_id,tier,tm) VALUES (5,'sbs',100.0)"
+        "INSERT INTO lift_state (lift_id,tier,tm) VALUES (7,'sbs',100.0)"
     )
     conn.commit()
     migrate_modes(conn)
@@ -85,5 +95,5 @@ def test_migrate_handles_pathological_sbs_with_bodyweight_pct(tmp_path):
     assert rows["Squat-BW"] == ("barbell", "sbs")
     st = {r["lift_id"]: r["mode"] for r in
           conn.execute("SELECT lift_id, mode FROM lift_state")}
-    assert st[5] == "sbs"
+    assert st[7] == "sbs"
     conn.close()

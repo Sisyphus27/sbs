@@ -12,10 +12,17 @@
     {# load_model 不可切（ADR 0005）— 只读显示，不提交 #}
     <input name="load_model" value="{{ lift.load_model }}" readonly style="width:100px;color:#888">
     <select name="mode" style="width:100px">
-      <option value="sbs" {{ 'selected' if lift.mode == 'sbs' else '' }}>sbs</option>
-      <option value="linear_t2" {{ 'selected' if lift.mode == 'linear_t2' else '' }}>linear_t2</option>
-      <option value="linear_t3" {{ 'selected' if lift.mode == 'linear_t3' else '' }}>linear_t3</option>
-      <option value="none" {{ 'selected' if lift.mode == 'none' else '' }}>none</option>
+      {# ADR 0005: 仅渲染该 load_model 的合法 mode（is_legal_combo）#}
+      {% if lift.load_model == 'barbell' %}
+        <option value="sbs" {{ 'selected' if lift.mode == 'sbs' else '' }}>sbs</option>
+        <option value="linear_t2" {{ 'selected' if lift.mode == 'linear_t2' else '' }}>linear_t2</option>
+        <option value="linear_t3" {{ 'selected' if lift.mode == 'linear_t3' else '' }}>linear_t3</option>
+      {% elif lift.load_model == 'bodyweight' %}
+        <option value="linear_t2" {{ 'selected' if lift.mode == 'linear_t2' else '' }}>linear_t2</option>
+        <option value="linear_t3" {{ 'selected' if lift.mode == 'linear_t3' else '' }}>linear_t3</option>
+      {% elif lift.load_model == 'pure_bodyweight' %}
+        <option value="none" {{ 'selected' if lift.mode == 'none' else '' }}>none</option>
+      {% endif %}
     </select>
     {% if lift.mode == 'sbs' %}
       <select name="lift_kind" style="width:80px">

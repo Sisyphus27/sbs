@@ -16,14 +16,15 @@ def test_migrate_from_yaml(tmp_path, monkeypatch):
         "rounding": 2.5, "days_per_week": 4, "incr": 2.5,
         "t2_reset_pct": 0.7, "t2_fail": 3, "t3_target": 15,
         "lifts": [
-            {"name": "Squat", "tier": "sbs", "day": 1, "max": 135.0,
-             "intensity": 0.7, "reps": 5, "repout": 10, "sets": 5},
-            {"name": "Rows", "tier": "t2", "day": 1, "sets": 3, "start": 85.0},
+            {"name": "Squat", "load_model": "barbell", "mode": "sbs", "day": 1,
+             "max": 135.0, "intensity": 0.7, "reps": 5, "repout": 10, "sets": 5},
+            {"name": "Rows", "load_model": "barbell", "mode": "linear_t2", "day": 1,
+             "sets": 3, "start": 85.0},
         ],
     }
     state = {"week": 2, "lifts": {
-        "Squat": {"tier": "sbs", "tm": 137.5, "history": [{"week": 1, "weight": 95.0, "reps": 11}]},
-        "Rows": {"tier": "t2", "weight": 87.5, "target": 10, "streak": 0, "history": []},
+        "Squat": {"mode": "sbs", "tm": 137.5, "history": [{"week": 1, "weight": 95.0, "reps": 11}]},
+        "Rows": {"mode": "linear_t2", "weight": 87.5, "target": 10, "streak": 0, "history": []},
     }}
     p = tmp_path / "profile.yaml"; _write_yaml(str(p), profile)
     s = tmp_path / "state.yaml"; _write_yaml(str(s), state)
@@ -51,15 +52,15 @@ def test_migrate_refuses_overwrite(tmp_path):
 
 def test_migrate_seeds_bodyweight_and_lift_bodyweight_fields(tmp_path):
     # Task 14: seed(conn, p) must sync Profile.bodyweight -> settings.bodyweight
-    # and Lift.bodyweight_pct/progression -> lifts.columns from profile.yaml.
+    # and Lift.bodyweight_pct/load_model/mode -> lifts.columns from profile.yaml.
     import migrate
     from webapp.db import init_schema
     import sqlite3
     profile_yaml = tmp_path / "profile.yaml"
     profile_yaml.write_text(
         "bodyweight: 75.0\nrounding: 2.5\nlifts:\n"
-        "- name: Chin-ups\n  tier: t2\n  day: 2\n  start: 0.0\n"
-        "  bodyweight_pct: 1.0\n  progression: none\n",
+        "- name: Chin-ups\n  load_model: pure_bodyweight\n  mode: none\n"
+        "  day: 2\n  start: 0.0\n  bodyweight_pct: 1.0\n",
         encoding="utf-8")
     db_path = tmp_path / "sbs.db"
     conn = sqlite3.connect(str(db_path)); conn.row_factory = sqlite3.Row
@@ -71,7 +72,8 @@ def test_migrate_seeds_bodyweight_and_lift_bodyweight_fields(tmp_path):
     assert get_settings(conn)["bodyweight"] == 75.0
     chin = next(r for r in list_lifts(conn) if r["name"] == "Chin-ups")
     assert chin["bodyweight_pct"] == 1.0
-    assert chin["progression"] == "none"
+    assert chin["load_model"] == "pure_bodyweight"
+    assert chin["mode"] == "none"
     conn.close()
 
 
@@ -85,7 +87,7 @@ def test_migrate_from_xlsx_sets_sbs_lift_kind(tmp_path):
     migrate.migrate_from_xlsx(dbp, SRC_XLSX, force=True)
     conn = db.connect(dbp)
     sbs_kinds = {row["name"]: row["lift_kind"] for row in repo.list_lifts(conn)
-                 if row["tier"] == "sbs"}
+                 if row["mode"] == "sbs"}
     conn.close()
     assert sbs_kinds, "expected at least one sbs lift from xlsx import"
     assert sbs_kinds["Squat"] == "main"      # QS main row

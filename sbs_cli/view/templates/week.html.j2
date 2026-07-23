@@ -18,9 +18,9 @@ button{margin-top:1em;padding:8px 14px;font-size:1em;cursor:pointer}
 {% for it in items %}
 <div class="row">
   <span class="name">{{ it.name }}</span>
-  <span class="meta">{{ it.tier }}
-    {% if it.tier == 'sbs' %} | {{ it.weight }} kg x {{ it.reps }} x {{ it.sets }} | rep-out target {{ it.repout }}
-    {% elif it.tier == 't2' %} | {{ it.weight }} kg x {{ it.target }} x {{ it.sets }} | streak {{ it.streak }}
+  <span class="meta">{{ it.mode }}
+    {% if it.mode == 'sbs' %} | {{ it.weight }} kg x {{ it.reps }} x {{ it.sets }} | rep-out target {{ it.repout }}
+    {% elif it.mode == 'linear_t2' %} | {{ it.weight }} kg x {{ it.target }} x {{ it.sets }} | streak {{ it.streak }}
     {% else %} | {{ it.weight }} kg x {{ it.target }}+ x {{ it.sets }}
     {% endif %}
     {% if it.est1rm %} | est 1RM {{ "%.2f"|format(it.est1rm) }}{% else %} | est 1RM —{% endif %}

@@ -9,9 +9,9 @@ def _profile():
     # profile must carry a schedule. The CLI path uses DEFAULT_SCHEDULE
     # (the standard 21-week SBS RTF ladder); mirror that here.
     return Profile(lifts=[
-        Lift(name="Squat", tier="sbs", day=1, max=100, intensity=0.75, reps=4,
-             repout=8, sets=3, lift_kind="main"),
-        Lift(name="Curls", tier="t3", day=1, start=40),
+        Lift(name="Squat", load_model="barbell", mode="sbs", day=1, max=100,
+             intensity=0.75, reps=4, repout=8, sets=3, lift_kind="main"),
+        Lift(name="Curls", load_model="barbell", mode="linear_t3", day=1, start=40),
     ], schedule=DEFAULT_SCHEDULE)
 
 def test_render_week_text_has_day_and_lifts():

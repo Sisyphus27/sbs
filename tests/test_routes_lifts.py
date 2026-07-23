@@ -316,3 +316,10 @@ def test_edit_failure_keeps_edit_state(client, app):
     assert rv.status_code == 400
     # edit state preserved: form re-rendered, not the read-only row
     assert b'name="incr"' in rv.data
+
+
+def test_lifts_page_includes_legal_map_json(client, app):
+    rv = client.get("/lifts")
+    assert rv.status_code == 200
+    # legal_map injected as JSON for the cascade (barbell -> its legal modes)
+    assert b"legal-map" in rv.data or b"linear_t2" in rv.data

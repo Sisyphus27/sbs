@@ -41,6 +41,12 @@ def migrate_modes(conn) -> int:
     """Rebuild lifts with load_model/mode. Returns rows migrated (0 if already done)."""
     if _has_col(conn, "lifts", "load_model"):
         return 0
+    # Disable FK during rebuild: DROP TABLE lifts performs an implicit DELETE of
+    # all rows, which (with foreign_keys=ON) CASCADE-clears lift_state before we
+    # read it. Real DBs set PRAGMA foreign_keys=ON (webapp.db.connect); the
+    # one-shot migration owns the whole rebuild, so FK off here is safe.
+    conn.commit()  # PRAGMA foreign_keys is a no-op inside an open transaction
+    conn.execute("PRAGMA foreign_keys=OFF")
     rows = conn.execute("SELECT * FROM lifts").fetchall()
     conn.executescript("""
     CREATE TABLE lifts_new (
@@ -87,6 +93,7 @@ def migrate_modes(conn) -> int:
     conn.execute("DROP TABLE lift_state")
     conn.execute("ALTER TABLE lift_state_new RENAME TO lift_state")
     conn.commit()
+    conn.execute("PRAGMA foreign_keys=ON")  # restore for callers that reuse the conn
     return len(rows)
 
 

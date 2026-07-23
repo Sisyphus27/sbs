@@ -8,6 +8,7 @@ def _old_schema_db(tmp_path):
     p = str(tmp_path / "old.db")
     conn = sqlite3.connect(p)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys=ON")  # mirror webapp.db.connect; exposes DROP-lifts CASCADE
     conn.executescript("""
     CREATE TABLE settings (id INTEGER PRIMARY KEY CHECK(id=1), week INT NOT NULL,
       days_per_week INT NOT NULL, rounding REAL NOT NULL, incr REAL NOT NULL,
@@ -20,7 +21,7 @@ def _old_schema_db(tmp_path):
       start REAL, lift_kind TEXT, incr REAL,
       bodyweight_pct REAL NOT NULL DEFAULT 0.0,
       progression TEXT NOT NULL DEFAULT 'weight');
-    CREATE TABLE lift_state (lift_id INTEGER PRIMARY KEY, tier TEXT NOT NULL,
+    CREATE TABLE lift_state (lift_id INTEGER PRIMARY KEY REFERENCES lifts(id) ON DELETE CASCADE, tier TEXT NOT NULL,
       tm REAL, weight REAL, target INT, streak INT NOT NULL DEFAULT 0,
       est1rm REAL, reseeded_cycle INT NOT NULL DEFAULT 0);
     CREATE TABLE history (id INTEGER PRIMARY KEY AUTOINCREMENT, lift_id INT NOT NULL,
@@ -61,6 +62,7 @@ def test_migrate_maps_rows(tmp_path):
     st = {r["lift_id"]: r["mode"] for r in conn.execute("SELECT lift_id, mode FROM lift_state")}
     assert st[1] == "sbs" and st[2] == "linear_t2" and st[4] == "none"
     assert st[5] == "linear_t3" and st[6] == "linear_t3"
+    assert len(st) == 6  # all lift_state rows preserved (regression: DROP lifts CASCADE-clears lift_state when FK on)
     # old columns gone
     cols = {r["name"] for r in conn.execute("PRAGMA table_info(lifts)")}
     assert "tier" not in cols and "progression" not in cols

@@ -11,10 +11,10 @@ def _profile():
     sched = [ScheduleRow("main", 1, 0.75, 4, 8)]
     return Profile(
         lifts=[
-            Lift(name="Squat", tier="sbs", day=1, max=100, intensity=0.75,
+            Lift(name="Squat", mode="sbs", day=1, max=100, intensity=0.75,
                  reps=4, repout=8, sets=3, lift_kind="main"),
-            Lift(name="Barbell rows", tier="t2", day=1, start=50),
-            Lift(name="Curls", tier="t3", day=1, start=40),
+            Lift(name="Barbell rows", mode="linear_t2", day=1, start=50),
+            Lift(name="Curls", mode="linear_t3", day=1, start=40),
         ],
         schedule=sched,
     )
@@ -73,7 +73,7 @@ def test_week_plan_sbs_shows_working_weight():
 
 def test_advance_t3_uses_profile_target_and_incr():
     # non-default knobs: t3_target=20, incr=5
-    p = Profile(t3_target=20, incr=5, lifts=[Lift(name="Curls", tier="t3", day=1, start=40)])
+    p = Profile(t3_target=20, incr=5, lifts=[Lift(name="Curls", mode="linear_t3", day=1, start=40)])
     s = initial_state(p)
     advance_lift(p, p.lift("Curls"), s.lifts["Curls"], actual_reps=16, week=1)
     # 16 < target 20 -> miss -> weight repeats (NOT a hit at hardcoded 15)
@@ -86,7 +86,7 @@ def test_advance_t3_uses_profile_target_and_incr():
 def test_advance_t2_reset_uses_profile_reset_pct():
     from sbs_cli.engine.progression import round_weight
     # non-default reset_pct=0.60
-    p = Profile(t2_reset_pct=0.60, lifts=[Lift(name="Row", tier="t2", day=1, start=50)])
+    p = Profile(t2_reset_pct=0.60, lifts=[Lift(name="Row", mode="linear_t2", day=1, start=50)])
     s = initial_state(p)
     ls = s.lifts["Row"]
     advance_lift(p, p.lift("Row"), ls, actual_reps=10, week=1)   # seed best set 50x10
@@ -98,19 +98,19 @@ def test_advance_t2_reset_uses_profile_reset_pct():
 
 def test_recompute_state_t3_replays_hits_and_misses():
     from sbs_cli.program import _est1rm_from_history
-    p = Profile(lifts=[Lift(name="Curls", tier="t3", day=1, start=40)])
+    p = Profile(lifts=[Lift(name="Curls", mode="linear_t3", day=1, start=40)])
     lift = p.lift("Curls")
     hist = [SetEntry(1, 42.5, 16), SetEntry(2, 45.0, 14), SetEntry(3, 45.0, 16)]
     ls = recompute_state(lift, hist, p)
     # replay from 40: w1 16>=15 hit -> 42.5; w2 14<15 miss -> 42.5; w3 16>=15 hit -> 45.0
-    assert ls.tier == "t3" and ls.weight == 45.0 and ls.target is None and ls.streak == 0
+    assert ls.mode == "linear_t3" and ls.weight == 45.0 and ls.target is None and ls.streak == 0
     # est1rm drawn from the real history weights (Option A) -- unchanged by start
     assert ls.est1rm == _est1rm_from_history(hist)
 
 
 def test_recompute_state_t2_all_hits_increments_from_start():
     from sbs_cli.program import _est1rm_from_history
-    p = Profile(lifts=[Lift(name="Row", tier="t2", day=1, start=50)])
+    p = Profile(lifts=[Lift(name="Row", mode="linear_t2", day=1, start=50)])
     lift = p.lift("Row")
     hist = [SetEntry(1, 50.0, 8), SetEntry(2, 52.5, 8), SetEntry(3, 55.0, 8)]
     ls = recompute_state(lift, hist, p)
@@ -120,7 +120,7 @@ def test_recompute_state_t2_all_hits_increments_from_start():
 
 
 def test_recompute_state_t2_one_miss_drops_to_6():
-    p = Profile(lifts=[Lift(name="Row", tier="t2", day=1, start=50)])
+    p = Profile(lifts=[Lift(name="Row", mode="linear_t2", day=1, start=50)])
     lift = p.lift("Row")
     # 1-strike: a single miss at target 8 drops to target 6, weight unchanged
     hist = [SetEntry(1, 50.0, 5)]
@@ -130,18 +130,18 @@ def test_recompute_state_t2_one_miss_drops_to_6():
 
 def test_recompute_state_empty_history_seeds_start():
     p = Profile(lifts=[
-        Lift(name="Row", tier="t2", day=1, start=65),
-        Lift(name="Curls", tier="t3", day=1, start=40),
+        Lift(name="Row", mode="linear_t2", day=1, start=65),
+        Lift(name="Curls", mode="linear_t3", day=1, start=40),
     ])
     assert recompute_state(p.lift("Row"), [], p) == LiftState(
-        name="Row", tier="t2", weight=65, target=8, streak=0, est1rm=None, history=[])
+        name="Row", mode="linear_t2", weight=65, target=8, streak=0, est1rm=None, history=[])
     assert recompute_state(p.lift("Curls"), [], p) == LiftState(
-        name="Curls", tier="t3", weight=40, target=None, streak=0, est1rm=None, history=[])
+        name="Curls", mode="linear_t3", weight=40, target=None, streak=0, est1rm=None, history=[])
 
 
 def test_recompute_state_sbs_raises():
     import pytest
-    p = Profile(lifts=[Lift(name="Squat", tier="sbs", day=1, max=100, intensity=0.75, reps=4, repout=8)])
+    p = Profile(lifts=[Lift(name="Squat", mode="sbs", day=1, max=100, intensity=0.75, reps=4, repout=8)])
     with pytest.raises(ValueError):
         recompute_state(p.lift("Squat"), [], p)
 
@@ -152,7 +152,7 @@ def test_sbs_tm_raw_accumulation_unfreezes_weight():
     # weight must climb in legal 2.5 steps.
     # Schedule: weeks 1..8 all at (0.7, 4, 8) — preserves the legacy single-intensity intent.
     sched = [ScheduleRow("main", w, 0.7, 4, 8) for w in range(1, 9)]
-    p = Profile(lifts=[Lift(name="Squat", tier="sbs", day=1, max=135, sets=3, lift_kind="main")],
+    p = Profile(lifts=[Lift(name="Squat", mode="sbs", day=1, max=135, sets=3, lift_kind="main")],
                 schedule=sched)
     s = initial_state(p); lift = p.lift("Squat")
     weights = []
@@ -169,13 +169,13 @@ def test_sbs_tm_raw_accumulation_unfreezes_weight():
 def _profile_with_schedule():
     sched = [ScheduleRow("main", w, i, r, ro) for (w, i, r, ro) in
              [(1, 0.70, 5, 10), (2, 0.75, 4, 8), (3, 0.80, 3, 6)]]
-    lifts = [Lift(name="Squat", tier="sbs", day=1, max=100.0, sets=5, lift_kind="main")]
+    lifts = [Lift(name="Squat", mode="sbs", day=1, max=100.0, sets=5, lift_kind="main")]
     return Profile(rounding=2.5, lifts=lifts, schedule=sched)
 
 
 def test_week_plan_uses_scheduled_intensity_reps_repout_at_week_2():
     p = _profile_with_schedule()
-    st = ProgramState(week=2, lifts={"Squat": LiftState(name="Squat", tier="sbs", tm=100.0)})
+    st = ProgramState(week=2, lifts={"Squat": LiftState(name="Squat", mode="sbs", tm=100.0)})
     items = week_plan(p, st, day=1)
     squat = items[0]
     # week 2 schedule: 0.75 / 4 / 8 ; weight = MROUND(100*0.75, 2.5) = 75.0
@@ -188,7 +188,7 @@ def test_week_plan_uses_scheduled_intensity_reps_repout_at_week_2():
 def test_advance_lift_uses_scheduled_repout_for_tm_delta():
     p = _profile_with_schedule()
     lift = p.lift("Squat")
-    st = LiftState(name="Squat", tier="sbs", tm=100.0)
+    st = LiftState(name="Squat", mode="sbs", tm=100.0)
     # week 2 scheduled repout = 8; actual 11 -> beat by 3 -> +1.5% -> 101.5
     advance_lift(p, lift, st, actual_reps=11, week=2)
     assert st.tm == 101.5
@@ -207,7 +207,7 @@ def test_recompute_sbs_tm_uses_schedule_repout_per_week():
 
 def test_advance_t3_uses_per_lift_incr_over_global():
     # lift.incr=5 覆盖 profile.incr=2.5；HIT 时 40+5=45（旧实现用 profile.incr=2.5 -> 42.5）
-    p = Profile(incr=2.5, lifts=[Lift(name="Curls", tier="t3", day=1, start=40, incr=5)])
+    p = Profile(incr=2.5, lifts=[Lift(name="Curls", mode="linear_t3", day=1, start=40, incr=5)])
     s = initial_state(p)
     advance_lift(p, p.lift("Curls"), s.lifts["Curls"], actual_reps=16, week=1)  # 16>=15 hit
     assert s.lifts["Curls"].weight == 45.0
@@ -215,7 +215,7 @@ def test_advance_t3_uses_per_lift_incr_over_global():
 
 def test_advance_t3_null_incr_falls_back_to_global():
     # incr=None -> eff_incr=profile.incr=2.5；40+2.5=42.5（向后兼容）
-    p = Profile(incr=2.5, lifts=[Lift(name="Curls", tier="t3", day=1, start=40)])
+    p = Profile(incr=2.5, lifts=[Lift(name="Curls", mode="linear_t3", day=1, start=40)])
     s = initial_state(p)
     advance_lift(p, p.lift("Curls"), s.lifts["Curls"], actual_reps=16, week=1)
     assert s.lifts["Curls"].weight == 42.5
@@ -225,7 +225,7 @@ def test_advance_sbs_ignores_incr():
     # sbs 路径不沾 incr：working weight = round(TM*intensity, rounding)
     sched = [ScheduleRow("main", 1, 0.75, 4, 8)]
     p = Profile(rounding=2.5, schedule=sched,
-                lifts=[Lift(name="Squat", tier="sbs", day=1, max=100, sets=3,
+                lifts=[Lift(name="Squat", mode="sbs", day=1, max=100, sets=3,
                             lift_kind="main", incr=99)])
     s = initial_state(p)
     advance_lift(p, p.lift("Squat"), s.lifts["Squat"], actual_reps=8, week=1)
@@ -237,7 +237,7 @@ def test_recompute_state_t2_reset_snaps_to_eff_incr():
     from sbs_cli.engine.progression import round_weight
     from sbs_cli.program import _est1rm_from_history
     p = Profile(t2_reset_pct=0.75, incr=2.5, rounding=2.5,
-                lifts=[Lift(name="PD", tier="t2", day=1, start=100, incr=5)])
+                lifts=[Lift(name="PD", mode="linear_t2", day=1, start=100, incr=5)])
     lift = p.lift("PD")
     # 最佳组 100x5 -> est1rm≈115；×0.75≈86.4 落在 5-grid(85) 与 2.5-grid(87.5) 之间
     hist = [SetEntry(1, 100.0, 5), SetEntry(2, 100.0, 3),
@@ -278,13 +278,13 @@ def test_est1rm_from_history_ordinary_lift_unchanged():
 # -- Task 4: recompute_state threads bodyweight into est1RM + T2 reset --
 
 def test_recompute_state_t2_bodyweight_reset_uses_working_weight():
-    # Chin-ups (t2, pct 1.0). Force 3 consecutive misses -> reset to
+    # Chin-ups (linear_t2, pct 1.0). Force 3 consecutive misses -> reset to
     # round(est1rm * 0.75, incr). est1rm must be computed from working weight
     # (bodyweight + added), not added alone -- otherwise reset weight collapses
     # toward 0. DEViation from brief: reps=3 (not 5) so week 3 at target=4 is
     # still a MISS; with reps=5 the ladder cascade makes W3 a HIT at target=4
     # (5>=4) so the reset path never fires and the fix would not be exercised.
-    lift = Lift(name="Chin-ups", tier="t2", day=2, start=0.0,
+    lift = Lift(name="Chin-ups", mode="linear_t2", day=2, start=0.0,
                 bodyweight_pct=1.0, incr=2.5)
     profile = Profile(bodyweight=75.0, incr=2.5, t2_fail=3, t2_reset_pct=0.75)
     hist = [SetEntry(week=1, weight=0.0, reps=3),
@@ -303,29 +303,33 @@ def _bw_profile(**kw):
 
 
 def test_advance_lift_progression_none_skips_weight_progression():
-    # High Crunch: t3, pct 1.0, progression none. Hit target (15) -> state.weight
+    # High Crunch: pure_bodyweight/none. Hit target (15) -> state.weight
     # must NOT gain incr (no phantom added weight).
-    lift = Lift(name="High Crunch", tier="t3", day=4, start=0.0,
-                bodyweight_pct=1.0, progression="none")
-    state = LiftState(name="High Crunch", tier="t3", weight=0.0)
-    p = _bw_profile(schedule=[])  # t3 doesn't need schedule
+    lift = Lift(name="High Crunch", load_model="pure_bodyweight", mode="none",
+                day=4, start=0.0, bodyweight_pct=1.0)
+    state = LiftState(name="High Crunch", mode="none", weight=0.0)
+    p = _bw_profile(schedule=[])  # none doesn't need schedule
     advance_lift(p, lift, state, actual_reps=20, week=1)
     assert state.weight == 0.0           # unchanged -- no +2.5 phantom added
     assert state.est1rm is not None and state.est1rm > 0.0   # est1rm from bw
 
 
-def test_advance_lift_progression_weight_still_increments_added():
-    # Dips: t3, pct 1.0, progression weight (default). Hit target -> +incr to added.
-    lift = Lift(name="Dips", tier="t3", day=4, start=0.0, bodyweight_pct=1.0)
-    state = LiftState(name="Dips", tier="t3", weight=0.0)
+def test_advance_lift_linear_t3_still_increments_added():
+    # Dips (bodyweight/linear_t3, pct 1.0). Hit target -> +incr to ADDED weight.
+    lift = Lift(name="Dips", load_model="bodyweight", mode="linear_t3",
+                day=4, start=0.0, bodyweight_pct=1.0)
+    state = LiftState(name="Dips", mode="linear_t3", weight=0.0)
     p = _bw_profile(schedule=[])
     advance_lift(p, lift, state, actual_reps=20, week=1)
     assert state.weight == 2.5           # added grew by incr
 
 
 def test_advance_lift_bodyweight_history_stores_added_not_working():
-    lift = Lift(name="Dips", tier="t3", day=4, start=0.0, bodyweight_pct=1.0)
-    state = LiftState(name="Dips", tier="t3", weight=0.0)
+    # Dips (linear_t3, pct 1.0): recorded history weight is the ADDED weight (0.0),
+    # not the working weight (75) -- the load seam is applied only at est1rm/display.
+    lift = Lift(name="Dips", load_model="bodyweight", mode="linear_t3",
+                day=4, start=0.0, bodyweight_pct=1.0)
+    state = LiftState(name="Dips", mode="linear_t3", weight=0.0)
     p = _bw_profile(schedule=[])
     advance_lift(p, lift, state, actual_reps=10, week=1)
     assert state.history[-1].weight == 0.0    # added, NOT 75
@@ -334,12 +338,14 @@ def test_advance_lift_bodyweight_history_stores_added_not_working():
 # -- Task 6: week_plan exposes working weight for bodyweight lifts (CLI display) --
 
 def test_week_plan_bodyweight_t2_shows_working_weight_not_zero():
-    # Chin-ups (t2, pct 1.0): ls.weight=0 (added) -> PlanItem.weight must be
+    # Chin-ups (linear_t2, pct 1.0): ls.weight=0 (added) -> PlanItem.weight must be
     # working weight = 0 + 75*1.0 = 75, not the legacy raw 0.
-    lift = Lift(name="Chin-ups", tier="t2", day=2, start=0.0, bodyweight_pct=1.0)
+    lift = Lift(name="Chin-ups", load_model="bodyweight", mode="linear_t2",
+                day=2, start=0.0, bodyweight_pct=1.0)
     p = Profile(bodyweight=75.0, incr=2.5, lifts=[lift], schedule=[])
     st = ProgramState(week=1, lifts={"Chin-ups":
-        LiftState(name="Chin-ups", tier="t2", weight=0.0, target=8)})
+        LiftState(name="Chin-ups", mode="linear_t2", weight=0.0, target=8)})
     items = week_plan(p, st, day=2)
     assert len(items) == 1
     assert items[0].weight == 75.0    # working weight, not 0.0
+    assert items[0].mode == "linear_t2"   # ADR 0005: PlanItem carries mode, not tier

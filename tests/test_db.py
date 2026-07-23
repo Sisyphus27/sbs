@@ -36,14 +36,16 @@ def test_init_schema_has_lift_kind_reseeded_cycle_and_incr_columns(tmp_path):
     state_cols = {r[1] for r in conn.execute("PRAGMA table_info(lift_state)").fetchall()}
     assert "lift_kind" in lift_cols
     assert "incr" in lift_cols          # per-lift t2/t3 progression step (nullable)
+    assert "load_model" in lift_cols    # ADR 0005: barbell|bodyweight|pure_bodyweight
+    assert "mode" in lift_cols          # ADR 0005: sbs|linear_t2|linear_t3|none
     assert "reseeded_cycle" in state_cols
     # reseeded_cycle defaults to 0 so advance_week's UPSERT won't NULL it out
     conn.execute(
-        "INSERT INTO lifts (name, tier, day, sort_order, sets, max) "
-        "VALUES ('Squat', 'sbs', 1, 0, 5, 100.0)"
+        "INSERT INTO lifts (name, load_model, mode, day, sort_order, sets, max) "
+        "VALUES ('Squat', 'barbell', 'sbs', 1, 0, 5, 100.0)"
     )
     conn.execute(
-        "INSERT INTO lift_state (lift_id, tier, tm) VALUES (1, 'sbs', 100.0)"
+        "INSERT INTO lift_state (lift_id, mode, tm) VALUES (1, 'sbs', 100.0)"
     )
     rc = conn.execute(
         "SELECT reseeded_cycle FROM lift_state WHERE lift_id = 1"
@@ -60,11 +62,14 @@ def test_foreign_keys_enforced(tmp_path):
     conn.close()
 
 
-# ---------- Task 7: bodyweight / bodyweight_pct / progression ----------
+# ---------- Task 7: bodyweight / bodyweight_pct (ADR 0004 legacy add-column) ----------
 
 def test_init_schema_adds_bodyweight_columns_to_legacy_db():
     """A DB created with the OLD schema (no bodyweight cols) must gain them on
-    the next init_schema call, so existing user DBs upgrade in place."""
+    the next init_schema call, so existing user DBs upgrade in place.
+
+    Note: tier/progression -> load_model/mode migration is a one-shot T8 script;
+    init_schema only upgrades the orthogonal bodyweight columns here."""
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
     # build OLD-shape schema (pre-bodyweight)
@@ -90,5 +95,4 @@ def test_init_schema_adds_bodyweight_columns_to_legacy_db():
     l_cols = {r["name"] for r in conn.execute("PRAGMA table_info(lifts)")}
     assert "bodyweight" in s_cols
     assert "bodyweight_pct" in l_cols
-    assert "progression" in l_cols
     conn.close()

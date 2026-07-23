@@ -28,40 +28,45 @@ def update_settings(conn: sqlite3.Connection, **fields) -> None:
 
 
 # ---------- lifts ----------
-_LIFT_COLS = ("name", "tier", "day", "sort_order", "sets",
+_LIFT_COLS = ("name", "load_model", "mode", "day", "sort_order", "sets",
               "max", "intensity", "reps", "repout", "start", "lift_kind", "incr",
-              "bodyweight_pct", "progression")
+              "bodyweight_pct")
 
 
-def create_lift(conn: sqlite3.Connection, *, name: str, tier: str, day: int,
+def create_lift(conn: sqlite3.Connection, *, name: str,
+                load_model: str, mode: str, day: int,
                 sort_order: int, sets: int, max, intensity, reps, repout,
                 start, lift_kind=None, incr=None,
-                bodyweight_pct: float = 0.0, progression: str = "weight") -> int:
+                bodyweight_pct: float = 0.0) -> int:
+    from sbs_cli.data.schema import is_legal_combo
+    if not is_legal_combo(load_model, mode):
+        raise ValueError(f"illegal load_model/mode: {load_model}/{mode}")
     cur = conn.execute(
-        "INSERT INTO lifts (name, tier, day, sort_order, sets, max, intensity, reps, repout, start, lift_kind, incr, bodyweight_pct, progression) "
+        "INSERT INTO lifts (name, load_model, mode, day, sort_order, sets, max, intensity, reps, repout, start, lift_kind, incr, bodyweight_pct) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (name, tier, day, sort_order, sets, max, intensity, reps, repout, start, lift_kind, incr,
-         bodyweight_pct, progression),
+        (name, load_model, mode, day, sort_order, sets, max, intensity, reps, repout, start, lift_kind, incr,
+         bodyweight_pct),
     )
     lid = cur.lastrowid
-    _init_lift_state(conn, lid, tier, max, start)
+    _init_lift_state(conn, lid, mode, max, start)
     conn.commit()
     return lid
 
 
-def _init_lift_state(conn, lid, tier, max, start):
-    if tier == "sbs":
-        conn.execute(
-            "INSERT INTO lift_state (lift_id, tier, tm, weight, target, streak, est1rm) "
-            "VALUES (?, 'sbs', ?, NULL, NULL, 0, NULL)", (lid, max))
-    elif tier == "t2":
-        conn.execute(
-            "INSERT INTO lift_state (lift_id, tier, tm, weight, target, streak, est1rm) "
-            "VALUES (?, 't2', NULL, ?, 8, 0, NULL)", (lid, start))
-    else:  # t3
-        conn.execute(
-            "INSERT INTO lift_state (lift_id, tier, tm, weight, target, streak, est1rm) "
-            "VALUES (?, 't3', NULL, ?, NULL, 0, NULL)", (lid, start))
+def _init_lift_state(conn, lid, mode, max, start):
+    """Dispatch to the registered mode handler to seed lift_state (ADR 0005).
+
+    Builds a throwaway Lift so the mode's initial_state() can run unchanged;
+    persists only the scalar fields the DB cares about (history lives in the
+    history table, not in lift_state)."""
+    from sbs_cli.data.schema import Lift
+    from sbs_cli.engine.modes import get_mode
+    tmp = Lift(name="", day=1, load_model="barbell", mode=mode, max=max, start=start)
+    s = get_mode(mode).initial_state(tmp, None)
+    conn.execute(
+        "INSERT INTO lift_state (lift_id, mode, tm, weight, target, streak, est1rm) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (lid, s.mode, s.tm, s.weight, s.target, s.streak, s.est1rm))
 
 
 def list_lifts(conn: sqlite3.Connection):
@@ -99,20 +104,20 @@ def get_lift_state(conn: sqlite3.Connection, lift_id: int):
 
 
 # ---------- lift_state ----------
-_STATE_COLS = ("tier", "tm", "weight", "target", "streak", "est1rm")
+_STATE_COLS = ("mode", "tm", "weight", "target", "streak", "est1rm")
 
 
-def save_lift_state(conn: sqlite3.Connection, lift_id: int, *, tier: str, tm,
+def save_lift_state(conn: sqlite3.Connection, lift_id: int, *, mode: str, tm,
                     weight, target, streak: int, est1rm, _append_history: bool = True) -> None:
     """Upsert lift_state from engine-produced fields. Does NOT touch history table
     (history is appended separately via append_history)."""
     conn.execute(
-        "INSERT INTO lift_state (lift_id, tier, tm, weight, target, streak, est1rm) "
+        "INSERT INTO lift_state (lift_id, mode, tm, weight, target, streak, est1rm) "
         "VALUES (?, ?, ?, ?, ?, ?, ?) "
         "ON CONFLICT(lift_id) DO UPDATE SET "
-        "tier=excluded.tier, tm=excluded.tm, weight=excluded.weight, "
+        "mode=excluded.mode, tm=excluded.tm, weight=excluded.weight, "
         "target=excluded.target, streak=excluded.streak, est1rm=excluded.est1rm",
-        (lift_id, tier, tm, weight, target, streak, est1rm),
+        (lift_id, mode, tm, weight, target, streak, est1rm),
     )
     conn.commit()
 

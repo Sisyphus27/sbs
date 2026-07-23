@@ -19,7 +19,7 @@ def _working_weight(lift, state, settings, schedule) -> float:
       bodyweight term is added back in for bodyweight lifts (pull-up/dip), zero
       for ordinary lifts so legacy behavior is unchanged.
     """
-    if lift["tier"] == "sbs":
+    if lift["mode"] == "sbs":
         sc = lookup_schedule(schedule, lift["lift_kind"], settings["week"])
         return round_weight((state["tm"] or 0) * sc.intensity, settings["rounding"])
     bw = settings["bodyweight"] if "bodyweight" in settings.keys() else 0.0

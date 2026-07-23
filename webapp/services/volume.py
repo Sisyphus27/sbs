@@ -57,7 +57,7 @@ def lift_week_volume(conn: sqlite3.Connection, lift_id: int, week: int,
     state = repo.get_lift_state(conn, lift_id)
     settings = repo.get_settings(conn)
     schedule = repo.load_schedule(conn)
-    tier = lift["tier"]
+    mode = lift["mode"]
     sets = lift["sets"] or 3
 
     if is_current:
@@ -74,11 +74,11 @@ def lift_week_volume(conn: sqlite3.Connection, lift_id: int, week: int,
         pct = lift["bodyweight_pct"] if "bodyweight_pct" in lift.keys() else 0.0
         weight = working_weight(row["weight"], bw, pct)
 
-    if tier == "sbs":
+    if mode == "sbs":
         planned = lookup_schedule(schedule, lift["lift_kind"], week).reps
-    elif tier == "t3":
+    elif mode == "linear_t3":
         planned = settings["t3_target"]
-    else:  # t2
+    else:  # linear_t2
         planned = state["target"] if is_current else _t2_target_as_of(conn, lift_id, week)
 
     return _actual_tonnage(weight, sets, planned, last_set)

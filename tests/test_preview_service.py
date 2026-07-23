@@ -6,7 +6,8 @@ from webapp.services import preview
 def _sbs(tmp_path):
     conn = db.connect(str(tmp_path / "t.db"))
     db.init_schema(conn)
-    lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
+    lid = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
+                           day=1, sort_order=0,
                            sets=5, max=135.0, intensity=0.7, reps=5, repout=10,
                            start=None, lift_kind="main")
     return conn, lid
@@ -44,7 +45,8 @@ def test_live_preview_negative_delta(tmp_path):
 def test_live_preview_t2_uses_state_weight(tmp_path):
     conn = db.connect(str(tmp_path / "t.db"))
     db.init_schema(conn)
-    lid = repo.create_lift(conn, name="Rows", tier="t2", day=1, sort_order=0,
+    lid = repo.create_lift(conn, name="Rows", load_model="barbell", mode="linear_t2",
+                           day=1, sort_order=0,
                            sets=3, max=None, intensity=None, reps=None, repout=None, start=85.0)
     r = preview.live_preview(conn, lid, 10)
     assert r["weight"] == 85.0   # t2 working weight = state.weight
@@ -62,7 +64,8 @@ def test_live_preview_bodyweight_est1rm_uses_working_weight(tmp_path):
     conn = db.connect(str(tmp_path / "t.db"))
     db.init_schema(conn)
     repo.update_settings(conn, bodyweight=75.0)
-    lid = repo.create_lift(conn, name="Chin-ups", tier="t2", day=2, sort_order=1,
+    lid = repo.create_lift(conn, name="Chin-ups", load_model="bodyweight", mode="linear_t2",
+                           day=2, sort_order=1,
                            sets=3, max=None, intensity=None, reps=None, repout=None,
                            start=0.0, bodyweight_pct=1.0)
     r = preview.live_preview(conn, lid, 5)

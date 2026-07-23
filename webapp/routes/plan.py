@@ -2,7 +2,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, Response
 from ..db import get_db
 from .. import repo
-from ..services import advance, tier  # tier imported for completeness; used in lifts route
+from ..services import advance
 
 
 bp = Blueprint("plan", __name__)

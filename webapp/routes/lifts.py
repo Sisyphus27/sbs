@@ -107,14 +107,14 @@ def delete(lid):
     return ("", 200)
 
 
-from ..services import tier as tier_service
+from ..services import mode as mode_service
 
 
 @bp.route("/lifts/<int:lid>/tier")
 def tier_preview(lid):
     conn = get_db()
     new_tier = request.args.get("tier", "sbs")
-    preview = tier_service.derive_state(conn, lid, new_tier, repo.get_settings(conn))
+    preview = mode_service.derive_state(conn, lid, new_tier, repo.get_settings(conn))
     lift = repo.get_lift(conn, lid)
     return render_template("tier_preview.html", lift=lift, preview=preview)
 
@@ -123,7 +123,7 @@ def tier_preview(lid):
 def tier_apply(lid):
     conn = get_db()
     new_tier = request.form.get("tier", "sbs")
-    preview = tier_service.derive_state(conn, lid, new_tier, repo.get_settings(conn))
+    preview = mode_service.derive_state(conn, lid, new_tier, repo.get_settings(conn))
     # user may override derived start values
     try:
         if "weight" in request.form and request.form["weight"].strip():
@@ -133,5 +133,5 @@ def tier_apply(lid):
     except ValueError:
         flash("重量 / TM 必须是数字")
         return redirect(url_for("lifts.view"))
-    tier_service.apply_switch(conn, lid, preview)
+    mode_service.apply_switch(conn, lid, preview)
     return redirect(url_for("lifts.view"))

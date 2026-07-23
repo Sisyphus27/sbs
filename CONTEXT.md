@@ -1,7 +1,8 @@
 # SBS
 
 A strength-training program tracker combining the SBS RTF (Reps-to-Failure) main/auxiliary
-tier with GZCLP T2/T3 tiers. The engine lives in `sbs_cli/`; the Flask/HTMX webapp in `webapp/`.
+progression with GZCLP-style T2/T3 linear progression. The engine lives in `sbs_cli/`; the
+Flask/HTMX webapp in `webapp/`.
 This glossary defines the program-domain terms shared across both; it is deliberately free of
 implementation detail.
 
@@ -102,21 +103,38 @@ program week (WoW Δ%). An indicator of training load, not of progress — volum
 deliberately across a cycle (e.g. deload weeks).
 _Avoid_: load (the weight on the bar for a single set), intensity
 
-**Tier**:
-Which progression rule a lift follows: `sbs` (TM autoregulation by rep-out), `t2` (1-strike
-rep cascade with est1RM-based reset), or `t3` (threshold accessories). A lift can be
-switched between tiers; history is preserved across switches. A lift's `progression` field
-(`"weight"` default | `"none"`) overrides whether it auto-progresses at all — orthogonal to
-tier; `"none"` skips the tier's progression rule (used for bodyweight lifts that progress by
-manual rep targets, e.g. crunches), while still recording history and est1RM.
-_Avoid_: level
+**Progression Mode (mode)**:
+Which progression rule a lift follows: `sbs` (TM autoregulation by rep-out), `linear_t2`
+(1-strike rep cascade with est1RM-based reset), `linear_t3` (threshold accessories), or `none`
+(record-only — no automatic progression, used for pure-bodyweight lifts). A lift can be
+switched between modes within the same load-model family; history is preserved across switches.
+Replaces the old `tier` + `progression` pair (which overlapped: `progression="none"` was a
+patch on top of tier). See ADR 0005.
+_Avoid_: tier (the old field, which conflated progression rule with load bookkeeping), level
+
+**Load Model (load_model)**:
+How a lift's working weight is composed from its stored weight: `barbell` (working weight =
+added weight only), `bodyweight` (working weight = added + bodyweight × bodyweight_pct, ADR
+0004), or `pure_bodyweight` (added ≡ 0; working weight = bodyweight × bodyweight_pct). Fixed
+at lift creation — switching the load model would reinterpret every history row's stored
+weight and corrupt historical est1RM, so changing it means creating a new lift. Orthogonal to
+Progression Mode except for the legal-combination constraints (ADR 0005).
+_Avoid_: load type, weight model
+
+**Pure Bodyweight**:
+A lift moved by bodyweight alone, with no added external load (no weighted belt, dumbbell, or
+vest). Modelled as `load_model = pure_bodyweight` bound one-to-one to `mode = none`: the engine
+records history and est1RM but applies no automatic progression. Its working weight is entirely
+the bodyweight term (bodyweight × bodyweight_pct). Distinguished from a `bodyweight` lift,
+which carries added load and therefore must follow a progression mode.
+_Avoid_: calisthenics (too broad — a weighted pull-up is bodyweight-with-load, not pure), unweighted
 
 **Kind (main / aux)**:
 Which of the two sbs progression tracks a lift follows, selecting its schedule ladder. Main
 lifts run a 5-set, higher-intensity track; aux lifts a 4-set, lower-intensity track. A
-property of an sbs lift, independent of tier (both tracks are `tier: sbs`); fixed when the
+property of an sbs lift, independent of mode (both tracks are `mode: sbs`); fixed when the
 lift is created.
-_Avoid_: tier (that selects the progression *rule family*, not the track)
+_Avoid_: mode (that selects the progression *rule family*, not the track)
 
 **Schedule (21-week progression)**:
 The fixed table of weekly (intensity, reps, repout) values that an sbs lift follows, one row

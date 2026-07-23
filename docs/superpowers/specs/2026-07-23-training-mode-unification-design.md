@@ -44,10 +44,22 @@ bodyweight_pct: float = 0.0   # 保留为载荷参数 (非 mode 标志)
 语义：
 - `barbell` — working_weight = added (bodyweight_pct 强制 0)
 - `bodyweight` — working_weight = added + bw×pct (ADR 0004 seam 不变)
-- `pure_bodyweight` — added 恒 0, working_weight = bw×pct, 配合 `mode=none`
-- `mode` 决定进阶； `load_model` 决定载荷。正交。
+- `pure_bodyweight` — added 恒 0, working_weight = bw×pct, 绑定 `mode=none`
+- `mode` 决定进阶； `load_model` 决定载荷。
 
 `lift_state.tier` 列 → 改名 `mode` (值域同 mode)。
+
+**合法组合 (引擎+表单强制， 非法拒绝）:**
+
+| load_model \ mode | sbs | linear_t2 | linear_t3 | none |
+|---|---|---|---|---|
+| `barbell` | ✅ | ✅ | ✅ | ❌ |
+| `bodyweight` | ❌ | ✅ | ✅ | ❌ |
+| `pure_bodyweight` | ❌ | ❌ | ❌ | ✅ |
+
+约束：`none` ↔ `pure_bodyweight` 一对一绑定； `barbell`/`bodyweight` 必须走某进阶； `sbs` 仅 `barbell` （自重主项的 TM autoregulation 对 added=0 语义不清， 先禁）。见 ADR 0005。
+
+**载荷模型不可切换**: `load_model` 创建时定死。切换载荷模型会改变 history.weight 的 seam 解释 (ADR 0004), 污染全部历史 est1rm — 故换载荷模型 = 新建 lift。`mode` 可在同 `load_model` 家族内切换 (沿用 tier_preview/tier_apply 机制， 保留 history 重算 est1rm)。纯自重视图显示 `bw×pct` 计算重量， 统一走 seam, 视图无需特判。
 
 ### 2. 引擎注册表
 
@@ -84,7 +96,7 @@ PROGRESSION_REGISTRY: dict[str, Mode] = {
 | `sbs` | tm=max | tm=sbs_next(tm, repout, actual); 重量走 21 周表 | round(tm×intensity) | tm=est1rm (ADR 0001) |
 | `linear_t2` | weight=start, target=8 | t2_next 瀑布 (8→6→4, N 次 miss 重置) | weight, target | weight=round(est1rm×t2_reset_pct) |
 | `linear_t3` | weight=start | t3_next (命中≥target +incr) | weight, t3_target | weight=round(est1rm×0.6) |
-| `none` | weight=start (可 None) | 不进阶， 仅记 history+est1rm | weight (或体重), 无 target | weight=start 或 0 |
+| `none` | weight=start (可 None) | 不进阶， 仅记 history+est1rm | weight (bw×pct) + 上周 reps 参考， 无 target | weight=start 或 0, target=None, streak=0 |
 
 载荷在 handler 内部统一经 `working_weight` seam:
 - `sbs`/`linear_*` + `barbell`: pct=0
@@ -95,7 +107,7 @@ PROGRESSION_REGISTRY: dict[str, Mode] = {
 
 ### 4. 迁移 + 依赖适配
 
-**迁移脚本** `migrate_modes.py` (一次性， 幂等）:
+**迁移脚本** `migrate_modes.py` (一次性， 幂等）: 重建 `lifts` 表 — 删 `tier`/`progression` 列， 新增 `load_model`/`mode`; `lift_state.tier` 列改名 `mode`。映射：
 ```
 旧 (tier, progression, bodyweight_pct) → 新 (load_model, mode)
 - tier=sbs                        → load_model=barbell,         mode=sbs
@@ -105,7 +117,7 @@ PROGRESSION_REGISTRY: dict[str, Mode] = {
 - tier=t3, pct>0                  → load_model=bodyweight,      mode=linear_t3
 - progression=none (任意 tier)     → load_model=pure_bodyweight, mode=none
 ```
-history 不动 (added weight 语义不变， ADR 0004)。`lift_state.tier` 列 → `mode`。
+history 不动 (added weight 语义不变， ADR 0004)。`bodyweight_pct` 保留为载荷参数。
 
 **依赖适配点**:
 - `webapp/routes/lifts.py` — 表单 new/edit: tier → load_model+mode 两个下拉； `tier_preview`/`tier_apply` → `mode_preview`/`mode_apply`

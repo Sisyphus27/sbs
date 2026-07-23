@@ -49,10 +49,10 @@ def save():
                 reps = int(f.get("reps", ex["reps"] if ex else 0))
                 repout = int(f.get("repout", ex["repout"] if ex else 0))
             except ValueError:
-                flash(f"非法值: {kind} week {week}")
+                flash(f"非法值: {kind} week {week}", "error")
                 return ("bad value", 400)
             if not (0 < intensity < 1) or reps <= 0 or repout <= 0:
-                flash(f"范围错误: {kind} week {week} (强度须 0~1, 次数/repout 须 >0)")
+                flash(f"范围错误: {kind} week {week} (强度须 0~1, 次数/repout 须 >0)", "error")
                 return ("out of range", 400)
             new_rows.append((kind, week, intensity, reps, repout))
     repo.replace_schedule(conn, new_rows)

@@ -23,7 +23,8 @@ from webapp.services.volume import _t2_target_as_of
 def _t2(tmp_path):
     conn = db.connect(str(tmp_path / "t.db"))
     db.init_schema(conn)
-    lid = repo.create_lift(conn, name="Rows", tier="t2", day=1, sort_order=0,
+    lid = repo.create_lift(conn, name="Rows", load_model="barbell", mode="linear_t2",
+                           day=1, sort_order=0,
                            sets=3, max=None, intensity=None, reps=None, repout=None, start=50.0)
     return conn, lid
 
@@ -50,10 +51,11 @@ from webapp.services.volume import lift_week_volume
 def _sbs(tmp_path):
     conn = db.connect(str(tmp_path / "t.db"))
     db.init_schema(conn)
-    lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
+    lid = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
+                           day=1, sort_order=0,
                            sets=5, max=100.0, intensity=0.7, reps=5, repout=10,
                            start=None, lift_kind="main")
-    repo.save_lift_state(conn, lid, tier="sbs", tm=100.0, weight=None,
+    repo.save_lift_state(conn, lid, mode="sbs", tm=100.0, weight=None,
                          target=None, streak=0, est1rm=None)
     return conn, lid
 
@@ -92,7 +94,8 @@ def test_volume_current_t3(tmp_path):
     # t3 start=30, sets=3, t3_target=15, logged last=18 -> 30 * (2*15 + 18) = 30*48 = 1440
     conn = db.connect(str(tmp_path / "t.db"))
     db.init_schema(conn)
-    lid = repo.create_lift(conn, name="Curl", tier="t3", day=1, sort_order=0,
+    lid = repo.create_lift(conn, name="Curl", load_model="barbell", mode="linear_t3",
+                           day=1, sort_order=0,
                            sets=3, max=None, intensity=None, reps=None, repout=None, start=30.0)
     repo.save_log(conn, lid, 1, 18)
     assert lift_week_volume(conn, lid, 1, is_current=True) == 1440.0
@@ -103,7 +106,8 @@ def test_volume_current_t2(tmp_path):
     # t2 start=50, target=8 (initial), sets=3, logged last=8 -> 50 * (2*8 + 8) = 50*24 = 1200
     conn = db.connect(str(tmp_path / "t.db"))
     db.init_schema(conn)
-    lid = repo.create_lift(conn, name="Rows", tier="t2", day=1, sort_order=0,
+    lid = repo.create_lift(conn, name="Rows", load_model="barbell", mode="linear_t2",
+                           day=1, sort_order=0,
                            sets=3, max=None, intensity=None, reps=None, repout=None, start=50.0)
     repo.save_log(conn, lid, 1, 8)
     assert lift_week_volume(conn, lid, 1, is_current=True) == 1200.0
@@ -111,17 +115,18 @@ def test_volume_current_t2(tmp_path):
 
 
 def test_lift_week_volume_bodyweight_past_week_uses_working_weight(tmp_path):
-    # Dips, t3, bodyweight_pct=1.0, settings.bodyweight=75.
+    # Dips, linear_t3, bodyweight_pct=1.0, settings.bodyweight=75.
     # Prior-week history row: added 0, reps 12, t3_target=15 (default), sets=3.
     # working weight = 0 + 75*1.0 = 75 -> 75 * (2*15 + 12) = 75 * 42 = 3150.
     # RED until history branch routes through working_weight seam (was raw row["weight"]=0 -> 0).
     conn = db.connect(str(tmp_path / "t.db"))
     db.init_schema(conn)
     repo.update_settings(conn, bodyweight=75.0)
-    lid = repo.create_lift(conn, name="Dips", tier="t3", day=4, sort_order=1, sets=3,
+    lid = repo.create_lift(conn, name="Dips", load_model="bodyweight", mode="linear_t3",
+                           day=4, sort_order=1, sets=3,
                            max=None, intensity=None, reps=None, repout=None, start=0.0,
                            bodyweight_pct=1.0)
-    repo.save_lift_state(conn, lid, tier="t3", tm=None, weight=0.0, target=None,
+    repo.save_lift_state(conn, lid, mode="linear_t3", tm=None, weight=0.0, target=None,
                          streak=0, est1rm=None)
     repo.append_history(conn, lid, week=1, weight=0.0, reps=12)
     tonnage = lift_week_volume(conn, lid, week=1, is_current=False)

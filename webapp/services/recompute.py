@@ -15,7 +15,7 @@ def recompute_on_start_change(conn: sqlite3.Connection, lift_id: int, new_start:
     recomputed ``lift_state``. Returns the recomputed LiftState, or ``None`` for
     sbs lifts (no start-based progression -> no-op)."""
     lift_row = repo.get_lift(conn, lift_id)
-    if lift_row["tier"] not in ("t2", "t3"):
+    if lift_row["mode"] not in ("linear_t2", "linear_t3"):
         return None
     settings = repo.get_settings(conn)
     history = [SetEntry(week=h["week"], weight=h["weight"], reps=h["reps"])
@@ -24,7 +24,7 @@ def recompute_on_start_change(conn: sqlite3.Connection, lift_id: int, new_start:
     lift.start = new_start  # authoritative; the lifts row already holds it post-update
     profile = advance_service._profile_from_rows(settings, [], repo.load_schedule(conn))
     ls = recompute_state(lift, history, profile)
-    repo.save_lift_state(conn, lift_id, tier=ls.tier, tm=None, weight=ls.weight,
+    repo.save_lift_state(conn, lift_id, mode=ls.mode, tm=None, weight=ls.weight,
                          target=ls.target, streak=ls.streak, est1rm=ls.est1rm)
     return ls
 
@@ -35,7 +35,7 @@ def recompute_sbs_tm(conn: sqlite3.Connection, lift_id: int) -> Optional[float]:
     preserved (it is derived from the immutable history and was never corrupted
     by the TM-rounding bug)."""
     lift_row = repo.get_lift(conn, lift_id)
-    if lift_row["tier"] != "sbs":
+    if lift_row["mode"] != "sbs":
         return None
     history = [SetEntry(week=h["week"], weight=h["weight"], reps=h["reps"])
                for h in repo.list_history(conn, lift_id)]
@@ -43,6 +43,6 @@ def recompute_sbs_tm(conn: sqlite3.Connection, lift_id: int) -> Optional[float]:
     schedule = repo.load_schedule(conn)
     tm = _engine_recompute_sbs_tm(lift, history, schedule)
     st = repo.get_lift_state(conn, lift_id)
-    repo.save_lift_state(conn, lift_id, tier="sbs", tm=tm, weight=None,
+    repo.save_lift_state(conn, lift_id, mode="sbs", tm=tm, weight=None,
                          target=None, streak=0, est1rm=st["est1rm"])
     return tm

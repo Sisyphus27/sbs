@@ -7,9 +7,9 @@ def _seed_squat_at(app, week):
     with app.app_context():
         conn = connect(app.config["DB_PATH"])
         repo.set_week(conn, week)
-        lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
-                               sets=5, max=100.0, intensity=None, reps=None, repout=None,
-                               start=None, lift_kind="main")
+        lid = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
+                               day=1, sort_order=0, sets=5, max=100.0, intensity=None,
+                               reps=None, repout=None, start=None, lift_kind="main")
         conn.close()
         return lid
 

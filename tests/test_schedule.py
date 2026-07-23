@@ -37,7 +37,7 @@ def test_lookup_schedule_missing_row_raises():
 
 
 def test_lift_and_profile_carry_new_fields():
-    l = Lift(name="Squat", tier="sbs", day=1, lift_kind="main")
+    l = Lift(name="Squat", load_model="barbell", mode="sbs", day=1, lift_kind="main")
     assert l.lift_kind == "main"
     p = Profile(schedule=[ScheduleRow("main", 1, 0.70, 5, 10)])
     assert len(p.schedule) == 1

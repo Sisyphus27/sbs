@@ -13,10 +13,12 @@ def test_plan_renders_duplicate_names_with_distinct_state(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        repo.create_lift(conn, name="Face Pull", tier="t3", day=2, sort_order=0,
-                         sets=3, max=None, intensity=None, reps=None, repout=None, start=30.0)
-        repo.create_lift(conn, name="Face Pull", tier="t3", day=4, sort_order=0,
-                         sets=3, max=None, intensity=None, reps=None, repout=None, start=45.0)
+        repo.create_lift(conn, name="Face Pull", load_model="barbell", mode="linear_t3",
+                         day=2, sort_order=0, sets=3, max=None, intensity=None,
+                         reps=None, repout=None, start=30.0)
+        repo.create_lift(conn, name="Face Pull", load_model="barbell", mode="linear_t3",
+                         day=4, sort_order=0, sets=3, max=None, intensity=None,
+                         reps=None, repout=None, start=45.0)
         conn.close()
     html = client.get("/").get_data(as_text=True)
     assert html.count("Face Pull") == 2
@@ -27,9 +29,9 @@ def test_plan_submit_advances(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
-                               sets=5, max=135.0, intensity=0.7, reps=5, repout=10,
-                               start=None, lift_kind="main")
+        lid = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
+                               day=1, sort_order=0, sets=5, max=135.0, intensity=0.7,
+                               reps=5, repout=10, start=None, lift_kind="main")
         conn.close()
     rv = client.post("/log", data={f"log_{lid}": "13"})
     assert rv.status_code == 302
@@ -44,9 +46,9 @@ def test_export_week_standalone_with_progress(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
-                               sets=5, max=135.0, intensity=0.7, reps=5, repout=10,
-                               start=None, lift_kind="main")
+        lid = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
+                               day=1, sort_order=0, sets=5, max=135.0, intensity=0.7,
+                               reps=5, repout=10, start=None, lift_kind="main")
         repo.save_log(conn, lid, 1, 11)   # logged this week
         conn.close()
     rv = client.get("/export/week.html")
@@ -72,10 +74,10 @@ def test_plan_view_shows_week2_schedule_values(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
-                               sets=5, max=100.0, intensity=0.7, reps=5, repout=10,
-                               start=None, lift_kind="main")
-        repo.save_lift_state(conn, lid, tier="sbs", tm=100.0, weight=None,
+        lid = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
+                               day=1, sort_order=0, sets=5, max=100.0, intensity=0.7,
+                               reps=5, repout=10, start=None, lift_kind="main")
+        repo.save_lift_state(conn, lid, mode="sbs", tm=100.0, weight=None,
                              target=None, streak=0, est1rm=None)
         repo.set_week(conn, 2)
         conn.close()
@@ -91,9 +93,9 @@ def test_autosave_persists_and_prefills_then_advances(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
-                               sets=5, max=135.0, intensity=0.7, reps=5, repout=10,
-                               start=None, lift_kind="main")
+        lid = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
+                               day=1, sort_order=0, sets=5, max=135.0, intensity=0.7,
+                               reps=5, repout=10, start=None, lift_kind="main")
         conn.close()
     # autosave via /log/save (HTMX on change) — no advance, returns live est1RM preview
     rv = client.post(f"/log/save?lid={lid}", data={f"log_{lid}": "11"})
@@ -118,8 +120,9 @@ def test_plan_view_shows_tonnage_for_logged_lift(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Curl", tier="t3", day=1, sort_order=0,
-                               sets=3, max=None, intensity=None, reps=None, repout=None, start=30.0)
+        lid = repo.create_lift(conn, name="Curl", load_model="barbell", mode="linear_t3",
+                               day=1, sort_order=0, sets=3, max=None, intensity=None,
+                               reps=None, repout=None, start=30.0)
         repo.save_log(conn, lid, 1, 18)   # 30 * (2*15 + 18) = 1440
         conn.close()
     html = client.get("/").get_data(as_text=True)
@@ -131,8 +134,9 @@ def test_plan_view_shows_first_time_when_no_last_week(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Curl", tier="t3", day=1, sort_order=0,
-                               sets=3, max=None, intensity=None, reps=None, repout=None, start=30.0)
+        lid = repo.create_lift(conn, name="Curl", load_model="barbell", mode="linear_t3",
+                               day=1, sort_order=0, sets=3, max=None, intensity=None,
+                               reps=None, repout=None, start=30.0)
         repo.save_log(conn, lid, 1, 18)
         conn.close()
     html = client.get("/").get_data(as_text=True)
@@ -144,8 +148,9 @@ def test_plan_view_omits_tonnage_when_not_logged(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        repo.create_lift(conn, name="Curl", tier="t3", day=1, sort_order=0,
-                         sets=3, max=None, intensity=None, reps=None, repout=None, start=30.0)
+        repo.create_lift(conn, name="Curl", load_model="barbell", mode="linear_t3",
+                         day=1, sort_order=0, sets=3, max=None, intensity=None,
+                         reps=None, repout=None, start=30.0)
         conn.close()
     html = client.get("/").get_data(as_text=True)
     assert "容量" not in html
@@ -156,8 +161,9 @@ def test_save_log_response_includes_tonnage(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Curl", tier="t3", day=1, sort_order=0,
-                               sets=3, max=None, intensity=None, reps=None, repout=None, start=30.0)
+        lid = repo.create_lift(conn, name="Curl", load_model="barbell", mode="linear_t3",
+                               day=1, sort_order=0, sets=3, max=None, intensity=None,
+                               reps=None, repout=None, start=30.0)
         conn.close()
     rv = client.post(f"/log/save?lid={lid}", data={f"log_{lid}": "18"})
     assert rv.status_code == 200
@@ -172,8 +178,9 @@ def test_save_log_clear_empties_fragment(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Curl", tier="t3", day=1, sort_order=0,
-                               sets=3, max=None, intensity=None, reps=None, repout=None, start=30.0)
+        lid = repo.create_lift(conn, name="Curl", load_model="barbell", mode="linear_t3",
+                               day=1, sort_order=0, sets=3, max=None, intensity=None,
+                               reps=None, repout=None, start=30.0)
         repo.save_log(conn, lid, 1, 18)
         conn.close()
     rv = client.post(f"/log/save?lid={lid}", data={f"log_{lid}": ""})
@@ -194,8 +201,9 @@ def test_plan_view_shows_tonnage_wow_delta_for_t2(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Rows", tier="t2", day=1, sort_order=0,
-                               sets=3, max=None, intensity=None, reps=None, repout=None, start=50.0)
+        lid = repo.create_lift(conn, name="Rows", load_model="barbell", mode="linear_t2",
+                               day=1, sort_order=0, sets=3, max=None, intensity=None,
+                               reps=None, repout=None, start=50.0)
         repo.append_history(conn, lid, week=1, weight=50.0, reps=5)
         repo.append_history(conn, lid, week=2, weight=50.0, reps=5)
         repo.set_week(conn, 3)
@@ -214,8 +222,9 @@ def test_export_week_shows_tonnage_when_logged(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Curl", tier="t3", day=1, sort_order=0,
-                               sets=3, max=None, intensity=None, reps=None, repout=None, start=30.0)
+        lid = repo.create_lift(conn, name="Curl", load_model="barbell", mode="linear_t3",
+                               day=1, sort_order=0, sets=3, max=None, intensity=None,
+                               reps=None, repout=None, start=30.0)
         repo.save_log(conn, lid, 1, 18)   # 30 * (2*15 + 18) = 1440
         conn.close()
     html = client.get("/export/week.html").get_data(as_text=True)
@@ -230,8 +239,9 @@ def test_export_week_omits_tonnage_when_not_logged(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        repo.create_lift(conn, name="Curl", tier="t3", day=1, sort_order=0,
-                         sets=3, max=None, intensity=None, reps=None, repout=None, start=30.0)
+        repo.create_lift(conn, name="Curl", load_model="barbell", mode="linear_t3",
+                         day=1, sort_order=0, sets=3, max=None, intensity=None,
+                         reps=None, repout=None, start=30.0)
         conn.close()
     html = client.get("/export/week.html").get_data(as_text=True)
     assert "未填" in html
@@ -249,9 +259,9 @@ def test_plan_view_renders_bodyweight_added_plus_working_weight(client, app):
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
         repo.update_settings(conn, bodyweight=75.0)
-        repo.create_lift(conn, name="Chin-ups", tier="t2", day=1, sort_order=1, sets=3,
-                         max=None, intensity=None, reps=None, repout=None, start=0.0,
-                         bodyweight_pct=1.0)
+        repo.create_lift(conn, name="Chin-ups", load_model="bodyweight", mode="linear_t2",
+                         day=1, sort_order=1, sets=3, max=None, intensity=None,
+                         reps=None, repout=None, start=0.0, bodyweight_pct=1.0)
         conn.close()
     body = client.get("/").get_data(as_text=True)
     assert "+0" in body              # added load shown with + prefix

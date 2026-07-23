@@ -89,20 +89,20 @@ def _backfill_lift_kind(conn: sqlite3.Connection) -> tuple[int, int]:
     Returns (n_main, n_aux)."""
     cm = conn.execute(
         "UPDATE lifts SET lift_kind='main' "
-        "WHERE tier='sbs' AND sets=5 AND lift_kind IS NULL"
+        "WHERE mode='sbs' AND sets=5 AND lift_kind IS NULL"
     ).rowcount
     ca = conn.execute(
         "UPDATE lifts SET lift_kind='aux' "
-        "WHERE tier='sbs' AND sets=4 AND lift_kind IS NULL"
+        "WHERE mode='sbs' AND sets=4 AND lift_kind IS NULL"
     ).rowcount
     conn.commit()
     return cm, ca
 
 
 def _replay_t2(conn: sqlite3.Connection) -> int:
-    """Replay every t2 lift's state through the new 1-strike ``t2_next`` via
+    """Replay every linear_t2 lift's state through the new 1-strike ``t2_next`` via
     ``recompute_state``. Writes via direct ``UPDATE`` on
-    (tier, weight, target, streak, est1rm) — does NOT touch ``reseeded_cycle``
+    (mode, weight, target, streak, est1rm) — does NOT touch ``reseeded_cycle``
     (per ADR 0002 / F1: only ``set_reseed`` and this migration's ALTER + UPDATE
     default write that column). Idempotent: replaying the same history under the
     same profile converges."""
@@ -112,16 +112,16 @@ def _replay_t2(conn: sqlite3.Connection) -> int:
     profile = _profile_from_rows(settings, [], schedule)
     n = 0
     for row in repo.list_lifts(conn):
-        if row["tier"] != "t2":
+        if row["mode"] != "linear_t2":
             continue
         history = [SetEntry(week=h["week"], weight=h["weight"], reps=h["reps"])
                    for h in repo.list_history(conn, row["id"])]
         lift = _lift_from_row(row)
         ls = recompute_state(lift, history, profile)
         conn.execute(
-            "UPDATE lift_state SET tier=?, weight=?, target=?, streak=?, est1rm=? "
+            "UPDATE lift_state SET mode=?, weight=?, target=?, streak=?, est1rm=? "
             "WHERE lift_id=?",
-            (ls.tier, ls.weight, ls.target, ls.streak, ls.est1rm, row["id"]),
+            (ls.mode, ls.weight, ls.target, ls.streak, ls.est1rm, row["id"]),
         )
         n += 1
     conn.commit()
@@ -153,7 +153,7 @@ def main(db_path: str = "sbs.db", backup_dir: str = "backups") -> None:
         conn.close()
     print(
         f"migrated schedule (42 rows), lift_kind ({n_main} main, {n_aux} aux), "
-        f"reseeded_cycle (default 0); replayed {n_t2} t2 lifts -> {db_path}"
+        f"reseeded_cycle (default 0); replayed {n_t2} linear_t2 lifts -> {db_path}"
     )
 
 

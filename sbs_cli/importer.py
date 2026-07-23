@@ -32,7 +32,8 @@ def import_profile(xlsx_path: str, sheet: str = "4x") -> Profile:
         # main vs aux drives the schedule ladder the engine reads (Task 4):
         # main lifts follow MAIN_LADDER, aux follow AUX_LADDER.
         kind = "main" if r in QS_MAIN_ROWS else "aux"
-        lifts.append(Lift(name=str(name), tier="sbs", day=0, max=float(one_rm),
+        lifts.append(Lift(name=str(name), load_model="barbell", mode="sbs", day=0,
+                          max=float(one_rm),
                           intensity=intensity, reps=reps, repout=repout, sets=sets,
                           lift_kind=kind))
 
@@ -51,7 +52,8 @@ def import_profile(xlsx_path: str, sheet: str = "4x") -> Profile:
                 r -= 1
                 continue
             if isinstance(a, str) and not _is_formula(a) and isinstance(b, (int, float)):
-                lifts.append(Lift(name=a, tier="t2", day=day_idx, start=float(b)))
+                lifts.append(Lift(name=a, load_model="barbell", mode="linear_t2",
+                                  day=day_idx, start=float(b)))
                 r -= 1
                 continue
             break  # hit SBS formula rows or a Day label -> stop scanning up
@@ -65,10 +67,11 @@ def import_profile(xlsx_path: str, sheet: str = "4x") -> Profile:
             if a is None and b is None:
                 break   # end of this day's contiguous accessory block
             if isinstance(a, str) and not _is_formula(a) and isinstance(b, (int, float)):
-                lifts.append(Lift(name=a, tier="t3", day=day_idx, start=float(b)))
+                lifts.append(Lift(name=a, load_model="barbell", mode="linear_t3",
+                                  day=day_idx, start=float(b)))
 
     # SBS lifts day assignment: distribute round-robin by order (user edits after)
-    sbs_lifts = [l for l in lifts if l.tier == "sbs"]
+    sbs_lifts = [l for l in lifts if l.mode == "sbs"]
     for i, l in enumerate(sbs_lifts):
         l.day = (i % days_per_week) + 1
 

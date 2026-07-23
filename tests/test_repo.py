@@ -32,36 +32,40 @@ def test_update_settings_partial(tmp_path):
 
 def test_create_lift_sbs_returns_id_and_inits_state(tmp_path):
     conn = _fresh(tmp_path)
-    lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
-                           sets=5, max=135.0, intensity=0.7, reps=5, repout=10, start=None)
+    lid = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
+                           day=1, sort_order=0, sets=5, max=135.0, intensity=0.7,
+                           reps=5, repout=10, start=None)
     assert isinstance(lid, int) and lid > 0
     st = repo.get_lift_state(conn, lid)
-    assert st["tier"] == "sbs" and st["tm"] == 135.0 and st["weight"] is None
+    assert st["mode"] == "sbs" and st["tm"] == 135.0 and st["weight"] is None
     conn.close()
 
 
 def test_create_lift_t2_inits_weight_target(tmp_path):
     conn = _fresh(tmp_path)
-    lid = repo.create_lift(conn, name="Rows", tier="t2", day=1, sort_order=1,
-                           sets=3, max=None, intensity=None, reps=None, repout=None, start=85.0)
+    lid = repo.create_lift(conn, name="Rows", load_model="barbell", mode="linear_t2",
+                           day=1, sort_order=1, sets=3, max=None, intensity=None,
+                           reps=None, repout=None, start=85.0)
     st = repo.get_lift_state(conn, lid)
-    assert st["tier"] == "t2" and st["weight"] == 85.0 and st["target"] == 8 and st["streak"] == 0
+    assert st["mode"] == "linear_t2" and st["weight"] == 85.0 and st["target"] == 8 and st["streak"] == 0
     conn.close()
 
 
 def test_create_lift_t3_inits_weight(tmp_path):
     conn = _fresh(tmp_path)
-    lid = repo.create_lift(conn, name="Curl", tier="t3", day=1, sort_order=2,
-                           sets=3, max=None, intensity=None, reps=None, repout=None, start=40.0)
+    lid = repo.create_lift(conn, name="Curl", load_model="barbell", mode="linear_t3",
+                           day=1, sort_order=2, sets=3, max=None, intensity=None,
+                           reps=None, repout=None, start=40.0)
     st = repo.get_lift_state(conn, lid)
-    assert st["tier"] == "t3" and st["weight"] == 40.0
+    assert st["mode"] == "linear_t3" and st["weight"] == 40.0
     conn.close()
 
 
 def test_list_and_get_lift(tmp_path):
     conn = _fresh(tmp_path)
-    lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
-                           sets=5, max=135.0, intensity=0.7, reps=5, repout=10, start=None)
+    lid = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
+                           day=1, sort_order=0, sets=5, max=135.0, intensity=0.7,
+                           reps=5, repout=10, start=None)
     rows = repo.list_lifts(conn)
     assert len(rows) == 1 and rows[0]["name"] == "Squat"
     assert repo.get_lift(conn, lid)["name"] == "Squat"
@@ -71,8 +75,9 @@ def test_list_and_get_lift(tmp_path):
 
 def test_update_and_delete_lift(tmp_path):
     conn = _fresh(tmp_path)
-    lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
-                           sets=5, max=135.0, intensity=0.7, reps=5, repout=10, start=None)
+    lid = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
+                           day=1, sort_order=0, sets=5, max=135.0, intensity=0.7,
+                           reps=5, repout=10, start=None)
     repo.update_lift(conn, lid, intensity=0.75, day=2)
     assert repo.get_lift(conn, lid)["intensity"] == 0.75
     repo.delete_lift(conn, lid)
@@ -84,10 +89,12 @@ def test_update_and_delete_lift(tmp_path):
 def test_create_lift_allows_duplicate_name_different_day(tmp_path):
     """Same exercise on different days = two independent rows (keyed by id, not name)."""
     conn = _fresh(tmp_path)
-    a = repo.create_lift(conn, name="Face Pull", tier="t3", day=2, sort_order=0,
-                         sets=3, max=None, intensity=None, reps=None, repout=None, start=30.0)
-    b = repo.create_lift(conn, name="Face Pull", tier="t3", day=4, sort_order=0,
-                         sets=3, max=None, intensity=None, reps=None, repout=None, start=45.0)
+    a = repo.create_lift(conn, name="Face Pull", load_model="barbell", mode="linear_t3",
+                         day=2, sort_order=0, sets=3, max=None, intensity=None,
+                         reps=None, repout=None, start=30.0)
+    b = repo.create_lift(conn, name="Face Pull", load_model="barbell", mode="linear_t3",
+                         day=4, sort_order=0, sets=3, max=None, intensity=None,
+                         reps=None, repout=None, start=45.0)
     assert a != b
     assert len([r for r in repo.list_lifts(conn) if r["name"] == "Face Pull"]) == 2
     conn.close()
@@ -95,9 +102,10 @@ def test_create_lift_allows_duplicate_name_different_day(tmp_path):
 
 def test_save_lift_state_upserts(tmp_path):
     conn = _fresh(tmp_path)
-    lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
-                           sets=5, max=135.0, intensity=0.7, reps=5, repout=10, start=None)
-    repo.save_lift_state(conn, lid, tier="sbs", tm=140.0, weight=None,
+    lid = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
+                           day=1, sort_order=0, sets=5, max=135.0, intensity=0.7,
+                           reps=5, repout=10, start=None)
+    repo.save_lift_state(conn, lid, mode="sbs", tm=140.0, weight=None,
                          target=None, streak=0, est1rm=141.2, _append_history=False)
     st = repo.get_lift_state(conn, lid)
     assert st["tm"] == 140.0 and st["est1rm"] == 141.2
@@ -106,8 +114,9 @@ def test_save_lift_state_upserts(tmp_path):
 
 def test_append_history_and_list(tmp_path):
     conn = _fresh(tmp_path)
-    lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
-                           sets=5, max=135.0, intensity=0.7, reps=5, repout=10, start=None)
+    lid = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
+                           day=1, sort_order=0, sets=5, max=135.0, intensity=0.7,
+                           reps=5, repout=10, start=None)
     repo.append_history(conn, lid, week=1, weight=95.0, reps=11)
     repo.append_history(conn, lid, week=2, weight=97.5, reps=9)
     rows = repo.list_history(conn, lid)
@@ -119,8 +128,9 @@ def test_append_history_and_list(tmp_path):
 
 def test_week_log_upsert_get_clear(tmp_path):
     conn = _fresh(tmp_path)
-    lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
-                           sets=5, max=135.0, intensity=0.7, reps=5, repout=10, start=None)
+    lid = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
+                           day=1, sort_order=0, sets=5, max=135.0, intensity=0.7,
+                           reps=5, repout=10, start=None)
     assert repo.get_week_logs(conn, 1) == {}
     repo.save_log(conn, lid, 1, 11)
     assert repo.get_week_logs(conn, 1) == {lid: 11}
@@ -183,12 +193,12 @@ def test_save_lift_state_does_not_clobber_reseeded_cycle(app):
     from webapp.db import connect
     with app.app_context():
         conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
-                               sets=5, max=100.0, intensity=None, reps=None, repout=None,
-                               start=None, lift_kind="main")
+        lid = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
+                               day=1, sort_order=0, sets=5, max=100.0, intensity=None,
+                               reps=None, repout=None, start=None, lift_kind="main")
         repo.set_reseed(conn, lid, cycle=2)               # stamp it
         # simulate an advance-week UPSERT (no reseeded_cycle passed)
-        repo.save_lift_state(conn, lid, tier="sbs", tm=101.5, weight=None,
+        repo.save_lift_state(conn, lid, mode="sbs", tm=101.5, weight=None,
                              target=None, streak=0, est1rm=None)
         assert repo.get_lift_state(conn, lid)["reseeded_cycle"] == 2   # preserved
 
@@ -197,9 +207,9 @@ def test_create_lift_accepts_lift_kind(app):
     from webapp.db import connect
     with app.app_context():
         conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
-                               sets=5, max=100.0, intensity=None, reps=None, repout=None,
-                               start=None, lift_kind="main")
+        lid = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
+                               day=1, sort_order=0, sets=5, max=100.0, intensity=None,
+                               reps=None, repout=None, start=None, lift_kind="main")
         assert repo.get_lift(conn, lid)["lift_kind"] == "main"
 
 
@@ -207,9 +217,9 @@ def test_set_reseed_writes_max_tm_and_cycle(app):
     from webapp.db import connect
     with app.app_context():
         conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
-                               sets=5, max=100.0, intensity=None, reps=None, repout=None,
-                               start=None, lift_kind="main")
+        lid = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
+                               day=1, sort_order=0, sets=5, max=100.0, intensity=None,
+                               reps=None, repout=None, start=None, lift_kind="main")
         repo.set_reseed(conn, lid, new_max=120.0, cycle=2)
         assert repo.get_lift(conn, lid)["max"] == 120.0
         st = repo.get_lift_state(conn, lid)
@@ -221,9 +231,9 @@ def test_set_reseed_skip_keeps_tm_advances_cycle(app):
     from webapp.db import connect
     with app.app_context():
         conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
-                               sets=5, max=100.0, intensity=None, reps=None, repout=None,
-                               start=None, lift_kind="main")
+        lid = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
+                               day=1, sort_order=0, sets=5, max=100.0, intensity=None,
+                               reps=None, repout=None, start=None, lift_kind="main")
         repo.set_reseed(conn, lid, cycle=2)  # no new_max -> skip
         st = repo.get_lift_state(conn, lid)
         assert st["tm"] == 100.0            # unchanged
@@ -236,9 +246,9 @@ def test_create_lift_accepts_incr_and_round_trips(app):
     from webapp.db import connect
     with app.app_context():
         conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Face Pull", tier="t3", day=2, sort_order=0,
-                               sets=3, max=None, intensity=None, reps=None, repout=None,
-                               start=30.0, incr=5.0)
+        lid = repo.create_lift(conn, name="Face Pull", load_model="barbell", mode="linear_t3",
+                               day=2, sort_order=0, sets=3, max=None, intensity=None,
+                               reps=None, repout=None, start=30.0, incr=5.0)
         assert repo.get_lift(conn, lid)["incr"] == 5.0
 
 
@@ -246,9 +256,9 @@ def test_create_lift_incr_defaults_null(app):
     from webapp.db import connect
     with app.app_context():
         conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Curls", tier="t3", day=1, sort_order=0,
-                               sets=3, max=None, intensity=None, reps=None, repout=None,
-                               start=40.0)  # no incr -> NULL -> inherit global
+        lid = repo.create_lift(conn, name="Curls", load_model="barbell", mode="linear_t3",
+                               day=1, sort_order=0, sets=3, max=None, intensity=None,
+                               reps=None, repout=None, start=40.0)  # no incr -> NULL -> inherit global
         assert repo.get_lift(conn, lid)["incr"] is None
 
 
@@ -256,9 +266,9 @@ def test_update_lift_changes_incr(app):
     from webapp.db import connect
     with app.app_context():
         conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Rows", tier="t2", day=1, sort_order=0,
-                               sets=3, max=None, intensity=None, reps=None, repout=None,
-                               start=85.0)
+        lid = repo.create_lift(conn, name="Rows", load_model="barbell", mode="linear_t2",
+                               day=1, sort_order=0, sets=3, max=None, intensity=None,
+                               reps=None, repout=None, start=85.0)
         repo.update_lift(conn, lid, incr=5.0)
         assert repo.get_lift(conn, lid)["incr"] == 5.0
 
@@ -267,9 +277,9 @@ def test_update_lift_can_clear_incr_to_null(app):
     from webapp.db import connect
     with app.app_context():
         conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Rows", tier="t2", day=1, sort_order=0,
-                               sets=3, max=None, intensity=None, reps=None, repout=None,
-                               start=85.0, incr=5.0)
+        lid = repo.create_lift(conn, name="Rows", load_model="barbell", mode="linear_t2",
+                               day=1, sort_order=0, sets=3, max=None, intensity=None,
+                               reps=None, repout=None, start=85.0, incr=5.0)
         repo.update_lift(conn, lid, incr=None)
         assert repo.get_lift(conn, lid)["incr"] is None
 
@@ -280,39 +290,52 @@ def test_update_lift_rejects_unknown_column(app):
     import pytest
     with app.app_context():
         conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Rows", tier="t2", day=1, sort_order=0,
-                               sets=3, max=None, intensity=None, reps=None, repout=None,
-                               start=85.0)
+        lid = repo.create_lift(conn, name="Rows", load_model="barbell", mode="linear_t2",
+                               day=1, sort_order=0, sets=3, max=None, intensity=None,
+                               reps=None, repout=None, start=85.0)
         with pytest.raises(ValueError):
             repo.update_lift(conn, lid, not_a_column=1)
 
 
-# ---------- Task 7: bodyweight_pct + progression ----------
+# ---------- ADR 0005: load_model/mode + bodyweight_pct ----------
 
-def test_create_lift_stores_bodyweight_pct_and_progression(app):
-    """create_lift accepts bodyweight_pct + progression and round-trips them (Task 7)."""
+def test_create_lift_stores_load_model_mode_and_bodyweight_pct(app):
+    """create_lift persists load_model/mode (ADR 0005) and round-trips bodyweight_pct."""
     from webapp.db import connect
     with app.app_context():
         conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Dips", tier="t3", day=4, sort_order=1, sets=3,
-                               max=None, intensity=None, reps=None, repout=None, start=0.0,
-                               bodyweight_pct=1.0, progression="none")
+        # pure_bodyweight/none is the pure-bodyweight legal combo (pull-up/dip)
+        lid = repo.create_lift(conn, name="Dips", load_model="pure_bodyweight", mode="none",
+                               day=4, sort_order=1, sets=3, max=None, intensity=None,
+                               reps=None, repout=None, start=0.0, bodyweight_pct=1.0)
         row = repo.get_lift(conn, lid)
+        assert row["load_model"] == "pure_bodyweight"
+        assert row["mode"] == "none"
         assert row["bodyweight_pct"] == 1.0
-        assert row["progression"] == "none"
 
 
-def test_create_lift_bodyweight_pct_and_progression_have_defaults(app):
-    """Omitting the new kwargs must keep legacy callers green (Task 7)."""
+def test_create_lift_bodyweight_pct_defaults_zero(app):
+    """Omitting bodyweight_pct must default to 0.0 (legacy callers)."""
     from webapp.db import connect
     with app.app_context():
         conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Pull-up", tier="t3", day=2, sort_order=0,
-                               sets=3, max=None, intensity=None, reps=None, repout=None,
-                               start=30.0)
+        lid = repo.create_lift(conn, name="Pull-up", load_model="barbell", mode="linear_t3",
+                               day=2, sort_order=0, sets=3, max=None, intensity=None,
+                               reps=None, repout=None, start=30.0)
         row = repo.get_lift(conn, lid)
         assert row["bodyweight_pct"] == 0.0
-        assert row["progression"] == "weight"
+
+
+def test_create_lift_rejects_illegal_load_model_mode_combo(app):
+    """is_legal_combo guard: pure_bodyweight must pair with none, not sbs."""
+    from webapp.db import connect
+    import pytest
+    with app.app_context():
+        conn = connect(app.config["DB_PATH"])
+        with pytest.raises(ValueError):
+            repo.create_lift(conn, name="Bad", load_model="pure_bodyweight", mode="sbs",
+                             day=1, sort_order=0, sets=3, max=None, intensity=None,
+                             reps=None, repout=None, start=None)
 
 
 def test_get_settings_returns_bodyweight_default(app):

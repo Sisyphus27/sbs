@@ -30,7 +30,7 @@ def main(db_path: str = "sbs.db", backup_dir: str = "backups") -> None:
         db.init_schema(conn)
         n = 0
         for row in repo.list_lifts(conn):
-            if row["tier"] == "sbs" and \
+            if row["mode"] == "sbs" and \
                recompute_service.recompute_sbs_tm(conn, row["id"]) is not None:
                 n += 1
     finally:

@@ -24,10 +24,11 @@ def seed(conn, p):
     lids = []
     for i, l in enumerate(p.lifts):
         lid = repo.create_lift(
-            conn, name=l.name, tier=l.tier, day=l.day, sort_order=i, sets=l.sets,
+            conn, name=l.name, load_model=l.load_model, mode=l.mode,
+            day=l.day, sort_order=i, sets=l.sets,
             max=l.max, intensity=l.intensity, reps=l.reps, repout=l.repout, start=l.start,
             lift_kind=l.lift_kind, incr=l.incr,
-            bodyweight_pct=l.bodyweight_pct, progression=l.progression)
+            bodyweight_pct=l.bodyweight_pct)
         lids.append(lid)
     return lids
 
@@ -61,14 +62,14 @@ def migrate_from_yaml(db_path: str, profile_path: str, state_path: str, *, force
         if len(idxs) > 1:
             for i in idxs:
                 l = p.lifts[i]
-                if l.tier == "sbs" and ls.tm is not None and l.max == ls.tm:
+                if l.mode == "sbs" and ls.tm is not None and l.max == ls.tm:
                     target_i = i
                     break
-                if l.tier in ("t2", "t3") and ls.weight is not None and l.start == ls.weight:
+                if l.mode in ("linear_t2", "linear_t3") and ls.weight is not None and l.start == ls.weight:
                     target_i = i
                     break
         lid = lids[target_i]
-        repo.save_lift_state(conn, lid, tier=ls.tier, tm=ls.tm, weight=ls.weight,
+        repo.save_lift_state(conn, lid, mode=ls.mode, tm=ls.tm, weight=ls.weight,
                              target=ls.target, streak=ls.streak, est1rm=ls.est1rm)
         for h in ls.history:
             repo.append_history(conn, lid, week=h.week, weight=h.weight, reps=h.reps)

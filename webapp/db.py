@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS settings (
 CREATE TABLE IF NOT EXISTS lifts (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     name           TEXT NOT NULL,
-    tier           TEXT NOT NULL CHECK (tier IN ('sbs','t2','t3')),
+    load_model     TEXT NOT NULL DEFAULT 'barbell' CHECK (load_model IN ('barbell','bodyweight','pure_bodyweight')),
+    mode           TEXT NOT NULL DEFAULT 'none' CHECK (mode IN ('sbs','linear_t2','linear_t3','none')),
     day            INTEGER NOT NULL,
     sort_order     INTEGER NOT NULL DEFAULT 0,
     sets           INTEGER NOT NULL DEFAULT 3,
@@ -37,12 +38,11 @@ CREATE TABLE IF NOT EXISTS lifts (
     start          REAL,
     lift_kind      TEXT,
     incr           REAL,
-    bodyweight_pct REAL NOT NULL DEFAULT 0.0,
-    progression    TEXT NOT NULL DEFAULT 'weight' CHECK (progression IN ('weight','none'))
+    bodyweight_pct REAL NOT NULL DEFAULT 0.0
 );
 CREATE TABLE IF NOT EXISTS lift_state (
     lift_id        INTEGER PRIMARY KEY REFERENCES lifts(id) ON DELETE CASCADE,
-    tier           TEXT NOT NULL,
+    mode           TEXT NOT NULL,
     tm             REAL,
     weight         REAL,
     target         INTEGER,
@@ -100,10 +100,11 @@ def _add_column_if_missing(conn: sqlite3.Connection, table: str, col: str,
 def init_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(_SCHEMA)
     # Migrate pre-bodyweight DBs (ADR 0004). Idempotent — no-op once present.
+    # NOTE: the legacy tier/progression -> load_model/mode migration is handled
+    # by the one-shot migrate_modes.py (T8); init_schema only bootstraps new DBs
+    # (CREATE TABLE IF NOT EXISTS) and upgrades the orthogonal bodyweight cols.
     _add_column_if_missing(conn, "settings", "bodyweight", "REAL NOT NULL DEFAULT 0")
     _add_column_if_missing(conn, "lifts", "bodyweight_pct", "REAL NOT NULL DEFAULT 0.0")
-    _add_column_if_missing(conn, "lifts", "progression",
-                            "TEXT NOT NULL DEFAULT 'weight' CHECK (progression IN ('weight','none'))")
     if conn.execute("SELECT COUNT(*) FROM settings").fetchone()[0] == 0:
         conn.execute(
             "INSERT INTO settings (id, week, days_per_week, rounding, incr, t2_reset_pct, t2_fail, t3_target, bodyweight) "

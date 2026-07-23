@@ -22,7 +22,7 @@ def _due_lifts(conn):
     cyc = cycle_number(week)
     out = []
     for r in repo.list_lifts(conn):
-        if r["tier"] != "sbs":
+        if r["mode"] != "sbs":
             continue
         st = repo.get_lift_state(conn, r["id"])
         if (st["reseeded_cycle"] or 0) < cyc:

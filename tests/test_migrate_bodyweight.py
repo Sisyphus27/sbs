@@ -8,12 +8,13 @@ def test_migrate_bodyweight_recomputes_stale_est1rm():
     conn = sqlite3.connect(":memory:"); conn.row_factory = sqlite3.Row
     init_schema(conn)
     update_settings(conn, bodyweight=75.0)
-    lid = create_lift(conn, name="Dips", tier="t3", day=4, sort_order=1, sets=3,
+    lid = create_lift(conn, name="Dips", load_model="bodyweight", mode="linear_t3",
+                      day=4, sort_order=1, sets=3,
                       max=None, intensity=None, reps=None, repout=None, start=0.0,
                       bodyweight_pct=1.0)
     # stale est1rm as it would have been under the OLD (added-only) math:
-    save_lift_state(conn, lid, tier="t3", tm=None, weight=0.0, target=None, streak=0,
-                    est1rm=0.0)   # added was 0 -> old est1rm 0
+    save_lift_state(conn, lid, mode="linear_t3", tm=None, weight=0.0, target=None,
+                    streak=0, est1rm=0.0)   # added was 0 -> old est1rm 0
     append_history(conn, lid, week=1, weight=0.0, reps=5)
     migrate_bodyweight.recompute_bodyweight_est1rm(conn)
     st = get_lift_state(conn, lid)
@@ -29,10 +30,12 @@ def test_migrate_bodyweight_idempotent():
     conn = sqlite3.connect(":memory:"); conn.row_factory = sqlite3.Row
     init_schema(conn)
     update_settings(conn, bodyweight=75.0)
-    lid = create_lift(conn, name="Dips", tier="t3", day=4, sort_order=1, sets=3,
+    lid = create_lift(conn, name="Dips", load_model="bodyweight", mode="linear_t3",
+                      day=4, sort_order=1, sets=3,
                       max=None, intensity=None, reps=None, repout=None, start=0.0,
                       bodyweight_pct=1.0)
-    save_lift_state(conn, lid, tier="t3", tm=None, weight=0.0, target=None, streak=0, est1rm=0.0)
+    save_lift_state(conn, lid, mode="linear_t3", tm=None, weight=0.0, target=None,
+                    streak=0, est1rm=0.0)
     append_history(conn, lid, week=1, weight=0.0, reps=5)
     migrate_bodyweight.recompute_bodyweight_est1rm(conn)
     once = get_lift_state(conn, lid)["est1rm"]

@@ -2,7 +2,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, Response
 from ..db import get_db
 from .. import repo
-from ..services import advance, tier  # tier imported for completeness; used in lifts route
+from ..services import advance
 
 
 bp = Blueprint("plan", __name__)
@@ -64,28 +64,40 @@ def _by_day(conn):
         est1rm = st["est1rm"]
         bw = settings["bodyweight"] if "bodyweight" in settings.keys() else 0.0
         pct = r["bodyweight_pct"] if "bodyweight_pct" in r.keys() else 0.0
-        if r["tier"] == "sbs":
+        is_bw = r["load_model"] in ("bodyweight", "pure_bodyweight")
+        if r["mode"] == "sbs":
             sc = lookup_schedule(schedule, r["lift_kind"], settings["week"])
             w = round_weight((st["tm"] or 0) * sc.intensity, settings["rounding"])
-            item = SimpleNamespace(id=r["id"], name=r["name"], tier="sbs", weight=w,
+            item = SimpleNamespace(id=r["id"], name=r["name"], mode="sbs", weight=w,
                                    working_weight=working_weight(w, bw, pct),
-                                   is_bodyweight=pct > 0,
+                                   is_bodyweight=is_bw,
                                    reps=sc.reps, sets=r["sets"], repout=sc.repout,
                                    target=None, streak=0, est1rm=est1rm)
-        elif r["tier"] == "t2":
+        elif r["mode"] == "linear_t2":
             added = st["weight"] or 0.0
-            item = SimpleNamespace(id=r["id"], name=r["name"], tier="t2", weight=added,
+            item = SimpleNamespace(id=r["id"], name=r["name"], mode="linear_t2",
+                                   weight=added,
                                    working_weight=working_weight(added, bw, pct),
-                                   is_bodyweight=pct > 0,
+                                   is_bodyweight=is_bw,
                                    reps=st["target"], sets=r["sets"], repout=None,
                                    target=st["target"], streak=st["streak"], est1rm=est1rm)
-        else:  # t3
+        elif r["mode"] == "linear_t3":
             added = st["weight"] or 0.0
-            item = SimpleNamespace(id=r["id"], name=r["name"], tier="t3", weight=added,
+            item = SimpleNamespace(id=r["id"], name=r["name"], mode="linear_t3",
+                                   weight=added,
                                    working_weight=working_weight(added, bw, pct),
-                                   is_bodyweight=pct > 0,
+                                   is_bodyweight=is_bw,
                                    reps=settings["t3_target"], sets=r["sets"], repout=None,
                                    target=settings["t3_target"], streak=0, est1rm=est1rm)
+        else:  # none (pure bodyweight, record-only)
+            added = st["weight"] or 0.0
+            last = repo.list_history(conn, r["id"])
+            last_reps = last[-1]["reps"] if last else None
+            item = SimpleNamespace(id=r["id"], name=r["name"], mode="none", weight=added,
+                                   working_weight=working_weight(added, bw, pct),
+                                   is_bodyweight=True,
+                                   reps=last_reps, sets=r["sets"], repout=None,
+                                   target=None, streak=0, est1rm=est1rm)
         item.logged = logged.get(r["id"], "")
         reps = item.logged if item.logged not in (None, "") else None
         item.live_html = _live_html(conn, item.id, reps)

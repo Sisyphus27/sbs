@@ -1,11 +1,11 @@
 """Tests for the one-shot `migrate_schedule` migration.
 
-The helper `_build_legacy_db` constructs a DB with the pre-Task-1/5/6 schema
-(no ``lift_kind`` on lifts, no ``reseeded_cycle`` on lift_state, no
-``sbs_schedule`` table). The migration must add all three, seed the 42-row
-DEFAULT_SCHEDULE, backfill ``lift_kind`` for sbs lifts from ``sets``, and
-replay every t2 lift's state through the new 1-strike ``t2_next`` via
-``recompute_state``. It must be idempotent.
+The helper `_build_modern_db` constructs a DB with the current init_schema
+(load_model/mode columns, sbs_schedule table, reseeded_cycle column already
+present) then seeds two lifts via the new create_lift API. After T8
+(migrate_modes), the migration runs against the modern schema — its job becomes
+the orthogonal backfill (sbs_schedule seed guard, lift_kind backfill for
+mode='sbs' lifts, linear_t2 state replay) and it must remain idempotent.
 """
 import sqlite3
 
@@ -13,94 +13,31 @@ from webapp import db, repo
 import migrate_schedule
 
 
-def _build_legacy_db(db_path) -> tuple[int, int]:
-    """Create a legacy (pre-Task 1/5/6) schema + seed two lifts.
+def _build_modern_db(db_path) -> tuple[int, int]:
+    """Create a modern-schema DB + seed two lifts.
 
     Returns (squat_id, chin_id):
-      - Squat  : sbs, sets=5 (-> main after backfill), max=135, no history.
-      - Chin-ups: t2, start=50, target=8 (legacy default), one logged miss (5 < 8).
+      - Squat  : mode='sbs', sets=5 (-> main after backfill), max=135, no history.
+      - Chin-ups: mode='linear_t2', start=50, target=8 (default), one logged miss (5 < 8).
     """
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    conn.executescript(
-        """
-        CREATE TABLE settings (
-            id            INTEGER PRIMARY KEY CHECK (id = 1),
-            week          INTEGER NOT NULL,
-            days_per_week INTEGER NOT NULL,
-            rounding      REAL    NOT NULL,
-            incr          REAL    NOT NULL,
-            t2_reset_pct  REAL    NOT NULL,
-            t2_fail       INTEGER NOT NULL,
-            t3_target     INTEGER NOT NULL
-        );
-        CREATE TABLE lifts (
-            id         INTEGER PRIMARY KEY AUTOINCREMENT,
-            name       TEXT NOT NULL,
-            tier       TEXT NOT NULL CHECK (tier IN ('sbs','t2','t3')),
-            day        INTEGER NOT NULL,
-            sort_order INTEGER NOT NULL DEFAULT 0,
-            sets       INTEGER NOT NULL DEFAULT 3,
-            max        REAL,
-            intensity  REAL,
-            reps       INTEGER,
-            repout     INTEGER,
-            start      REAL
-        );
-        CREATE TABLE lift_state (
-            lift_id INTEGER PRIMARY KEY REFERENCES lifts(id) ON DELETE CASCADE,
-            tier    TEXT NOT NULL,
-            tm      REAL,
-            weight  REAL,
-            target  INTEGER,
-            streak  INTEGER NOT NULL DEFAULT 0,
-            est1rm  REAL
-        );
-        CREATE TABLE history (
-            id      INTEGER PRIMARY KEY AUTOINCREMENT,
-            lift_id INTEGER NOT NULL REFERENCES lifts(id) ON DELETE CASCADE,
-            week    INTEGER NOT NULL,
-            weight  REAL NOT NULL,
-            reps    INTEGER NOT NULL,
-            ts      TEXT NOT NULL
-        );
-        CREATE TABLE week_log (
-            lift_id INTEGER NOT NULL REFERENCES lifts(id) ON DELETE CASCADE,
-            week    INTEGER NOT NULL,
-            reps    INTEGER NOT NULL,
-            PRIMARY KEY (lift_id, week)
-        );
-        INSERT INTO settings (id, week, days_per_week, rounding, incr,
-                              t2_reset_pct, t2_fail, t3_target)
-        VALUES (1, 1, 4, 2.5, 2.5, 0.75, 3, 15);
-        """
-    )
-    cur = conn.execute(
-        "INSERT INTO lifts (name, tier, day, sort_order, sets, max, intensity, reps, repout, start) "
-        "VALUES ('Squat', 'sbs', 1, 0, 5, 135.0, 0.70, 5, 10, NULL)"
-    )
-    squat_id = cur.lastrowid
-    conn.execute(
-        "INSERT INTO lift_state (lift_id, tier, tm, weight, target, streak, est1rm) "
-        "VALUES (?, 'sbs', 135.0, NULL, NULL, 0, NULL)",
-        (squat_id,),
-    )
-    cur = conn.execute(
-        "INSERT INTO lifts (name, tier, day, sort_order, sets, max, intensity, reps, repout, start) "
-        "VALUES ('Chin-ups', 't2', 2, 0, 4, NULL, NULL, NULL, NULL, 50.0)"
-    )
-    chin_id = cur.lastrowid
-    conn.execute(
-        "INSERT INTO lift_state (lift_id, tier, tm, weight, target, streak, est1rm) "
-        "VALUES (?, 't2', NULL, 50.0, 8, 0, NULL)",
-        (chin_id,),
-    )
+    conn = db.connect(db_path)
+    db.init_schema(conn)
+    squat_id = repo.create_lift(
+        conn, name="Squat", load_model="barbell", mode="sbs",
+        day=1, sort_order=0, sets=5, max=135.0, intensity=0.70, reps=5, repout=10,
+        start=None, lift_kind=None)
+    chin_id = repo.create_lift(
+        conn, name="Chin-ups", load_model="barbell", mode="linear_t2",
+        day=2, sort_order=0, sets=4, max=None, intensity=None, reps=None,
+        repout=None, start=50.0)
+    # Set the linear_t2 lift's state to the legacy default (target=8, streak=0)
+    # so the migration's replay has something to update.
+    repo.save_lift_state(conn, chin_id, mode="linear_t2", tm=None, weight=50.0,
+                         target=8, streak=0, est1rm=None)
     # One logged miss: 5 reps at weight 50, target was 8 -> 1-strike drops 8 -> 6.
-    conn.execute(
-        "INSERT INTO history (lift_id, week, weight, reps, ts) "
-        "VALUES (?, 1, 50.0, 5, '2026-01-01T00:00:00Z')",
-        (chin_id,),
-    )
+    repo.append_history(conn, chin_id, week=1, weight=50.0, reps=5)
+    # Clear Squat's lift_kind so the backfill has work to do.
+    conn.execute("UPDATE lifts SET lift_kind=NULL WHERE id=?", (squat_id,))
     conn.commit()
     conn.close()
     return squat_id, chin_id
@@ -108,7 +45,7 @@ def _build_legacy_db(db_path) -> tuple[int, int]:
 
 def test_migrate_seeds_42_schedule_rows(tmp_path):
     dbp = str(tmp_path / "t.db")
-    _build_legacy_db(dbp)
+    _build_modern_db(dbp)
     migrate_schedule.main(db_path=dbp, backup_dir=str(tmp_path / "bak"))
     conn = db.connect(dbp)
     n_main = conn.execute("SELECT COUNT(*) FROM sbs_schedule WHERE kind='main'").fetchone()[0]
@@ -122,7 +59,7 @@ def test_migrate_seeds_42_schedule_rows(tmp_path):
 def test_migrate_creates_sbs_schedule_table_with_legacy_21_week_rows(tmp_path):
     """Spot-check week-1 main + week-7 aux (deload) values to confirm the seed is DEFAULT_SCHEDULE."""
     dbp = str(tmp_path / "t.db")
-    _build_legacy_db(dbp)
+    _build_modern_db(dbp)
     migrate_schedule.main(db_path=dbp, backup_dir=str(tmp_path / "bak"))
     conn = db.connect(dbp)
     m1 = conn.execute(
@@ -138,10 +75,10 @@ def test_migrate_creates_sbs_schedule_table_with_legacy_21_week_rows(tmp_path):
 
 def test_migrate_backfills_squat_lift_kind_main(tmp_path):
     dbp = str(tmp_path / "t.db")
-    squat_id, _ = _build_legacy_db(dbp)
+    squat_id, _ = _build_modern_db(dbp)
     migrate_schedule.main(db_path=dbp, backup_dir=str(tmp_path / "bak"))
     conn = db.connect(dbp)
-    # Legacy DB had no lift_kind column at all; migration must ALTER + backfill.
+    # Modern schema already has lift_kind column; migration backfills mode='sbs' rows.
     row = conn.execute(
         "SELECT lift_kind FROM lifts WHERE id=?", (squat_id,)
     ).fetchone()
@@ -152,7 +89,7 @@ def test_migrate_backfills_squat_lift_kind_main(tmp_path):
 def test_migrate_replays_t2_one_miss_to_target_6(tmp_path):
     """One logged miss under the new 1-strike rule drops target 8 -> 6."""
     dbp = str(tmp_path / "t.db")
-    _, chin_id = _build_legacy_db(dbp)
+    _, chin_id = _build_modern_db(dbp)
     migrate_schedule.main(db_path=dbp, backup_dir=str(tmp_path / "bak"))
     conn = db.connect(dbp)
     st = repo.get_lift_state(conn, chin_id)
@@ -164,7 +101,7 @@ def test_migrate_replays_t2_one_miss_to_target_6(tmp_path):
 
 def test_migrate_adds_reseeded_cycle_column_with_default_0(tmp_path):
     dbp = str(tmp_path / "t.db")
-    squat_id, _ = _build_legacy_db(dbp)
+    squat_id, _ = _build_modern_db(dbp)
     migrate_schedule.main(db_path=dbp, backup_dir=str(tmp_path / "bak"))
     conn = db.connect(dbp)
     cols = [r[1] for r in conn.execute("PRAGMA table_info(lift_state)").fetchall()]
@@ -178,7 +115,7 @@ def test_migrate_adds_reseeded_cycle_column_with_default_0(tmp_path):
 
 def test_migrate_creates_backup(tmp_path):
     dbp = str(tmp_path / "t.db")
-    _build_legacy_db(dbp)
+    _build_modern_db(dbp)
     bdir = tmp_path / "bak"
     migrate_schedule.main(db_path=dbp, backup_dir=str(bdir))
     backups = list(bdir.glob("*.db.bak"))
@@ -187,9 +124,9 @@ def test_migrate_creates_backup(tmp_path):
 
 def test_migrate_is_idempotent(tmp_path):
     """Re-running must not error, must not duplicate schedule rows, must converge
-    on the same lift_kind + T2 replay result."""
+    on the same lift_kind + linear_t2 replay result."""
     dbp = str(tmp_path / "t.db")
-    squat_id, chin_id = _build_legacy_db(dbp)
+    squat_id, chin_id = _build_modern_db(dbp)
     bdir = tmp_path / "bak"
     migrate_schedule.main(db_path=dbp, backup_dir=str(bdir))
     migrate_schedule.main(db_path=dbp, backup_dir=str(bdir))
@@ -199,7 +136,7 @@ def test_migrate_is_idempotent(tmp_path):
     assert n == 42
     # lift_kind still 'main' (backfill is guarded by IS NULL).
     assert repo.get_lift(conn, squat_id)["lift_kind"] == "main"
-    # T2 replay converges to the same target=6.
+    # linear_t2 replay converges to the same target=6.
     assert repo.get_lift_state(conn, chin_id)["target"] == 6
     assert repo.get_lift_state(conn, chin_id)["streak"] == 1
     # reseeded_cycle still default 0.

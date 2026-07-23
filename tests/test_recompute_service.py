@@ -3,7 +3,8 @@ from webapp.services import recompute as recompute_service
 
 
 def _t2(conn, start=85.0):
-    return repo.create_lift(conn, name="Rows", tier="t2", day=1, sort_order=0,
+    return repo.create_lift(conn, name="Rows", load_model="barbell", mode="linear_t2",
+                            day=1, sort_order=0,
                             sets=4, max=None, intensity=None, reps=None, repout=None, start=start)
 
 
@@ -18,7 +19,8 @@ def test_recompute_t2_no_history_sets_weight_to_start(tmp_path):
 
 def test_recompute_sbs_is_noop(tmp_path):
     conn = db.connect(str(tmp_path / "t.db")); db.init_schema(conn)
-    lid = repo.create_lift(conn, name="Squat", tier="sbs", day=1, sort_order=0,
+    lid = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
+                           day=1, sort_order=0,
                            sets=5, max=135.0, intensity=0.7, reps=5, repout=10, start=None)
     tm_before = repo.get_lift_state(conn, lid)["tm"]
     assert recompute_service.recompute_on_start_change(conn, lid, 100.0) is None
@@ -47,7 +49,8 @@ def test_recompute_on_start_change_uses_per_lift_incr(tmp_path):
     from webapp.services import advance
     conn = db.connect(str(tmp_path / "t.db"))
     db.init_schema(conn)
-    lid = repo.create_lift(conn, name="Curls", tier="t3", day=1, sort_order=0,
+    lid = repo.create_lift(conn, name="Curls", load_model="barbell", mode="linear_t3",
+                           day=1, sort_order=0,
                            sets=3, max=None, intensity=None, reps=None, repout=None,
                            start=40.0, incr=5.0)
     # 一次命中 -> history；advance 用 eff_incr=5 -> 40+5=45

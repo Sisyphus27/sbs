@@ -11,10 +11,11 @@ def profile_to_dict(p: Profile) -> dict:
         "bodyweight": p.bodyweight,
         "lifts": [
             {k: v for k, v in {
-                "name": l.name, "tier": l.tier, "day": l.day, "max": l.max,
+                "name": l.name, "load_model": l.load_model, "mode": l.mode,
+                "day": l.day, "max": l.max,
                 "intensity": l.intensity, "reps": l.reps, "repout": l.repout,
                 "sets": l.sets, "start": l.start, "lift_kind": l.lift_kind,
-                "bodyweight_pct": l.bodyweight_pct, "progression": l.progression,
+                "bodyweight_pct": l.bodyweight_pct,
             }.items() if v is not None and v != 0}
             for l in p.lifts
         ],
@@ -29,16 +30,17 @@ def profile_from_dict(d: dict) -> Profile:
     from ..defaults import DEFAULT_SCHEDULE
 
     lifts = [Lift(
-        name=x["name"], tier=x["tier"], day=x["day"],
+        name=x["name"], day=x["day"],
+        load_model=x.get("load_model", "barbell"),
+        mode=x.get("mode", "none"),
         max=x.get("max"), intensity=x.get("intensity", 0.0), reps=x.get("reps", 0),
         repout=x.get("repout", 0), sets=x.get("sets", 3), start=x.get("start"),
         # Legacy profile.yaml has no lift_kind. The engine's lookup_schedule
         # needs a kind that exists in DEFAULT_SCHEDULE ("main" or "aux").
         # Default sbs lifts to "main" so a legacy YAML still renders; re-running
         # `sbs init` from the xlsx importer repopulates the proper main/aux split.
-        lift_kind=x.get("lift_kind") or ("main" if x.get("tier") == "sbs" else None),
+        lift_kind=x.get("lift_kind") or ("main" if x.get("mode") == "sbs" else None),
         bodyweight_pct=x.get("bodyweight_pct", 0.0),
-        progression=x.get("progression", "weight"),
     ) for x in d.get("lifts", [])]
     return Profile(
         rounding=d.get("rounding", 2.5), days_per_week=d.get("days_per_week", 4),
@@ -62,7 +64,7 @@ def state_to_dict(s: ProgramState) -> dict:
     out_lifts = {}
     for name, ls in s.lifts.items():
         out_lifts[name] = {
-            "tier": ls.tier,
+            "mode": ls.mode,
             "tm": ls.tm, "weight": ls.weight, "target": ls.target, "streak": ls.streak,
             "est1rm": ls.est1rm,
             "history": [{"week": h.week, "weight": h.weight, "reps": h.reps} for h in ls.history],
@@ -73,7 +75,7 @@ def state_from_dict(d: dict) -> ProgramState:
     lifts = {}
     for name, x in d.get("lifts", {}).items():
         lifts[name] = LiftState(
-            name=name, tier=x["tier"], tm=x.get("tm"), weight=x.get("weight"),
+            name=name, mode=x.get("mode", "none"), tm=x.get("tm"), weight=x.get("weight"),
             target=x.get("target"), streak=x.get("streak", 0), est1rm=x.get("est1rm"),
             history=[SetEntry(h["week"], h["weight"], h["reps"]) for h in x.get("history", [])],
         )

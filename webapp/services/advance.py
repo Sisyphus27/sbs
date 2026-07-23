@@ -7,13 +7,13 @@ from .. import repo
 
 def _lift_from_row(r) -> Lift:
     return Lift(
-        name=r["name"], tier=r["tier"], day=r["day"], max=r["max"],
-        intensity=r["intensity"] or 0.0, reps=r["reps"] or 0,
+        name=r["name"], day=r["day"],
+        load_model=r["load_model"], mode=r["mode"],
+        max=r["max"], intensity=r["intensity"] or 0.0, reps=r["reps"] or 0,
         repout=r["repout"] or 0, sets=r["sets"] or 3, start=r["start"],
         lift_kind=r["lift_kind"],
         incr=r["incr"] if "incr" in r.keys() else None,
         bodyweight_pct=r["bodyweight_pct"] if "bodyweight_pct" in r.keys() else 0.0,
-        progression=r["progression"] if "progression" in r.keys() else "weight",
     )
 
 
@@ -31,7 +31,7 @@ def _profile_from_rows(settings, lift_rows, schedule) -> Profile:
 def _state_from_rows(st_row, hist_rows) -> LiftState:
     history = [SetEntry(week=h["week"], weight=h["weight"], reps=h["reps"]) for h in hist_rows]
     return LiftState(
-        name="", tier=st_row["tier"], tm=st_row["tm"], weight=st_row["weight"],
+        name="", mode=st_row["mode"], tm=st_row["tm"], weight=st_row["weight"],
         target=st_row["target"], streak=st_row["streak"], est1rm=st_row["est1rm"],
         history=history,
     )
@@ -54,7 +54,7 @@ def advance_week(conn: sqlite3.Connection, logs: dict) -> int:
         ls = _state_from_rows(st, repo.list_history(conn, lid))
         lift = _lift_from_row(row)
         advance_lift(profile, lift, ls, actual, week=week)
-        repo.save_lift_state(conn, lid, tier=ls.tier, tm=ls.tm,
+        repo.save_lift_state(conn, lid, mode=ls.mode, tm=ls.tm,
                              weight=ls.weight, target=ls.target,
                              streak=ls.streak, est1rm=ls.est1rm)
         if actual is not None and ls.history:

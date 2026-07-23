@@ -1,11 +1,11 @@
 from sbs_cli.data.schema import Lift, Profile, SetEntry, LiftState, ProgramState
 
 def test_lift_sbs_construction():
-    l = Lift(name="Squat", tier="sbs", day=1, max=135, intensity=0.75, reps=4, repout=8, sets=3)
-    assert l.tier == "sbs" and l.max == 135 and l.start is None
+    l = Lift(name="Squat", load_model="barbell", mode="sbs", day=1, max=135, intensity=0.75, reps=4, repout=8, sets=3)
+    assert l.mode == "sbs" and l.max == 135 and l.start is None
 
 def test_lift_t2_construction():
-    l = Lift(name="Barbell rows", tier="t2", day=1, start=85)
+    l = Lift(name="Barbell rows", load_model="barbell", mode="linear_t2", day=1, start=85)
     assert l.max is None and l.start == 85
 
 def test_profile_defaults():
@@ -15,11 +15,11 @@ def test_profile_defaults():
 
 def test_setentry_and_liftstate():
     s = SetEntry(week=1, weight=100, reps=9)
-    ls = LiftState(name="Squat", tier="sbs", tm=135, est1rm=158.0, history=[s])
+    ls = LiftState(name="Squat", mode="sbs", tm=135, est1rm=158.0, history=[s])
     assert ls.history[0].reps == 9
 
 def test_programstate_holds_lifts_by_name():
-    ps = ProgramState(week=1, lifts={"Squat": LiftState(name="Squat", tier="sbs", tm=135)})
+    ps = ProgramState(week=1, lifts={"Squat": LiftState(name="Squat", mode="sbs", tm=135)})
     assert "Squat" in ps.lifts and ps.lifts["Squat"].tm == 135
 
 from sbs_cli.data.schema import Lift
@@ -27,12 +27,12 @@ from sbs_cli.data.schema import Lift
 
 def test_lift_incr_defaults_to_none():
     # NULL = 继承全局 settings.incr（live inheritance）
-    l = Lift(name="Face Pull", tier="t3", day=2)
+    l = Lift(name="Face Pull", load_model="barbell", mode="linear_t3", day=2)
     assert l.incr is None
 
 
 def test_lift_incr_can_be_set():
-    l = Lift(name="Pull-downs", tier="t2", day=1, incr=5.0)
+    l = Lift(name="Pull-downs", load_model="barbell", mode="linear_t2", day=1, incr=5.0)
     assert l.incr == 5.0
 
 

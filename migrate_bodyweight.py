@@ -26,7 +26,7 @@ def recompute_bodyweight_est1rm(conn) -> int:
         bw = get_settings(conn)["bodyweight"]
         est = _est1rm_from_history(hist, bw, pct)
         st = get_lift_state(conn, r["id"])
-        save_lift_state(conn, r["id"], tier=st["tier"], tm=st["tm"], weight=st["weight"],
+        save_lift_state(conn, r["id"], mode=st["mode"], tm=st["tm"], weight=st["weight"],
                         target=st["target"], streak=st["streak"], est1rm=est)
         n += 1
     return n

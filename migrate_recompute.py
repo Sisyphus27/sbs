@@ -32,12 +32,12 @@ def main(db_path: str = "sbs.db", backup_dir: str = "backups") -> None:
 
         n = 0
         for row in repo.list_lifts(conn):
-            if row["tier"] in ("t2", "t3"):
+            if row["mode"] in ("linear_t2", "linear_t3"):
                 recompute_service.recompute_on_start_change(conn, row["id"], row["start"])
                 n += 1
     finally:
         conn.close()
-    print(f"recomputed {n} t2/t3 lifts from start -> {db_path}")
+    print(f"recomputed {n} linear_t2/linear_t3 lifts from start -> {db_path}")
 
 
 if __name__ == "__main__":

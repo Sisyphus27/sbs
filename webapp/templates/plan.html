@@ -1,36 +1,41 @@
 {% extends "base.html" %}
-{% block title %}Week {{ week }} plan{% endblock %}
+{% block title %}Week {{ week }} 计划{% endblock %}
 {% block content %}
 <h1>Week {{ week }} 计划</h1>
 {% if due_reseeds %}
-<div class="reseed-banner">
+<div class="flash">
   新周期开始 — 待重测: {{ due_reseeds | join(", ") }}
   <a href="{{ url_for('reseed.view') }}">去重测</a>
 </div>
 {% endif %}
-<p>练完填每个动作的<b>末组次数</b>(填完自动保存,关掉也不丢)。全部练完点 <b>提交并算下周</b>。</p>
+<p class="meta">练完填每个动作的<b>末组次数</b>(填完自动保存,关掉也不丢)。全部练完点 <b>提交并算下周</b>。</p>
 <p><a class="btn" href="{{ url_for('plan.export_week') }}" download>📱 导出本周计划(手机看)</a></p>
 <form method="post" action="{{ url_for('plan.submit') }}">
+  <button type="submit" class="btn-primary" style="margin-bottom:16px">提交并算下周</button>
   {% for day, items in by_day %}
-    <h2>Day {{ day }}</h2>
+  <div class="card">
+    <h2 style="margin-top:0">Day {{ day }}</h2>
     {% for it in items %}
-      <div class="row">
-        <span class="name">{{ it.name }}</span>
-        <span class="meta">{{ it.mode }} |
-          {%- if it.is_bodyweight %} +{{ it.weight }} ({{ it.working_weight }}){% else %} {{ it.weight }}{% endif %} kg
-          {% if it.mode=='sbs' %} x {{ it.reps }} x {{ it.sets }} | rep-out {{ it.repout }}
-          {% elif it.mode=='linear_t2' %} x {{ it.target }} x {{ it.sets }} | streak {{ it.streak }}
-          {% else %} x {{ it.target }} x {{ it.sets }}
-          {% endif %}
-          | est 1RM {{ "%.2f"|format(it.est1rm) if it.est1rm is not none else '—' }}
-        </span>
+      <div class="field-row" style="justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)">
+        <div>
+          <strong>{{ it.name }}</strong>
+          <span class="meta num">{{ it.mode }} |
+            {%- if it.is_bodyweight %} +{{ it.weight }} ({{ it.working_weight }}){% else %} {{ it.weight }}{% endif %} kg
+            {% if it.mode=='sbs' %} x {{ it.reps }} x {{ it.sets }} | rep-out {{ it.repout }}
+            {% elif it.mode=='linear_t2' %} x {{ it.target }} x {{ it.sets }} | streak {{ it.streak }}
+            {% else %} x {{ it.target }} x {{ it.sets }}
+            {% endif %}
+            | est 1RM {{ "%.2f"|format(it.est1rm) if it.est1rm is not none else '—' }}
+          </span>
+        </div>
         <label>末组: <input type="number" name="log_{{ it.id }}" value="{{ it.logged }}"
                hx-post="{{ url_for('plan.save_log', lid=it.id) }}" hx-trigger="change"
                hx-target="next .save-ok" hx-swap="innerHTML">
-          <span class="save-ok">{{ it.live_html|safe }}</span></label>
+          <span class="save-ok num">{{ it.live_html|safe }}</span></label>
       </div>
     {% endfor %}
+  </div>
   {% endfor %}
-  <button type="submit">提交并算下周</button>
+  <button type="submit" class="btn-primary">提交并算下周</button>
 </form>
 {% endblock %}

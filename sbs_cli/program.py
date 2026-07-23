@@ -10,12 +10,15 @@ keep working until Task 5 migrates them.
 """
 from typing import Optional, List
 from .data.schema import Lift, Profile, SetEntry, LiftState, ProgramState
-from .engine.onerm import (estimate_1rm, best_1rm,
+from .engine.onerm import (best_1rm,
                            est1rm_from_history as _est1rm_from_history)
-from .engine.load import working_weight
 from .engine.modes import get_mode
 from .engine.progression import (sbs_next, t3_next, t2_next, T2State,
-                                 round_weight, lookup_schedule)
+                                 lookup_schedule)
+
+# Re-export so webapp services / tests importing ``sbs_cli.program.best_1rm``
+# keep working without depending on ``engine.onerm`` directly.
+__all__ = ["best_1rm"]
 
 
 def initial_state(profile: Profile) -> ProgramState:

@@ -19,8 +19,11 @@ def _has_col(conn, table, col):
 
 
 _MAP = {
-    # (tier, pct>0) -> (load_model, mode); progression=="none" handled separately
+    # (tier, pct>0) -> (load_model, mode); progression=="none" handled separately.
+    # ("sbs", True) is a pathological row (sbs is barbell-only; pct should be 0),
+    # but we map it defensively to ("barbell", "sbs") rather than KeyError.
     ("sbs", False): ("barbell", "sbs"),
+    ("sbs", True):  ("barbell", "sbs"),
     ("t2", False):  ("barbell", "linear_t2"),
     ("t2", True):   ("bodyweight", "linear_t2"),
     ("t3", False):  ("barbell", "linear_t3"),

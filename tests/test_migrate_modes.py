@@ -63,3 +63,27 @@ def test_migrate_idempotent(tmp_path):
     n = migrate_modes(conn)   # second run no-op
     assert n == 0
     conn.close()
+
+
+def test_migrate_handles_pathological_sbs_with_bodyweight_pct(tmp_path):
+    """A pathological legacy row with tier='sbs' AND bodyweight_pct>0 must not
+    KeyError; it maps defensively to ('barbell', 'sbs') (sbs is barbell-only,
+    the stray pct is ignored). T8 Minor 2 guard."""
+    p, conn = _old_schema_db(tmp_path)
+    # Insert a row that violates the sbs-is-barbell-only invariant.
+    conn.execute(
+        "INSERT INTO lifts (name,tier,day,max,bodyweight_pct,lift_kind) "
+        "VALUES ('Squat-BW','sbs',3,100,1.0,'main')"
+    )
+    conn.execute(
+        "INSERT INTO lift_state (lift_id,tier,tm) VALUES (5,'sbs',100.0)"
+    )
+    conn.commit()
+    migrate_modes(conn)
+    rows = {r["name"]: (r["load_model"], r["mode"]) for r in
+            conn.execute("SELECT name, load_model, mode FROM lifts")}
+    assert rows["Squat-BW"] == ("barbell", "sbs")
+    st = {r["lift_id"]: r["mode"] for r in
+          conn.execute("SELECT lift_id, mode FROM lift_state")}
+    assert st[5] == "sbs"
+    conn.close()

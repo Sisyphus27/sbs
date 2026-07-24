@@ -225,9 +225,11 @@ grid points must stay visible — never trailing-zero-stripped.
 _Avoid_: dual weight display (added + working-total together invites mis-loading)
 
 **Day progress tri-state (Day 进度三态)**:
-How the offline list decides which Day to expand: a Day is *empty* (no lift logged — not yet
-trained), *partial* (some logged — treated as already touched, usually a missed entry), or *full*
-(all logged — trained, collapses with a ✓). The first *empty* Day is the next-to-train Day and
-expands by default; partial does not count as in-progress. Derived from logged data, never from a
-real-time calendar.
-_Avoid_: today (the offline file has no reliable clock), in-progress day (partial is noise)
+How the offline list decides which Day to expand and how to mark it: a Day is *empty* (no lift
+logged — not yet trained), *partial* (some logged — cut short by fatigue or time, an owed debt to
+finish later, marked ◐), or *full* (all logged — trained, collapses with a ✓). The lowest-numbered
+non-full Day (partial or empty) is the next-to-train and expands by default, so an owed Day
+surfaces first rather than hiding. All Days stay expandable — collapse never hides a Day.
+Derived from logged data, never from a real-time calendar.
+_Avoid_: today (the offline file has no reliable clock), skipping partial days (an owed Day is
+exactly what the lifter wants to find)

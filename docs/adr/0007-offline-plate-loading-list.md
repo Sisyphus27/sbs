@@ -21,9 +21,10 @@ state fields are dropped. The page is pure template + inline CSS, **zero JavaScr
   Weights render at full precision (`95.0`/`57.5`) because the 2.5 kg rounding-quantum grid
   points must stay visible; never trailing-zero-stripped.
 - **Progress-driven day location, not a calendar.** Which Day expands by default is derived from
-  logged data (first *empty* Day = next-to-train), because the offline single file has no
-  reliable real-time clock. Trained Days collapse with a ✓. A *partial* Day is treated as
-  already-touched, not in-progress.
+  logged data, because the offline single file has no reliable real-time clock. The
+  lowest-numbered non-full Day expands; a *partial* Day (cut short by fatigue or time) is an owed
+  debt, marked ◐ and surfaced first so the lifter can find and finish it later — never treated as
+  done, never hidden by collapse. Trained Days collapse with a ✓; all Days stay expandable.
 - **No dark mode, no sticky day tabs.** The gym is bright, so the investment goes to light-mode
   contrast and large type instead. Day navigation is a plain `<details>/<summary>` collapse
   list — a sticky tab bar costs vertical space on a narrow phone and pure `#anchor` links do not

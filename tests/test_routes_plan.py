@@ -245,17 +245,16 @@ def test_export_week_plate_loading_structure(client, app):
     assert 'class="wt"' in html and "kg" in html      # 大数字 + 单位
     assert "rep-out" in html                            # sbs 方案行
     assert 'class="tag sbs"' in html                    # mode tag accent
-    assert "容量" not in html and "≈" not in html       # 状态字段已砍
-    assert "est 1RM" not in html and "streak" not in html
+    assert "容量" not in html and "≈" not in html       # live_html/容量 已砍
+    assert "最佳 1RM" not in html and "streak" not in html  # est1RM 标签 + t2 streak 已砍
 
 
 def test_export_week_bodyweight_shows_added_only(client, app):
     """bodyweight 动作只显示 +added kg，不显示工作重量括号。"""
     with app.app_context():
         from webapp.db import connect
-        from webapp import repo as _repo
         conn = connect(app.config["DB_PATH"])
-        _repo.update_settings(conn, bodyweight=75.0)
+        repo.update_settings(conn, bodyweight=75.0)
         repo.create_lift(conn, name="Chin-up", load_model="bodyweight", mode="linear_t2",
                          day=1, sort_order=0, sets=3, max=None, intensity=None,
                          reps=None, repout=None, start=15.0, bodyweight_pct=1.0)

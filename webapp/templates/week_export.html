@@ -64,7 +64,7 @@
   <details data-day="{{ day }}" class="st-{{ state }}"{% if day==ns.first_open %} open{% endif %}>
     <summary>
       <span class="caret">▶</span>Day {{ day }}
-      <span class="meta" style="font-weight:normal;color:var(--muted);font-size:.85em">{{ filled }}/{{ total }}</span>
+      <span style="font-weight:normal;color:var(--muted);font-size:.85em">{{ filled }}/{{ total }}</span>
       <span class="mark">{% if state=='full' %}✓{% elif state=='part' %}◐{% endif %}</span>
     </summary>
     <div class="cards">
@@ -91,7 +91,7 @@
             {% if it.reps is not none %}~{{ it.reps }} × {{ it.sets }}{% else %}{{ it.sets }} 组{% endif %}
           {%- endif -%}
         </div>
-        <span class="tag {{ 'sbs' if it.mode=='sbs' }}">{{ it.mode }}</span>
+        <span class="tag{% if it.mode=='sbs' %} sbs{% endif %}">{{ it.mode }}</span>
       </div>
       {% endfor %}
     </div>

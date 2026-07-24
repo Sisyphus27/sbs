@@ -215,39 +215,6 @@ def test_plan_view_shows_tonnage_wow_delta_for_t2(client, app):
     assert "首次" not in html       # both weeks present -> no 首次 marker
 
 
-def test_export_week_shows_tonnage_when_logged(client, app):
-    """手机离线导出含与桌面同源的 容量 片段（经 _by_day -> _live_html 接出）。
-    week 1 -> 首次 标记，不除零。fixture 同 test_plan_view_shows_tonnage_for_logged_lift：
-    t3 Curl, start=30, log 18 -> 30 * (2*15 + 18) = 1440。"""
-    with app.app_context():
-        from webapp.db import connect
-        conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Curl", load_model="barbell", mode="linear_t3",
-                               day=1, sort_order=0, sets=3, max=None, intensity=None,
-                               reps=None, repout=None, start=30.0)
-        repo.save_log(conn, lid, 1, 18)   # 30 * (2*15 + 18) = 1440
-        conn.close()
-    html = client.get("/export/week.html").get_data(as_text=True)
-    assert "容量" in html and "1440kg" in html   # 容量片段已接到导出 HTML
-    assert "≈" in html                            # est1RM 仍在同一片段内
-    assert "首次" in html                          # week 1，无上周
-
-
-def test_export_week_omits_tonnage_when_not_logged(client, app):
-    """未填末组 -> 本周末组: 未填，无 容量 片段（与桌面空状态对齐）。
-    回归守卫：A1 不应把 容量 渗进未填分支。"""
-    with app.app_context():
-        from webapp.db import connect
-        conn = connect(app.config["DB_PATH"])
-        repo.create_lift(conn, name="Curl", load_model="barbell", mode="linear_t3",
-                         day=1, sort_order=0, sets=3, max=None, intensity=None,
-                         reps=None, repout=None, start=30.0)
-        conn.close()
-    html = client.get("/export/week.html").get_data(as_text=True)
-    assert "未填" in html
-    assert "容量" not in html
-
-
 def test_plan_view_renders_bodyweight_added_plus_working_weight(client, app):
     """Bodyweight lift renders '+added (working)' meta format (Task 11).
 

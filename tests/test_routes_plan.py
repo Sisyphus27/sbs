@@ -1,5 +1,4 @@
 from webapp import repo
-import re
 
 
 def test_plan_view_empty(client):
@@ -57,9 +56,6 @@ def test_export_week_standalone_with_progress(client, app):
     assert f'week-1.html' in rv.headers.get("Content-Disposition", "")
     html = rv.get_data(as_text=True)
     assert "Week 1" in html and "Squat" in html
-    assert "本周末组: 11" in html          # progress shown
-    assert "≈" in html                    # live est1RM shown
-    assert re.search(r"≈\s*\d+\.\d{2}", html)      # live est1RM renders to 2 decimals
     # standalone / offline: no server-relative deps
     assert "hx-post" not in html and "/log/" not in html and "htmx" not in html
 
@@ -215,39 +211,6 @@ def test_plan_view_shows_tonnage_wow_delta_for_t2(client, app):
     assert "首次" not in html       # both weeks present -> no 首次 marker
 
 
-def test_export_week_shows_tonnage_when_logged(client, app):
-    """手机离线导出含与桌面同源的 容量 片段（经 _by_day -> _live_html 接出）。
-    week 1 -> 首次 标记，不除零。fixture 同 test_plan_view_shows_tonnage_for_logged_lift：
-    t3 Curl, start=30, log 18 -> 30 * (2*15 + 18) = 1440。"""
-    with app.app_context():
-        from webapp.db import connect
-        conn = connect(app.config["DB_PATH"])
-        lid = repo.create_lift(conn, name="Curl", load_model="barbell", mode="linear_t3",
-                               day=1, sort_order=0, sets=3, max=None, intensity=None,
-                               reps=None, repout=None, start=30.0)
-        repo.save_log(conn, lid, 1, 18)   # 30 * (2*15 + 18) = 1440
-        conn.close()
-    html = client.get("/export/week.html").get_data(as_text=True)
-    assert "容量" in html and "1440kg" in html   # 容量片段已接到导出 HTML
-    assert "≈" in html                            # est1RM 仍在同一片段内
-    assert "首次" in html                          # week 1，无上周
-
-
-def test_export_week_omits_tonnage_when_not_logged(client, app):
-    """未填末组 -> 本周末组: 未填，无 容量 片段（与桌面空状态对齐）。
-    回归守卫：A1 不应把 容量 渗进未填分支。"""
-    with app.app_context():
-        from webapp.db import connect
-        conn = connect(app.config["DB_PATH"])
-        repo.create_lift(conn, name="Curl", load_model="barbell", mode="linear_t3",
-                         day=1, sort_order=0, sets=3, max=None, intensity=None,
-                         reps=None, repout=None, start=30.0)
-        conn.close()
-    html = client.get("/export/week.html").get_data(as_text=True)
-    assert "未填" in html
-    assert "容量" not in html
-
-
 def test_plan_view_renders_bodyweight_added_plus_working_weight(client, app):
     """Bodyweight lift renders '+added (working)' meta format (Task 11).
 
@@ -266,3 +229,81 @@ def test_plan_view_renders_bodyweight_added_plus_working_weight(client, app):
     body = client.get("/").get_data(as_text=True)
     assert "+0" in body              # added load shown with + prefix
     assert "(75" in body             # working_weight shown in parens
+
+
+def test_export_week_plate_loading_structure(client, app):
+    """装片清单：barbell 显示大数字 kg、sbs 方案行含 rep-out、mode tag，无容量/est1RM 状态。"""
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
+                         day=1, sort_order=0, sets=5, max=100.0, intensity=None,
+                         reps=None, repout=None, start=None, lift_kind="main")
+        conn.close()
+    html = client.get("/export/week.html").get_data(as_text=True)
+    assert '<details data-day="1"' in html
+    assert 'class="wt"' in html and "kg" in html      # 大数字 + 单位
+    assert "rep-out" in html                            # sbs 方案行
+    assert 'class="tag sbs"' in html                    # mode tag accent
+    assert "容量" not in html and "≈" not in html       # live_html/容量 已砍
+    assert "最佳 1RM" not in html and "streak" not in html  # est1RM 标签 + t2 streak 已砍
+
+
+def test_export_week_bodyweight_shows_added_only(client, app):
+    """bodyweight 动作只显示 +added kg，不显示工作重量括号。"""
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        repo.update_settings(conn, bodyweight=75.0)
+        repo.create_lift(conn, name="Chin-up", load_model="bodyweight", mode="linear_t2",
+                         day=1, sort_order=0, sets=3, max=None, intensity=None,
+                         reps=None, repout=None, start=15.0, bodyweight_pct=1.0)
+        conn.close()
+    html = client.get("/export/week.html").get_data(as_text=True)
+    assert "+15" in html          # 加重
+    assert "(90." not in html     # 工作重量括号已砍 (15 + 75*1.0 = 90.0); dot avoids CSS rotate(90deg)
+
+
+def test_export_week_day_tristate_and_default_open(client, app):
+    """day 三态：全空 day1 + 部分填 day2 → day2 标 ◐ 且默认展开（最小非全填是 day1，但 day1 全空也非全填）。
+
+    构造：day1 一个动作不填（全空）；day2 两动作填一个（部分填）。最小非全填 = day1 → day1 open。
+    day2 st-part 带 ◐。"""
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        repo.create_lift(conn, name="A", load_model="barbell", mode="linear_t3",
+                         day=1, sort_order=0, sets=3, max=None, intensity=None,
+                         reps=None, repout=None, start=30.0)
+        lid_b1 = repo.create_lift(conn, name="B1", load_model="barbell", mode="linear_t3",
+                         day=2, sort_order=0, sets=3, max=None, intensity=None,
+                         reps=None, repout=None, start=30.0)
+        repo.create_lift(conn, name="B2", load_model="barbell", mode="linear_t3",
+                         day=2, sort_order=1, sets=3, max=None, intensity=None,
+                         reps=None, repout=None, start=30.0)
+        repo.save_log(conn, lid_b1, 1, 12)   # day2 填一个 → 部分填
+        conn.close()
+    html = client.get("/export/week.html").get_data(as_text=True)
+    assert '<details data-day="1" class="st-empty" open>' in html   # 最小非全填默认展开
+    assert '<details data-day="2" class="st-part">' in html         # 部分填折叠
+    assert "◐" in html                                               # 欠账标记
+
+
+def test_export_week_card_done_mark(client, app):
+    """卡片级进度：已填末组的动作名字带 ✓ + done class（绿），未填无标记。
+
+    健身房扫一眼即可见 day 内哪些动作练过、哪些待练 — 不靠回忆。"""
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        lid_done = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
+                         day=1, sort_order=0, sets=5, max=100.0, intensity=None,
+                         reps=None, repout=None, start=None, lift_kind="main")
+        repo.create_lift(conn, name="Bench", load_model="barbell", mode="sbs",
+                         day=1, sort_order=1, sets=4, max=80.0, intensity=None,
+                         reps=None, repout=None, start=None, lift_kind="main")
+        repo.save_log(conn, lid_done, 1, 10)   # Squat 已填 → 练过；Bench 未填 → 待练
+        conn.close()
+    html = client.get("/export/week.html").get_data(as_text=True)
+    assert 'class="name done">✓ Squat' in html    # 已填：✓ + done class
+    assert 'class="name">Bench' in html            # 未填：无 done、无 ✓

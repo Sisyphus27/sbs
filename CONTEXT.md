@@ -199,3 +199,45 @@ One of three navigation groups in the left sidebar — 训练 (本周计划/进�
 配置 (全局参数). The 重测 lives under 动作 because a Reseed is a per-Lift operation, not a
 program-level view.
 _Avoid_: menu, page category
+
+**Plate-loading list (装片清单)**:
+The essential purpose of the offline phone export (`week_export.html`) — a scannable checklist
+answering the single gym-floor question "this lift, how much weight, how many reps?". It is NOT
+a data table: every field that does not change a plate on the bar right now is secondary context
+and is pushed to a footnote or dropped. Read in seconds between sets, in bright gym light, often
+with sweaty hands or a wrist wrap on.
+_Avoid_: offline report, weekly summary, readout
+
+**Action directive vs state (动作指令 vs 状态)**:
+The load-bearing distinction for what appears on a Plate-loading-list card. An *action directive*
+tells the lifter what to do — working weight, sets × reps, rep-out target. *State* describes
+where progression stands — streak, est1RM, tonnage, logged reps, the bodyweight working-weight
+total. Directives stay; state is dropped from the offline card (it belongs to post-session review
+on the desktop, not to the gym floor).
+_Avoid_: "show everything the plan shows"
+
+**The big number (大数字)**:
+The single weight figure on an offline card, rendered largest in monospace — the one number that
+drives the loading action. Exactly one per lift to keep sweaty-glance reading unambiguous: the
+bar weight for barbell, the added weight (`+15 kg`) for a bodyweight lift, none for a
+pure-bodyweight lift. Rendered at full precision (`95.0`/`57.5`) because the 2.5 kg rounding-quantum
+grid points must stay visible — never trailing-zero-stripped.
+_Avoid_: dual weight display (added + working-total together invites mis-loading)
+
+**Day progress tri-state (Day 进度三态)**:
+How the offline list decides which Day to expand and how to mark it: a Day is *empty* (no lift
+logged — not yet trained), *partial* (some logged — cut short by fatigue or time, an owed debt to
+finish later, marked ◐), or *full* (all logged — trained, collapses with a ✓). The lowest-numbered
+non-full Day (partial or empty) is the next-to-train and expands by default, so an owed Day
+surfaces first rather than hiding. All Days stay expandable — collapse never hides a Day.
+Derived from logged data, never from a real-time calendar.
+_Avoid_: today (the offline file has no reliable clock), skipping partial days (an owed Day is
+exactly what the lifter wants to find)
+
+**Card done-mark (卡片进度标记)**:
+Per-lift progress on an offline card: a lift whose last-set reps are already logged for the week
+(`logged` non-empty) renders its name with a leading ✓ and the `done` class (green). Unlogged
+lifts have no mark. Within a partially-trained Day this lets the lifter see at a glance which
+lifts are done and which still to train — without recalling from memory. It carries only the
+done/not-done signal, never the logged value or any est1RM/tonnage state (those stay cut).
+_Avoid_: full logged-status block (that would re-introduce the cut state fields)

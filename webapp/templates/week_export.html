@@ -29,6 +29,7 @@
     .lift:last-child{border-bottom:none}
     .lift .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
     .lift .name{font-weight:600;font-size:1.05em;word-break:break-word}
+    .lift .name.done{color:var(--up)}
     .lift .wt{font-family:var(--mono);font-weight:bold;font-size:1.6em;white-space:nowrap}
     .lift .wt .unit{font-size:.5em;font-weight:normal;color:var(--muted);margin-left:2px}
     .lift .scheme{font-size:1.05em;margin-top:3px;font-family:var(--mono)}
@@ -70,7 +71,7 @@
       {% for it in items %}
       <div class="lift">
         <div class="top">
-          <span class="name">{{ it.name }}</span>
+          <span class="name{% if it.logged not in (none, '') %} done{% endif %}">{% if it.logged not in (none, '') %}✓ {% endif %}{{ it.name }}</span>
           {% if it.is_bodyweight and it.mode != 'none' %}
             <span class="wt">+{{ it.weight }}<span class="unit">kg</span></span>
           {% elif it.mode == 'none' %}

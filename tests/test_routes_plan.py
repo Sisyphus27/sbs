@@ -288,3 +288,23 @@ def test_export_week_day_tristate_and_default_open(client, app):
     assert '<details data-day="1" class="st-empty" open>' in html   # 最小非全填默认展开
     assert '<details data-day="2" class="st-part">' in html         # 部分填折叠
     assert "◐" in html                                               # 欠账标记
+
+
+def test_export_week_card_done_mark(client, app):
+    """卡片级进度：已填末组的动作名字带 ✓ + done class（绿），未填无标记。
+
+    健身房扫一眼即可见 day 内哪些动作练过、哪些待练 — 不靠回忆。"""
+    with app.app_context():
+        from webapp.db import connect
+        conn = connect(app.config["DB_PATH"])
+        lid_done = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
+                         day=1, sort_order=0, sets=5, max=100.0, intensity=None,
+                         reps=None, repout=None, start=None, lift_kind="main")
+        repo.create_lift(conn, name="Bench", load_model="barbell", mode="sbs",
+                         day=1, sort_order=1, sets=4, max=80.0, intensity=None,
+                         reps=None, repout=None, start=None, lift_kind="main")
+        repo.save_log(conn, lid_done, 1, 10)   # Squat 已填 → 练过；Bench 未填 → 待练
+        conn.close()
+    html = client.get("/export/week.html").get_data(as_text=True)
+    assert 'class="name done">✓ Squat' in html    # 已填：✓ + done class
+    assert 'class="name">Bench' in html            # 未填：无 done、无 ✓

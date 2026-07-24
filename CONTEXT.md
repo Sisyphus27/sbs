@@ -233,3 +233,11 @@ surfaces first rather than hiding. All Days stay expandable — collapse never h
 Derived from logged data, never from a real-time calendar.
 _Avoid_: today (the offline file has no reliable clock), skipping partial days (an owed Day is
 exactly what the lifter wants to find)
+
+**Card done-mark (卡片进度标记)**:
+Per-lift progress on an offline card: a lift whose last-set reps are already logged for the week
+(`logged` non-empty) renders its name with a leading ✓ and the `done` class (green). Unlogged
+lifts have no mark. Within a partially-trained Day this lets the lifter see at a glance which
+lifts are done and which still to train — without recalling from memory. It carries only the
+done/not-done signal, never the logged value or any est1RM/tonnage state (those stay cut).
+_Avoid_: full logged-status block (that would re-introduce the cut state fields)

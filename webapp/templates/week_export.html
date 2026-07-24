@@ -5,45 +5,96 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Week {{ week }} 计划</title>
   <style>
-    body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;margin:12px auto;max-width:680px;padding:0 8px;color:#1a1a1a;line-height:1.5}
-    h1{font-size:1.25em;margin-bottom:4px}
-    h2{margin-top:1.2em;border-bottom:1px solid #e2e2e2;font-size:1.05em}
-    .lift{padding:6px 0;border-bottom:1px solid #eee;word-break:break-word}
-    .name{font-weight:bold;font-size:1.02em}
-    .meta{color:#6b6b6b;font-size:.9em;display:block;margin-top:2px;font-family:ui-monospace,"SF Mono","Cascadia Code",Consolas,monospace}
-    .log{font-size:.9em;margin-top:2px;color:#2e7d32}
-    .log.empty{color:#999}
-    .save-ok{color:#6b6b6b;font-size:.85em;margin-left:4px}
-    .save-ok .up{color:#2e7d32;font-weight:bold}
-    .save-ok .down{color:#c62828;font-weight:bold}
-    .save-ok .first{color:#6b6b6b}
-    @media print{body{max-width:none}}
+    :root{--bg:#fff;--ink:#1a1a1a;--muted:#6b6b6b;--line:#e2e2e2;
+      --accent:#1f4e79;--up:#2e7d32;--down:#c62828;--warn:#b26a00;--radius:3px;
+      --font:system-ui,-apple-system,"Segoe UI",sans-serif;
+      --mono:ui-monospace,"SF Mono","Cascadia Code",Consolas,monospace}
+    *{box-sizing:border-box}
+    body{font-family:var(--font);margin:12px auto;max-width:680px;padding:0 10px;
+      color:var(--ink);background:var(--bg);line-height:1.5}
+    h1{font-size:1.3em;margin:0 0 2px}
+    .sub{color:var(--muted);font-size:.85em;margin:0 0 14px}
+    details{border:1px solid var(--line);border-radius:var(--radius);margin:0 0 10px;overflow:hidden}
+    summary{display:flex;align-items:center;gap:8px;padding:12px 14px;cursor:pointer;
+      font-weight:600;font-size:1.05em;list-style:none;user-select:none}
+    summary::-webkit-details-marker{display:none}
+    summary .caret{color:var(--muted);font-size:.8em;transition:transform .15s}
+    details[open] summary .caret{transform:rotate(90deg)}
+    summary .mark{margin-left:auto;font-family:var(--mono);font-size:.95em}
+    .st-full>summary .mark{color:var(--up)}
+    .st-part>summary .mark{color:var(--warn)}
+    .st-part>summary{background:#fdf6ec}
+    .cards{padding:4px 14px 12px}
+    .lift{padding:12px 0;border-bottom:1px solid var(--line)}
+    .lift:last-child{border-bottom:none}
+    .lift .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+    .lift .name{font-weight:600;font-size:1.05em;word-break:break-word}
+    .lift .wt{font-family:var(--mono);font-weight:bold;font-size:1.6em;white-space:nowrap}
+    .lift .wt .unit{font-size:.5em;font-weight:normal;color:var(--muted);margin-left:2px}
+    .lift .scheme{font-size:1.05em;margin-top:3px;font-family:var(--mono)}
+    .lift .tag{display:inline-block;margin-top:5px;padding:1px 7px;border:1px solid var(--line);
+      border-radius:10px;font-size:.78em;color:var(--muted);font-family:var(--mono)}
+    .lift .tag.sbs{border-color:var(--accent);color:var(--accent)}
+    @media print{body{max-width:none}details{border:none}.cards{padding:0}}
   </style>
 </head>
 <body>
 <h1>Week {{ week }} 计划</h1>
-<p style="color:#666;font-size:0.85em">离线只读视图。练完回家在 app 填末组次数。</p>
+<p class="sub">离线装片清单。练完回家在 app 填末组次数。</p>
+
+{# 先算每个 day 的状态，找最小非全填 day #}
+{% set ns = namespace(first_open=none) %}
 {% for day, items in by_day %}
-  <h2>Day {{ day }}</h2>
-  {% for it in items %}
-    <div class="lift">
-      <span class="name">{{ it.name }}</span>
-      <span class="meta">{{ it.mode }} | {{ it.weight }} kg
-        {% if it.mode=='sbs' %} × {{ it.reps }} × {{ it.sets }} | rep-out {{ it.repout }}
-        {% elif it.mode=='linear_t2' %} × {{ it.target }} × {{ it.sets }} | streak {{ it.streak }}
-        {% else %} × {{ it.target }} × {{ it.sets }}
-        {% endif %}
-        | 最佳 1RM {{ "%.2f"|format(it.est1rm) if it.est1rm is not none else '—' }}
-      </span>
-      {% if it.logged not in (None, '') %}
-        <span class="log">本周末组: {{ it.logged }}
-          <span class="save-ok">{{ it.live_html|safe }}</span>
-        </span>
-      {% else %}
-        <span class="log empty">本周末组: 未填</span>
-      {% endif %}
+  {% set total = items|length %}
+  {% set filled = items|selectattr('logged','ne','')|selectattr('logged','ne',none)|list|length %}
+  {% set state = 'full' if filled==total else ('part' if filled>0 else 'empty') %}
+  {% if ns.first_open is none and state != 'full' %}
+    {% set ns.first_open = day %}
+  {% endif %}
+{% endfor %}
+{% if ns.first_open is none and by_day %}
+  {% set ns.first_open = by_day[-1][0] %}
+{% endif %}
+
+{% for day, items in by_day %}
+  {% set total = items|length %}
+  {% set filled = items|selectattr('logged','ne','')|selectattr('logged','ne',none)|list|length %}
+  {% set state = 'full' if filled==total else ('part' if filled>0 else 'empty') %}
+  <details data-day="{{ day }}" class="st-{{ state }}"{% if day==ns.first_open %} open{% endif %}>
+    <summary>
+      <span class="caret">▶</span>Day {{ day }}
+      <span class="meta" style="font-weight:normal;color:var(--muted);font-size:.85em">{{ filled }}/{{ total }}</span>
+      <span class="mark">{% if state=='full' %}✓{% elif state=='part' %}◐{% endif %}</span>
+    </summary>
+    <div class="cards">
+      {% for it in items %}
+      <div class="lift">
+        <div class="top">
+          <span class="name">{{ it.name }}</span>
+          {% if it.is_bodyweight and it.mode != 'none' %}
+            <span class="wt">+{{ it.weight }}<span class="unit">kg</span></span>
+          {% elif it.mode == 'none' %}
+            {# 纯体重：无大数字 #}
+          {% else %}
+            <span class="wt">{{ it.weight }}<span class="unit">kg</span></span>
+          {% endif %}
+        </div>
+        <div class="scheme">
+          {%- if it.mode=='sbs' -%}
+            {{ it.reps }} × {{ it.sets }} · rep-out {{ it.repout }}
+          {%- elif it.mode=='linear_t2' -%}
+            {{ it.target }} × {{ it.sets }}
+          {%- elif it.mode=='linear_t3' -%}
+            {{ it.target }} × {{ it.sets }}
+          {%- else -%}
+            {% if it.reps is not none %}~{{ it.reps }} × {{ it.sets }}{% else %}{{ it.sets }} 组{% endif %}
+          {%- endif -%}
+        </div>
+        <span class="tag {{ 'sbs' if it.mode=='sbs' }}">{{ it.mode }}</span>
+      </div>
+      {% endfor %}
     </div>
-  {% endfor %}
+  </details>
 {% endfor %}
 </body>
 </html>

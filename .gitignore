@@ -7,3 +7,12 @@ build/
 dist/
 *.spec.bak
 profile.yaml
+
+# graphify knowledge-graph output: local, regenerated via `graphify update`
+graphify-out/
+webapp/graphify-out/
+.codegraph/
+
+# editor / tooling noise
+node_modules/
+week-*.html

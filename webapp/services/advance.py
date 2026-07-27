@@ -1,40 +1,8 @@
 """Orchestrate the engine over a logged week: DB -> dataclass -> engine -> DB."""
 import sqlite3
-from sbs_cli.data.schema import Lift, Profile, SetEntry, LiftState
 from sbs_cli.program import advance_lift
 from .. import repo
-
-
-def _lift_from_row(r) -> Lift:
-    return Lift(
-        name=r["name"], day=r["day"],
-        load_model=r["load_model"], mode=r["mode"],
-        max=r["max"], intensity=r["intensity"] or 0.0, reps=r["reps"] or 0,
-        repout=r["repout"] or 0, sets=r["sets"] or 3, start=r["start"],
-        lift_kind=r["lift_kind"],
-        incr=r["incr"] if "incr" in r.keys() else None,
-        bodyweight_pct=r["bodyweight_pct"] if "bodyweight_pct" in r.keys() else 0.0,
-    )
-
-
-def _profile_from_rows(settings, lift_rows, schedule) -> Profile:
-    return Profile(
-        rounding=settings["rounding"], days_per_week=settings["days_per_week"],
-        incr=settings["incr"], t2_reset_pct=settings["t2_reset_pct"],
-        t2_fail=settings["t2_fail"], t3_target=settings["t3_target"],
-        bodyweight=settings["bodyweight"] if "bodyweight" in settings.keys() else 0.0,
-        lifts=[_lift_from_row(r) for r in lift_rows],
-        schedule=schedule,
-    )
-
-
-def _state_from_rows(st_row, hist_rows) -> LiftState:
-    history = [SetEntry(week=h["week"], weight=h["weight"], reps=h["reps"]) for h in hist_rows]
-    return LiftState(
-        name="", mode=st_row["mode"], tm=st_row["tm"], weight=st_row["weight"],
-        target=st_row["target"], streak=st_row["streak"], est1rm=st_row["est1rm"],
-        history=history,
-    )
+from .rows import lift_from_row, profile_from_rows, state_from_rows
 
 
 def advance_week(conn: sqlite3.Connection, logs: dict) -> int:
@@ -46,13 +14,13 @@ def advance_week(conn: sqlite3.Connection, logs: dict) -> int:
     week = settings["week"]
     lift_rows = repo.list_lifts(conn)
     schedule = repo.load_schedule(conn)
-    profile = _profile_from_rows(settings, lift_rows, schedule)  # engine reads globals + schedule
+    profile = profile_from_rows(settings, lift_rows, schedule)  # engine reads globals + schedule
     for row in lift_rows:
         lid = row["id"]
         actual = logs.get(lid)
         st = repo.get_lift_state(conn, lid)
-        ls = _state_from_rows(st, repo.list_history(conn, lid))
-        lift = _lift_from_row(row)
+        ls = state_from_rows(st, repo.list_history(conn, lid))
+        lift = lift_from_row(row)
         advance_lift(profile, lift, ls, actual, week=week)
         repo.save_lift_state(conn, lid, mode=ls.mode, tm=ls.tm,
                              weight=ls.weight, target=ls.target,

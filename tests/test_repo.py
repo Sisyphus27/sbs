@@ -106,7 +106,7 @@ def test_save_lift_state_upserts(tmp_path):
                            day=1, sort_order=0, sets=5, max=135.0, intensity=0.7,
                            reps=5, repout=10, start=None)
     repo.save_lift_state(conn, lid, mode="sbs", tm=140.0, weight=None,
-                         target=None, streak=0, est1rm=141.2, _append_history=False)
+                         target=None, streak=0, est1rm=141.2)
     st = repo.get_lift_state(conn, lid)
     assert st["tm"] == 140.0 and st["est1rm"] == 141.2
     conn.close()

@@ -23,7 +23,7 @@ import sqlite3
 from datetime import datetime, timezone
 
 from webapp import db, repo
-from webapp.services.advance import _lift_from_row, _profile_from_rows
+from webapp.services.rows import lift_from_row as _lift_from_row, profile_from_rows as _profile_from_rows
 from sbs_cli.data.schema import SetEntry
 from sbs_cli.program import recompute_state
 

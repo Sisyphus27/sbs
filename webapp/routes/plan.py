@@ -47,64 +47,23 @@ def _live_html(conn, lid, reps):
 
 
 def _by_day(conn):
-    # NOTE: the engine's week_plan() looks state up by lift NAME, so it cannot
-    # distinguish two rows that share a name (e.g. Face Pull on day 2 and day 4).
-    # Build display rows directly, keyed by row id, mirroring week_plan's field
-    # mapping. Each item carries its id so the log form targets the right row.
-    from types import SimpleNamespace
-    from sbs_cli.engine.progression import round_weight, lookup_schedule
-    from sbs_cli.engine.load import working_weight
-    settings = repo.get_settings(conn)
-    lift_rows = repo.list_lifts(conn)
-    logged = repo.get_week_logs(conn, settings["week"])
-    schedule = repo.load_schedule(conn)
+    """Group the registry-computed plan items by training day and decorate with
+    this week's logged reps + live est1RM HTML. Per-mode weight math lives in
+    services.plan (single source over PROGRESSION_REGISTRY); this fn only groups
+    and adds per-row log state."""
+    from ..services import plan as plan_service
+    week, items = plan_service.plan_items(conn)
+    logged = repo.get_week_logs(conn, week)
+    days_per_week = repo.get_settings(conn)["days_per_week"]
     rows_by_day = {}
-    for r in lift_rows:
-        st = repo.get_lift_state(conn, r["id"])
-        est1rm = st["est1rm"]
-        bw = settings["bodyweight"] if "bodyweight" in settings.keys() else 0.0
-        pct = r["bodyweight_pct"] if "bodyweight_pct" in r.keys() else 0.0
-        is_bw = r["load_model"] in ("bodyweight", "pure_bodyweight")
-        if r["mode"] == "sbs":
-            sc = lookup_schedule(schedule, r["lift_kind"], settings["week"])
-            w = round_weight((st["tm"] or 0) * sc.intensity, settings["rounding"])
-            item = SimpleNamespace(id=r["id"], name=r["name"], mode="sbs", weight=w,
-                                   working_weight=working_weight(w, bw, pct),
-                                   is_bodyweight=is_bw,
-                                   reps=sc.reps, sets=r["sets"], repout=sc.repout,
-                                   target=None, streak=0, est1rm=est1rm)
-        elif r["mode"] == "linear_t2":
-            added = st["weight"] or 0.0
-            item = SimpleNamespace(id=r["id"], name=r["name"], mode="linear_t2",
-                                   weight=added,
-                                   working_weight=working_weight(added, bw, pct),
-                                   is_bodyweight=is_bw,
-                                   reps=st["target"], sets=r["sets"], repout=None,
-                                   target=st["target"], streak=st["streak"], est1rm=est1rm)
-        elif r["mode"] == "linear_t3":
-            added = st["weight"] or 0.0
-            item = SimpleNamespace(id=r["id"], name=r["name"], mode="linear_t3",
-                                   weight=added,
-                                   working_weight=working_weight(added, bw, pct),
-                                   is_bodyweight=is_bw,
-                                   reps=settings["t3_target"], sets=r["sets"], repout=None,
-                                   target=settings["t3_target"], streak=0, est1rm=est1rm)
-        else:  # none (pure bodyweight, record-only)
-            added = st["weight"] or 0.0
-            last = repo.list_history(conn, r["id"])
-            last_reps = last[-1]["reps"] if last else None
-            item = SimpleNamespace(id=r["id"], name=r["name"], mode="none", weight=added,
-                                   working_weight=working_weight(added, bw, pct),
-                                   is_bodyweight=True,
-                                   reps=last_reps, sets=r["sets"], repout=None,
-                                   target=None, streak=0, est1rm=est1rm)
-        item.logged = logged.get(r["id"], "")
-        reps = item.logged if item.logged not in (None, "") else None
-        item.live_html = _live_html(conn, item.id, reps)
-        rows_by_day.setdefault(r["day"], []).append(item)
+    for item in items:
+        item.logged = logged.get(item.id, "")
+        item.is_logged = item.logged not in (None, "")  # single logged predicate (was 4× in template)
+        item.live_html = _live_html(conn, item.id, item.logged if item.is_logged else None)
+        rows_by_day.setdefault(item.day, []).append(item)
     by_day = [(d, rows_by_day[d]) for d in sorted(rows_by_day)
-              if d <= settings["days_per_week"] and rows_by_day[d]]
-    return settings["week"], by_day
+              if d <= days_per_week and rows_by_day[d]]
+    return week, by_day
 
 
 @bp.route("/")
@@ -169,12 +128,35 @@ def submit():
     return redirect(url_for("plan.view"))
 
 
+def _day_states(by_day):
+    """Day progress tri-state for the offline export (ADR 0007).
+
+    Returns (days, first_open). days = [(day, state, filled, items)] where state
+    is 'full' (all logged), 'part' (some logged — an owed debt, surfaced), or
+    'empty' (none logged). first_open = lowest-numbered non-full day (the
+    next-to-train); falls back to the last day when all are full. Computed here
+    in Python (unit-testable) instead of twice in the template."""
+    days = []
+    first_open = None
+    for day, items in by_day:
+        filled = sum(1 for it in items if it.is_logged)
+        total = len(items)
+        state = "full" if filled == total else ("part" if filled > 0 else "empty")
+        if first_open is None and state != "full":
+            first_open = day
+        days.append((day, state, filled, items))
+    if first_open is None and days:
+        first_open = days[-1][0]
+    return days, first_open
+
+
 @bp.route("/export/week.html")
 def export_week():
     """Standalone offline HTML of this week's plan + logged progress, for phone viewing.
     Self-contained (no nav/HTMX/server-relative URLs) so it opens offline after copy to phone."""
     conn = get_db()
     week, by_day = _by_day(conn)
-    html = render_template("week_export.html", week=week, by_day=by_day)
+    days, first_open = _day_states(by_day)
+    html = render_template("week_export.html", week=week, days=days, first_open=first_open)
     return Response(html, mimetype="text/html",
                     headers={"Content-Disposition": f'attachment; filename="week-{week}.html"'})

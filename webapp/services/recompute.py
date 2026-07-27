@@ -7,7 +7,7 @@ from typing import Optional
 from sbs_cli.data.schema import SetEntry
 from sbs_cli.program import recompute_state, recompute_sbs_tm as _engine_recompute_sbs_tm
 from .. import repo
-from . import advance as advance_service
+from .rows import lift_from_row, profile_from_rows
 
 
 def recompute_on_start_change(conn: sqlite3.Connection, lift_id: int, new_start: float):
@@ -20,9 +20,9 @@ def recompute_on_start_change(conn: sqlite3.Connection, lift_id: int, new_start:
     settings = repo.get_settings(conn)
     history = [SetEntry(week=h["week"], weight=h["weight"], reps=h["reps"])
                for h in repo.list_history(conn, lift_id)]
-    lift = advance_service._lift_from_row(lift_row)
+    lift = lift_from_row(lift_row)
     lift.start = new_start  # authoritative; the lifts row already holds it post-update
-    profile = advance_service._profile_from_rows(settings, [], repo.load_schedule(conn))
+    profile = profile_from_rows(settings, [], repo.load_schedule(conn))
     ls = recompute_state(lift, history, profile)
     repo.save_lift_state(conn, lift_id, mode=ls.mode, tm=None, weight=ls.weight,
                          target=ls.target, streak=ls.streak, est1rm=ls.est1rm)
@@ -39,7 +39,7 @@ def recompute_sbs_tm(conn: sqlite3.Connection, lift_id: int) -> Optional[float]:
         return None
     history = [SetEntry(week=h["week"], weight=h["weight"], reps=h["reps"])
                for h in repo.list_history(conn, lift_id)]
-    lift = advance_service._lift_from_row(lift_row)
+    lift = lift_from_row(lift_row)
     schedule = repo.load_schedule(conn)
     tm = _engine_recompute_sbs_tm(lift, history, schedule)
     st = repo.get_lift_state(conn, lift_id)

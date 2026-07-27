@@ -1,8 +1,9 @@
 """Global settings view + update."""
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, redirect, url_for, flash
 from sbs_cli.defaults import DEFAULT_SETTINGS, RESETTABLE_FIELDS
 from ..db import get_db
 from .. import repo
+from ._forms import present_fields
 
 bp = Blueprint("settings", __name__)
 
@@ -20,14 +21,10 @@ def view():
 @bp.route("/settings", methods=["POST"])
 def update():
     conn = get_db()
-    fields = {}
-    for col, cast in _NUM.items():
-        if col in request.form and request.form[col].strip():
-            try:
-                fields[col] = cast(request.form[col])
-            except ValueError:
-                flash(f"非法值: {col}", "error")
-                return redirect(url_for("settings.view"))
+    fields, bad = present_fields(_NUM)
+    if bad is not None:
+        flash(f"非法值: {bad}", "error")
+        return redirect(url_for("settings.view"))
     repo.update_settings(conn, **fields)
     flash("参数已更新")
     return redirect(url_for("settings.view"))

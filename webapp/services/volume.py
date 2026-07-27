@@ -14,7 +14,8 @@ from sbs_cli.engine.load import working_weight
 from sbs_cli.engine.progression import lookup_schedule
 from sbs_cli.program import recompute_state
 from .. import repo
-from . import advance as advance_service, preview
+from . import preview
+from .rows import lift_from_row, profile_from_rows
 
 
 def _actual_tonnage(weight: float, sets: int, planned_reps: int, last_set_reps: int) -> float:
@@ -40,8 +41,8 @@ def _t2_target_as_of(conn: sqlite3.Connection, lift_id: int, target_week: int) -
             for h in repo.list_history(conn, lift_id) if h["week"] < target_week]
     if not hist:
         return 8  # initial t2 target (see repo._init_lift_state / advance_lift)
-    lift = advance_service._lift_from_row(lift_row)
-    profile = advance_service._profile_from_rows(settings, [], schedule)
+    lift = lift_from_row(lift_row)
+    profile = profile_from_rows(settings, [], schedule)
     return recompute_state(lift, hist, profile).target
 
 
@@ -64,14 +65,14 @@ def lift_week_volume(conn: sqlite3.Connection, lift_id: int, week: int,
         last_set = repo.get_week_logs(conn, week).get(lift_id)
         if last_set is None:
             return None
-        weight = preview._working_weight(lift, state, settings, schedule)
+        weight = preview._working_weight(conn, lift, state, settings, schedule)
     else:
         row = next((h for h in repo.list_history(conn, lift_id) if h["week"] == week), None)
         if row is None:
             return None
         last_set = row["reps"]
-        bw = settings["bodyweight"] if "bodyweight" in settings.keys() else 0.0
-        pct = lift["bodyweight_pct"] if "bodyweight_pct" in lift.keys() else 0.0
+        bw = repo.row_get(settings, "bodyweight", 0.0)
+        pct = repo.row_get(lift, "bodyweight_pct", 0.0)
         weight = working_weight(row["weight"], bw, pct)
 
     if mode == "sbs":

@@ -6,16 +6,16 @@ existing user DB:
     conda run -n sbs python migrate_bodyweight.py
 """
 from sbs_cli.data.schema import SetEntry
-from sbs_cli.program import _est1rm_from_history
+from sbs_cli.engine.onerm import est1rm_from_history
 from webapp.db import connect, init_schema
-from webapp.repo import list_lifts, list_history, save_lift_state, get_lift_state
+from webapp.repo import list_lifts, list_history, save_lift_state, get_lift_state, row_get
 
 
 def recompute_bodyweight_est1rm(conn) -> int:
     """Recompute est1rm for every lift with bodyweight_pct > 0. Returns count."""
     n = 0
     for r in list_lifts(conn):
-        pct = r["bodyweight_pct"] if "bodyweight_pct" in r.keys() else 0.0
+        pct = row_get(r, "bodyweight_pct", 0.0)
         if not pct > 0:
             continue
         hist = [SetEntry(week=h["week"], weight=h["weight"], reps=h["reps"])
@@ -24,7 +24,7 @@ def recompute_bodyweight_est1rm(conn) -> int:
             continue
         from webapp.repo import get_settings
         bw = get_settings(conn)["bodyweight"]
-        est = _est1rm_from_history(hist, bw, pct)
+        est = est1rm_from_history(hist, bw, pct)
         st = get_lift_state(conn, r["id"])
         save_lift_state(conn, r["id"], mode=st["mode"], tm=st["tm"], weight=st["weight"],
                         target=st["target"], streak=st["streak"], est1rm=est)

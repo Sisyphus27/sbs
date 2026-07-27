@@ -29,7 +29,11 @@ class Mode:
         raise NotImplementedError
 
     def plan_fields(self, profile, lift, state, week) -> dict:
-        """Return {weight, reps, repout, target, streak} for week_plan display."""
+        """Return {weight, added, reps, repout, target, streak} for plan display.
+
+        ``weight`` is the WORKING weight (bodyweight term included, ADR 0004);
+        ``added`` is the LOADED weight on the bar/belt (the big number, ADR 0007).
+        For barbell sbs they are equal; for bodyweight t2/t3 they differ."""
         raise NotImplementedError
 
     def derive_on_switch(self, lift, history, settings, est1rm) -> dict:
@@ -60,7 +64,7 @@ class SbsMode(Mode):
     def plan_fields(self, profile, lift, state, week):
         sc = lookup_schedule(profile.schedule, lift.lift_kind, week)
         w = round_weight((state.tm or 0) * sc.intensity, profile.rounding)
-        return {"weight": w, "reps": sc.reps, "repout": sc.repout,
+        return {"weight": w, "added": w, "reps": sc.reps, "repout": sc.repout,
                 "target": None, "streak": 0}
 
     def derive_on_switch(self, lift, history, settings, est1rm):
@@ -87,8 +91,8 @@ class LinearT2Mode(Mode):
 
     def plan_fields(self, profile, lift, state, week):
         w = working_weight(state.weight or 0.0, profile.bodyweight, lift.bodyweight_pct)
-        return {"weight": w, "reps": state.target, "repout": None,
-                "target": state.target, "streak": state.streak}
+        return {"weight": w, "added": state.weight or 0.0, "reps": state.target,
+                "repout": None, "target": state.target, "streak": state.streak}
 
     def derive_on_switch(self, lift, history, settings, est1rm):
         eff_incr = lift.incr if lift.incr is not None else settings["incr"]
@@ -112,8 +116,8 @@ class LinearT3Mode(Mode):
 
     def plan_fields(self, profile, lift, state, week):
         w = working_weight(state.weight or 0.0, profile.bodyweight, lift.bodyweight_pct)
-        return {"weight": w, "reps": profile.t3_target, "repout": None,
-                "target": profile.t3_target, "streak": 0}
+        return {"weight": w, "added": state.weight or 0.0, "reps": profile.t3_target,
+                "repout": None, "target": profile.t3_target, "streak": 0}
 
     def derive_on_switch(self, lift, history, settings, est1rm):
         eff_incr = lift.incr if lift.incr is not None else settings["incr"]
@@ -138,7 +142,8 @@ class RecordOnlyMode(Mode):
     def plan_fields(self, profile, lift, state, week):
         w = working_weight(state.weight or 0.0, profile.bodyweight, lift.bodyweight_pct)
         last = state.history[-1].reps if state.history else None
-        return {"weight": w, "reps": last, "repout": None, "target": None, "streak": 0}
+        return {"weight": w, "added": state.weight or 0.0, "reps": last,
+                "repout": None, "target": None, "streak": 0}
 
     def derive_on_switch(self, lift, history, settings, est1rm):
         return {"mode": "none", "tm": None, "weight": lift.start or 0.0,

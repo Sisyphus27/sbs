@@ -43,35 +43,19 @@
 <h1>Week {{ week }} 计划</h1>
 <p class="sub">离线装片清单。练完回家在 app 填末组次数。</p>
 
-{# 先算每个 day 的状态，找最小非全填 day #}
-{% set ns = namespace(first_open=none) %}
-{% for day, items in by_day %}
-  {% set total = items|length %}
-  {% set filled = items|selectattr('logged','ne','')|selectattr('logged','ne',none)|list|length %}
-  {% set state = 'full' if filled==total else ('part' if filled>0 else 'empty') %}
-  {% if ns.first_open is none and state != 'full' %}
-    {% set ns.first_open = day %}
-  {% endif %}
-{% endfor %}
-{% if ns.first_open is none and by_day %}
-  {% set ns.first_open = by_day[-1][0] %}
-{% endif %}
-
-{% for day, items in by_day %}
-  {% set total = items|length %}
-  {% set filled = items|selectattr('logged','ne','')|selectattr('logged','ne',none)|list|length %}
-  {% set state = 'full' if filled==total else ('part' if filled>0 else 'empty') %}
-  <details data-day="{{ day }}" class="st-{{ state }}"{% if day==ns.first_open %} open{% endif %}>
+{# 日三态 / first_open / logged 均在 Python 算好（routes.plan._day_states + _by_day）#}
+{% for day, state, filled, items in days %}
+  <details data-day="{{ day }}" class="st-{{ state }}"{% if day==first_open %} open{% endif %}>
     <summary>
       <span class="caret">▶</span>Day {{ day }}
-      <span style="font-weight:normal;color:var(--muted);font-size:.85em">{{ filled }}/{{ total }}</span>
+      <span style="font-weight:normal;color:var(--muted);font-size:.85em">{{ filled }}/{{ items|length }}</span>
       <span class="mark">{% if state=='full' %}✓{% elif state=='part' %}◐{% endif %}</span>
     </summary>
     <div class="cards">
       {% for it in items %}
       <div class="lift">
         <div class="top">
-          <span class="name{% if it.logged not in (none, '') %} done{% endif %}">{% if it.logged not in (none, '') %}✓ {% endif %}{{ it.name }}</span>
+          <span class="name{% if it.is_logged %} done{% endif %}">{% if it.is_logged %}✓ {% endif %}{{ it.name }}</span>
           {% if it.is_bodyweight and it.mode != 'none' %}
             <span class="wt">+{{ it.weight }}<span class="unit">kg</span></span>
           {% elif it.mode == 'none' %}
@@ -83,9 +67,7 @@
         <div class="scheme">
           {%- if it.mode=='sbs' -%}
             {{ it.reps }} × {{ it.sets }} · rep-out {{ it.repout }}
-          {%- elif it.mode=='linear_t2' -%}
-            {{ it.target }} × {{ it.sets }}
-          {%- elif it.mode=='linear_t3' -%}
+          {%- elif it.mode in ('linear_t2','linear_t3') -%}
             {{ it.target }} × {{ it.sets }}
           {%- else -%}
             {% if it.reps is not none %}~{{ it.reps }} × {{ it.sets }}{% else %}{{ it.sets }} 组{% endif %}

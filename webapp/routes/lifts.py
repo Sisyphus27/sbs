@@ -2,6 +2,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from ..db import get_db
 from .. import repo
+from ._forms import present_fields, LIFT_FIELD_CASTS
 
 bp = Blueprint("lifts", __name__)
 
@@ -98,15 +99,13 @@ def new():
 @bp.route("/lifts/<int:lid>/edit", methods=["POST"])
 def edit(lid):
     conn = get_db()
-    fields = {}
     # load_model 不可切（ADR 0005）— 不收 load_model 字段。
-    # tier/progression 已删，mode 走合法组合校验。
-    for col, cast in (("name", str), ("mode", str), ("day", int), ("sets", int),
-                      ("max", float), ("intensity", float), ("reps", int),
-                      ("repout", int), ("start", float), ("lift_kind", str),
-                      ("bodyweight_pct", float)):
-        if col in request.form and request.form[col].strip() != "":
-            fields[col] = cast(request.form[col])
+    # 字段 schema 单源在 _forms.LIFT_FIELD_CASTS（new/edit 共用）。
+    fields, bad = present_fields(LIFT_FIELD_CASTS)
+    if bad is not None:
+        flash(f"非法值: {bad}", "error")
+        return render_template("_lift_edit.html", lift=repo.get_lift(conn, lid),
+                               error=f"非法值: {bad}"), 400
     # mode 改动需校验 is_legal_combo（取当前 load_model）
     if "mode" in fields:
         cur = repo.get_lift(conn, lid)
@@ -115,14 +114,19 @@ def edit(lid):
             flash("load_model 与 mode 组合非法", "error")
             return render_template("_lift_edit.html", lift=cur, error="load_model 与 mode 组合非法"), 400
     # incr：表单出现即处理。空串 -> NULL（清除覆盖回全局）；非空 -> 必须 >0 数字（D7）。
+    # sbs/none 强制 NULL（与 new() 一致，ADR 0005）— 有效 mode = 新 mode ?? 当前 mode。
     # 校验在 update 之前，非法时保留原值并返回 400。
     if "incr" in request.form:
-        incr, err = _parse_incr(request.form["incr"])
-        if err is not None:
-            flash(err, "error")
-            return render_template("_lift_edit.html", lift=repo.get_lift(conn, lid),
-                                   error=err), 400
-        fields["incr"] = incr  # None 表示清除（update_lift 经 _LIFT_COLS 支持 incr=None）
+        eff_mode = fields.get("mode", repo.get_lift(conn, lid)["mode"])
+        if eff_mode in ("sbs", "none"):
+            fields["incr"] = None
+        else:
+            incr, err = _parse_incr(request.form["incr"])
+            if err is not None:
+                flash(err, "error")
+                return render_template("_lift_edit.html", lift=repo.get_lift(conn, lid),
+                                       error=err), 400
+            fields["incr"] = incr  # None 表示清除（update_lift 经 _LIFT_COLS 支持 incr=None）
     repo.update_lift(conn, lid, **fields)
     lift = repo.get_lift(conn, lid)
     # start is the progression basis for linear_t2/t3: replay from the new start

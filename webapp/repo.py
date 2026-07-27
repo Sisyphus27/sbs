@@ -2,6 +2,16 @@
 from typing import Optional
 import sqlite3
 
+
+def row_get(row, col: str, default=None):
+    """Null-tolerant column read on a sqlite3.Row (or dict).
+
+    Migration-era columns (bodyweight, bodyweight_pct, incr) may be absent on
+    older rows; subscript access raises. This is the single accessor for that
+    tolerance — do not re-litigate `x if col in row.keys() else default` at
+    call sites (ADR 0004 shim)."""
+    return row[col] if col in row.keys() else default
+
 _SETTINGS_COLS = ("week", "days_per_week", "rounding", "incr",
                   "t2_reset_pct", "t2_fail", "t3_target", "bodyweight")
 
@@ -108,7 +118,7 @@ _STATE_COLS = ("mode", "tm", "weight", "target", "streak", "est1rm")
 
 
 def save_lift_state(conn: sqlite3.Connection, lift_id: int, *, mode: str, tm,
-                    weight, target, streak: int, est1rm, _append_history: bool = True) -> None:
+                    weight, target, streak: int, est1rm) -> None:
     """Upsert lift_state from engine-produced fields. Does NOT touch history table
     (history is appended separately via append_history)."""
     conn.execute(

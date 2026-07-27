@@ -1,9 +1,10 @@
 """Mode switch: keep history, recompute est1rm, derive new-mode start state. Read-only."""
 import sqlite3
 from sbs_cli.data.schema import SetEntry, is_legal_combo
-from sbs_cli.program import _est1rm_from_history
+from sbs_cli.engine.onerm import est1rm_from_history
 from sbs_cli.engine.modes import get_mode
 from .. import repo
+from .rows import lift_from_row
 
 
 def derive_state(conn: sqlite3.Connection, lift_id: int, new_mode: str,
@@ -27,14 +28,12 @@ def derive_state(conn: sqlite3.Connection, lift_id: int, new_mode: str,
     # ADR 0004: history.weight is ADDED weight — thread bodyweight through the
     # working-weight seam so a pure-bodyweight lift (added=0, bw=75, pct=1.0)
     # yields est1rm ~= estimate_1rm(75, reps), NOT ~0.
-    pct = lift["bodyweight_pct"] if "bodyweight_pct" in lift.keys() else 0.0
-    bw = settings["bodyweight"] if "bodyweight" in settings.keys() else 0.0
-    est1rm = _est1rm_from_history(hist, bw, pct)
+    pct = repo.row_get(lift, "bodyweight_pct", 0.0)
+    bw = repo.row_get(settings, "bodyweight", 0.0)
+    est1rm = est1rm_from_history(hist, bw, pct)
     # Build a Lift dataclass for the handler (handlers read lift.incr / .max /
-    # .start / .bodyweight_pct). Circular-safe local import: advance imports
-    # nothing from mode at module load time.
-    from . import advance as advance_service
-    lift_dc = advance_service._lift_from_row(lift)
+    # .start / .bodyweight_pct). Converters live in services/rows.py (no cycle).
+    lift_dc = lift_from_row(lift)
     # derive_on_switch reads the settings DICT (subscript access, same shape as
     # the rest of the service layer), NOT a Profile dataclass.
     state = get_mode(new_mode).derive_on_switch(lift_dc, hist, settings, est1rm)

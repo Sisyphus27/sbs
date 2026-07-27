@@ -1,6 +1,7 @@
 import sqlite3
 from webapp import db, repo
 from webapp.services import advance
+from webapp.services import rows as row_conv
 
 
 def _seed(tmp_path):
@@ -105,7 +106,7 @@ def test_lift_from_row_tolerates_missing_incr_column():
     row = conn.execute("SELECT * FROM lifts WHERE name = 'Rows'").fetchone()
     conn.close()
 
-    lift = advance._lift_from_row(row)
+    lift = row_conv.lift_from_row(row)
     assert lift.name == "Rows"
     assert lift.incr is None  # no IndexError; inherits global
 
@@ -122,7 +123,7 @@ def test_lift_from_row_maps_bodyweight_pct_and_progression(tmp_path):
                            max=None, intensity=None, reps=None, repout=None, start=0.0,
                            bodyweight_pct=1.0)
     row = repo.get_lift(conn, lid)
-    lift = advance._lift_from_row(row)
+    lift = row_conv.lift_from_row(row)
     assert lift.bodyweight_pct == 1.0
     conn.close()
 
@@ -134,7 +135,7 @@ def test_profile_from_rows_maps_bodyweight(tmp_path):
     conn = db.connect(str(tmp_path / "t.db"))
     db.init_schema(conn)
     repo.update_settings(conn, bodyweight=75.0)
-    p = advance._profile_from_rows(repo.get_settings(conn), [], [])
+    p = row_conv.profile_from_rows(repo.get_settings(conn), [], [])
     assert p.bodyweight == 75.0
     conn.close()
 

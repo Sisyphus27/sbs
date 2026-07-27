@@ -1,12 +1,12 @@
 # Graph Report - sbs  (2026-07-27)
 
 ## Corpus Check
-- 248 files · ~2,488,207 words
+- 248 files · ~2,488,415 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2127 nodes · 4035 edges · 173 communities (160 shown, 13 thin omitted)
-- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 91 edges (avg confidence: 0.66)
+- 2123 nodes · 4046 edges · 179 communities (166 shown, 13 thin omitted)
+- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 75 edges (avg confidence: 0.63)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
@@ -41,6 +41,7 @@
 - Week HTML render/parse
 - T2/T3 progression params
 - Plan/reseed/export endpoints
+- Incr column migration tests
 - Reseed routes tests
 - ADRs 0001/0002: TM rounding & reseed
 - Lift CRUD endpoints & row partial
@@ -146,24 +147,30 @@
 - SBS Program Builder_c177d1a7.md
 - Evaluation and iteration
 - Recommendations
+- test_defaults.py
 - anthropic-best-practices.md
 - _seed
 - Global Constraints
 - 0006 — Presentation-layer-only UI redesign: server-rendered Jinja + HTMX, single accent, sidebar IA
 - 0007 — Offline phone export as a plate-loading list: single big number, action directives only, zero JS
 - Anti-patterns to avoid
+- _seed
 - settings.py
 - main
 - snapshot
+- test_routes_settings.py
 - schedule.py
 - test_day_states.py
+- t3_next
+- test_schema.py
+- snapshot
 - LinearT2Mode
 - best_1rm
 
 ## God Nodes (most connected - your core abstractions)
-1. `connect()` - 108 edges
-2. `Lift` - 73 edges
-3. `create_lift()` - 61 edges
+1. `connect()` - 124 edges
+2. `create_lift()` - 77 edges
+3. `Lift` - 73 edges
 4. `Profile` - 58 edges
 5. `init_schema()` - 51 edges
 6. `get_settings()` - 47 edges
@@ -173,16 +180,16 @@
 10. `get_lift()` - 39 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `reseed.html (重测 max)` --implements--> `Decision: prompted per-lift skippable TM reseed at 21-week cycle boundary`  [INFERRED]
-  webapp/templates/reseed.html → docs/adr/0002-cycle-boundary-reseed.md
 - `connect()` --indirect_call--> `e()`  [INFERRED]
   .claude/skills/brainstorming/scripts/helper.js → webapp/static/htmx.min.js
 - `test_legal_combos()` --calls--> `is_legal_combo()`  [EXTRACTED]
   tests/test_schema.py → sbs_cli/data/schema.py
 - `test_load_schedule_returns_dataclasses()` --indirect_call--> `ScheduleRow`  [INFERRED]
   tests/test_repo.py → sbs_cli/data/schema.py
-- `test_import_pulls_sbs_maxes()` --indirect_call--> `Profile`  [INFERRED]
-  tests/test_importer.py → sbs_cli/data/schema.py
+- `test_lift_defaults()` --calls--> `Lift`  [EXTRACTED]
+  tests/test_schema.py → sbs_cli/data/schema.py
+- `test_lift_has_load_model_and_mode()` --calls--> `Lift`  [EXTRACTED]
+  tests/test_schema.py → sbs_cli/data/schema.py
 
 ## Import Cycles
 - None detected.
@@ -197,15 +204,15 @@
 - **Comet design-phase handoff chain (context -> brainstorm -> design-context -> design)** — openspec_changes_archive_2026_07_11_per_lift_t2t3_increment__comet_context, openspec_changes_archive_2026_07_11_per_lift_t2t3_increment__comet_handoff_brainstorm_summary, openspec_changes_archive_2026_07_11_per_lift_t2t3_increment__comet_handoff_design_context, openspec_changes_archive_2026_07_11_per_lift_t2t3_increment_design [INFERRED 0.85]
 - **Design decision set D1-D5 (per-lift-t2t3-increment)** — decision_per_lift_incr_nullable, decision_t2t3_remove_rounding, decision_eff_incr_engine_boundary, decision_alter_table_migration, decision_ui_tier_conditional [EXTRACTED 0.95]
 
-## Communities (173 total, 13 thin omitted)
+## Communities (179 total, 13 thin omitted)
 
 ### Community 0 - "HTMX vendored min.js"
 Cohesion: 0.08
 Nodes (103): sync(), A(), ae(), ar(), at(), B(), be(), br() (+95 more)
 
 ### Community 1 - "Flask app & cycle index"
-Cohesion: 0.05
-Nodes (57): Flask, is_legal_combo(), cycle_number(), Which 21-week cycle a program week falls in (1-based)., app(), db_conn(), Yield an open connection to the test DB; close on teardown.      Replaces the re, Unit tests for routes._forms.present_fields — the shared cast-or-reject helper. (+49 more)
+Cohesion: 0.11
+Nodes (29): Flask, Unit tests for routes._forms.present_fields — the shared cast-or-reject helper., test_bad_value_reports_column(), test_empty_string_treated_as_absent(), test_lift_schema_casts_all_columns(), test_missing_column_skipped(), test_parses_present_fields(), get_db() (+21 more)
 
 ### Community 2 - "Excel builder tests"
 Cohesion: 0.06
@@ -213,7 +220,7 @@ Nodes (60): _assert_t3_zone_shape(), _copy(), A template whose Accessories secti
 
 ### Community 3 - "21-week schedule defaults"
 Cohesion: 0.12
-Nodes (29): Replay every linear_t2 lift's state through the new 1-strike ``t2_next`` via, _replay_t2(), load_schedule(), SQLite repository: settings / lifts / lift_state / history CRUD., Return the schedule as a list of ScheduleRow (the dataclass the engine wants)., Null-tolerant column read on a sqlite3.Row (or dict).      Migration-era colum, row_get(), Orchestrate the engine over a logged week: DB -> dataclass -> engine -> DB. (+21 more)
+Nodes (27): Replay every linear_t2 lift's state through the new 1-strike ``t2_next`` via, _replay_t2(), load_schedule(), Return the schedule as a list of ScheduleRow (the dataclass the engine wants)., Null-tolerant column read on a sqlite3.Row (or dict).      Migration-era colum, row_get(), Orchestrate the engine over a logged week: DB -> dataclass -> engine -> DB., plan_items() (+19 more)
 
 ### Community 4 - "Skill/agent config metadata"
 Cohesion: 0.05
@@ -221,7 +228,7 @@ Nodes (38): definition, agents, apiVersion, goal, kind, metadata, orchestration,
 
 ### Community 5 - "Data schema & state recompute"
 Cohesion: 0.25
-Nodes (8): T3 accessories: +incr when last set >= target, else repeat.      Pure arithmet, t3_next(), test_t3_hit_adds(), test_t3_hit_adds_incr_without_snapping(), test_t3_hit_default_incr_backcompat(), test_t3_miss_repeats(), test_t3_next_signature_has_no_quantum(), test_t3_no_log_repeats()
+Nodes (10): PlanItem, Tie engine rules to lift state; manage history + est1rm + week plan.  ADR 0005, Build the display plan for a given day (or all lifts if day=None)., week_plan(), Plain-text plan + status for the terminal., render_show_text(), render_week_text(), _profile() (+2 more)
 
 ### Community 6 - "Tier progression engine"
 Cohesion: 0.15
@@ -232,52 +239,52 @@ Cohesion: 0.10
 Nodes (31): SBS/T2/T3 Three-Tier Progression Model, Engine pure function recompute_sbs_tm (raw TM replay from max), Engine pure function recompute_state (t2/t3 history replay), Engine pure function sbs_next (TM autoregulation), sbs_schedule table (21-week main/aux intensity ladder), sbs.db single-file SQLite store (Repository pattern), Engine pure function t2_next (GZCLP T2 state machine), Plan: SBS + GZCLP T2/T3 Hybrid Progression (xlsx) (+23 more)
 
 ### Community 8 - "YAML profile/state I/O"
-Cohesion: 0.11
-Nodes (40): Lift, LiftState, A lift definition in profile.yaml (static)., Per-lift dynamic state in state.yaml., get_mode(), Tests for the progression-mode registry (ADR 0005)., _sched(), test_get_mode_unknown_raises() (+32 more)
+Cohesion: 0.18
+Nodes (26): Lift, A lift definition in profile.yaml (static)., get_mode(), Tests for the progression-mode registry (ADR 0005)., _sched(), test_get_mode_unknown_raises(), test_linear_t2_derive_on_switch_est1rm_none_uses_start(), test_linear_t2_derive_on_switch_seeds_reset_pct_of_est1rm() (+18 more)
 
 ### Community 9 - "Advance service & DB tests"
-Cohesion: 0.22
-Nodes (17): Behavior guards (ADR 0004): bodyweight lifts must never compute est1RM/tonnage, ADR 0004 guard: mode.derive_state (preview + apply path) must thread     bodywe, _seed_bodyweight_db(), test_guard_mode_switch_derive_state_is_bodyweight_driven(), test_guard_preview_est1rm_is_bodyweight_driven(), test_guard_volume_tonnage_is_bodyweight_driven(), test_migrate_bodyweight_idempotent(), test_migrate_bodyweight_recomputes_stale_est1rm() (+9 more)
+Cohesion: 0.30
+Nodes (13): Behavior guards (ADR 0004): bodyweight lifts must never compute est1RM/tonnage, ADR 0004 guard: mode.derive_state (preview + apply path) must thread     bodywe, _seed_bodyweight_db(), test_guard_mode_switch_derive_state_is_bodyweight_driven(), test_guard_preview_est1rm_is_bodyweight_driven(), test_guard_volume_tonnage_is_bodyweight_driven(), test_migrate_bodyweight_idempotent(), test_migrate_bodyweight_recomputes_stale_est1rm() (+5 more)
 
 ### Community 10 - "Settings routes & autosave"
 Cohesion: 0.11
-Nodes (37): _fresh(), advance_week must not reset reseeded_cycle to 0 every week (ADR 0002)., create_lift persists load_model/mode (ADR 0005) and round-trips bodyweight_pct., Omitting bodyweight_pct must default to 0.0 (legacy callers)., is_legal_combo guard: pure_bodyweight must pair with none, not sbs., Same exercise on different days = two independent rows (keyed by id, not name)., test_append_history_and_list(), test_create_lift_accepts_incr_and_round_trips() (+29 more)
+Nodes (40): Same exercise on two days is two independent rows; logging by id targets each., test_advance_week_handles_duplicate_names_per_day(), test_recompute_sbs_is_noop(), _fresh(), advance_week must not reset reseeded_cycle to 0 every week (ADR 0002)., Omitting bodyweight_pct must default to 0.0 (legacy callers)., is_legal_combo guard: pure_bodyweight must pair with none, not sbs., Fresh DB seeds settings.bodyweight = 0.0 (Task 7). (+32 more)
 
 ### Community 11 - "Lift CRUD routes tests"
-Cohesion: 0.10
-Nodes (36): _lift_from_row must carry bodyweight_pct from the DB row into the Lift     data, test_lift_from_row_maps_bodyweight_pct_and_progression(), _lift(), _t2_lift(), _t2_lift_with_incr(), test_create_lift_via_post(), test_create_rejects_nonpositive_incr(), test_create_sbs_does_not_write_incr() (+28 more)
+Cohesion: 0.11
+Nodes (35): create_lift persists load_model/mode (ADR 0005) and round-trips bodyweight_pct., test_create_lift_stores_load_model_mode_and_bodyweight_pct(), test_init_schema_seeds_schedule(), test_load_schedule_returns_dataclasses(), _lift(), _t2_lift(), _t2_lift_with_incr(), test_create_lift_via_post() (+27 more)
 
 ### Community 12 - "Plan view & tonnage export"
-Cohesion: 0.10
-Nodes (30): make_lift(), Factory: create a lift row and return its id.      Keyword args pass straight th, Filling the last-set returns live est1RM + tonnage in the same fragment., Same name on two days must render each day's own weight (id-keyed, not clobbered, Clearing the last-set returns 200 with empty body so .save-ok is wiped., Two-week t2: past tonnage uses the replayed target; Δ% renders with arrow + colo, Bodyweight lift renders '+added (working)' meta format (Task 11).      Chin-up, 装片清单：barbell 显示大数字 kg、sbs 方案行含 rep-out、mode tag，无容量/est1RM 状态。 (+22 more)
+Cohesion: 0.07
+Nodes (32): Same name on two days must render each day's own weight (id-keyed, not clobbered, A lift with this week's last-set logged renders its tonnage inline., Week 1 -> no last week -> tonnage shows 首次., A lift whose last-set is not yet logged shows no tonnage fragment., Filling the last-set returns live est1RM + tonnage in the same fragment., Clearing the last-set returns 200 with empty body so .save-ok is wiped., Two-week t2: past tonnage uses the replayed target; Δ% renders with arrow + colo, Bodyweight lift renders '+added (working)' meta format (Task 11).      Chin-up (+24 more)
 
 ### Community 13 - "Repository tests"
-Cohesion: 0.21
-Nodes (16): load_profile(), load_state(), profile_from_dict(), profile_to_dict(), YAML load/save for Profile and ProgramState., save_profile(), save_state(), state_from_dict() (+8 more)
+Cohesion: 0.25
+Nodes (14): load_profile(), load_state(), profile_from_dict(), profile_to_dict(), YAML load/save for Profile and ProgramState., save_profile(), save_state(), state_from_dict() (+6 more)
 
 ### Community 14 - "1RM estimation formulas"
-Cohesion: 0.14
-Nodes (27): best_1rm(), brzycki(), epley(), est1rm_from_history(), estimate_1rm(), Estimated 1RM = mean of Epley, Brzycki, Wathan (top-3 authoritative formulas)., Mean of the three formulas. Most accurate at reps <= 10., Return (working_weight, reps) of the history entry with the highest     estimat (+19 more)
+Cohesion: 0.20
+Nodes (18): brzycki(), epley(), estimate_1rm(), Estimated 1RM = mean of Epley, Brzycki, Wathan (top-3 authoritative formulas)., Mean of the three formulas. Most accurate at reps <= 10., wathan(), test_brzycki_formula(), test_epley_formula() (+10 more)
 
 ### Community 15 - "Program advance & week plan"
-Cohesion: 0.21
-Nodes (20): Profile, advance_lift(), initial_state(), Apply this week's logged last-set reps; mutate state in place.      All per-mo, test_guard_advance_progression_none_keeps_added_zero(), test_guard_advance_t2_reset_uses_working_weight(), _profile(), test_advance_sbs_appends_history_and_updates_est1rm() (+12 more)
+Cohesion: 0.15
+Nodes (36): LiftState, Profile, Per-lift dynamic state in state.yaml., advance_lift(), initial_state(), Apply this week's logged last-set reps; mutate state in place.      All per-mo, Re-derive a linear_t2/linear_t3 lift's state by replaying progression     from, recompute_state() (+28 more)
 
 ### Community 16 - "CLI entry points"
-Cohesion: 0.12
-Nodes (26): build_parser(), cmd_init(), cmd_next(), cmd_show(), cmd_week(), _load(), CLI entry: init / week / next / show., run() (+18 more)
+Cohesion: 0.17
+Nodes (19): build_parser(), cmd_init(), cmd_next(), cmd_show(), cmd_week(), _load(), CLI entry: init / week / next / show., run() (+11 more)
 
 ### Community 17 - "Tier switch service tests"
-Cohesion: 0.17
-Nodes (22): Row, D6：mode 切换不触碰 lifts.incr 列。, Regression: on a legacy DB whose lifts table has NO incr column     (pre-migrat, ADR 0005 legal-combo guard: a barbell lift cannot switch to ``none``     (none, linear_t2 derive：incr=5 的动作，起始重量 snap 到 eff_incr=5 网格，而非全局 rounding=2.5。, _seed_with_history(), test_apply_mode_switch_keeps_history_and_writes_state(), test_apply_switch_preserves_incr() (+14 more)
+Cohesion: 0.15
+Nodes (25): One-shot: recompute lift_state.est1rm for bodyweight lifts whose stored value p, Recompute est1rm for every lift with bodyweight_pct > 0. Returns count., recompute_bodyweight_est1rm(), Row, is_legal_combo(), In-memory data model., SetEntry, Regression: on a legacy DB whose lifts table has NO incr column     (pre-migrat (+17 more)
 
 ### Community 18 - "Comet change: per-lift incr"
 Cohesion: 0.18
 Nodes (17): ADR 0003: each action owns its snap grid (cable stack independent of barbell rounding), Capability: t2t3-progression, D4: one-shot ALTER TABLE migration script (PRAGMA-guarded idempotent), D3: resolve eff_incr at engine boundary, keep progression pure, D1: per-lift incr nullable column, NULL = inherit global, D2: drop rounding snap on t2/t3 hit path (arith step self-quantizes), D5: incr UI only in /lifts editor, tier-conditional rendering, Comet state — per-lift-t2t3-increment (.comet.yaml) (+9 more)
 
 ### Community 19 - "TM recompute migration tests"
-Cohesion: 0.08
-Nodes (35): main(), One-shot migration: bump t2_reset_pct 0.70 -> 0.75 and resync every t2/t3 lift_, main(), One-shot migration: recompute every sbs lift's stored TM by replaying from its, _profile_from_rows must carry bodyweight from settings into Profile so     the, test_profile_from_rows_maps_bodyweight(), init_schema seeds sbs_schedule from DEFAULT_SCHEDULE exactly once (Task 5)., lifts.lift_kind + lifts.incr and lift_state.reseeded_cycle exist (Task 5 / per-l (+27 more)
+Cohesion: 0.10
+Nodes (26): main(), _lift_from_row must carry bodyweight_pct from the DB row into the Lift     data, _profile_from_rows must carry bodyweight from settings into Profile so     the, test_lift_from_row_maps_bodyweight_pct_and_progression(), test_profile_from_rows_maps_bodyweight(), test_snapshot_copies_db(), init_schema seeds sbs_schedule from DEFAULT_SCHEDULE exactly once (Task 5)., lifts.lift_kind + lifts.incr and lift_state.reseeded_cycle exist (Task 5 / per-l (+18 more)
 
 ### Community 20 - "Schedule migration tests"
 Cohesion: 0.14
@@ -300,16 +307,20 @@ Cohesion: 0.29
 Nodes (9): Pure-Python encoding of the GZCLP T2 state machine and T3 rule.  These functio, Return (next_target, next_streak, next_weight) for T2 (Back).      Scheme tier, Return next weight for T3 (Accessories): +incr if last_set >= target., Mirror Excel MROUND(w, quantum): round w/quantum half-away-from-zero, then * qua, round_weight(), t2_next(), T2Params, t3_next() (+1 more)
 
 ### Community 25 - "Plan/reseed/export endpoints"
-Cohesion: 0.22
-Nodes (9): Flask endpoint plan.export_week, Flask endpoint plan.save_log (htmx autosave), Flask endpoint plan.submit, Flask endpoint reseed.apply, Flask endpoint reseed.skip, Flask endpoint reseed.view, plan.html (本周计划 live view), reseed.html (重测 max) (+1 more)
+Cohesion: 0.33
+Nodes (6): Flask endpoint plan.export_week, Flask endpoint plan.save_log (htmx autosave), Flask endpoint plan.submit, Flask endpoint reseed.view, plan.html (本周计划 live view), week_export.html (offline mobile export)
+
+### Community 26 - "Incr column migration tests"
+Cohesion: 0.52
+Nodes (6): _has_incr(), _legacy_db(), Build a lifts table WITHOUT the incr column, mirroring a pre-migration DB., test_migrate_adds_incr_column(), test_migrate_idempotent_on_already_migrated(), test_migrate_idempotent_on_fresh_schema()
 
 ### Community 27 - "Reseed routes tests"
-Cohesion: 0.52
-Nodes (6): _seed_squat_at(), test_plan_banner_lists_due_reseed(), test_reseed_apply_sets_max_and_tm(), test_reseed_due_at_cycle_2_week_22(), test_reseed_not_due_in_cycle_1(), test_reseed_skip_keeps_tm_advances_cycle()
+Cohesion: 0.18
+Nodes (14): recompute 服务经 _lift_from_row(incr) + recompute_state(eff_incr) 自动继承 per-lift inc, _t2(), test_recompute_on_start_change_uses_per_lift_incr(), test_recompute_preserves_est1rm_from_history(), test_recompute_t2_no_history_sets_weight_to_start(), Week-2 plan view pulls intensity/reps/repout from sbs_schedule, not lifts column, test_plan_view_shows_week2_schedule_values(), _seed_squat_at() (+6 more)
 
 ### Community 28 - "ADRs 0001/0002: TM rounding & reseed"
-Cohesion: 0.29
-Nodes (7): Decision: prompted per-lift skippable TM reseed at 21-week cycle boundary, Decision: rounding quantum applies ONLY to loaded (sbs/T2/T3) weights, not TM, Decision: TM is bookkeeping, accumulates raw float, never rounded, Known debt: two TM-seeding conventions coexist (lift.max vs est1rm), North star: cell-by-cell faithfulness to SBS RTF xlsx template, ADR 0001 — TM accumulates raw; rounding only on loaded weights, ADR 0002 — Cycle-boundary TM reseed: prompt, per-lift, skippable
+Cohesion: 0.20
+Nodes (10): Decision: prompted per-lift skippable TM reseed at 21-week cycle boundary, Decision: rounding quantum applies ONLY to loaded (sbs/T2/T3) weights, not TM, Decision: TM is bookkeeping, accumulates raw float, never rounded, Known debt: two TM-seeding conventions coexist (lift.max vs est1rm), North star: cell-by-cell faithfulness to SBS RTF xlsx template, ADR 0001 — TM accumulates raw; rounding only on loaded weights, ADR 0002 — Cycle-boundary TM reseed: prompt, per-lift, skippable, Flask endpoint reseed.apply (+2 more)
 
 ### Community 29 - "Lift CRUD endpoints & row partial"
 Cohesion: 0.33
@@ -332,8 +343,8 @@ Cohesion: 0.07
 Nodes (26): 1. 生成当周计划, 2. 打开 HTML 填数据, 3. 导出, 4. 算下周, profile.yaml 配置详解, SBS/GZCLP 训练 CLI, `sbs` — 主项 / 辅助（自调节）, state.yaml（程序管，别手改） (+18 more)
 
 ### Community 43 - "plan.py"
-Cohesion: 0.10
-Nodes (26): test_snapshot_copies_db(), test_snapshot_filename_format(), Daily logging: save per-field (no advance), prefill on reopen, advance consumes, test_autosave_persists_and_prefills_then_advances(), Snapshot the SQLite db before destructive operations., Copy src_db to dest_dir/sbs-w<week>-<ts>.db.bak. Creates dest_dir. Returns dest, snapshot(), clear_one_log() (+18 more)
+Cohesion: 0.11
+Nodes (22): One-shot migration: bump t2_reset_pct 0.70 -> 0.75 and resync every t2/t3 lift_, clear_one_log(), clear_week_logs(), get_week_logs(), SQLite repository: settings / lifts / lift_state / history CRUD., _by_day(), export_week(), _live_html() (+14 more)
 
 ### Community 44 - "自重动作的工作重量（bodyweight working weight）— Design"
 Cohesion: 0.08
@@ -460,8 +471,8 @@ Cohesion: 0.14
 Nodes (13): Global Constraints, Self-Review, Task 1: schema — Lift/LiftState 双枚举字段, Task 2: 引擎 modes 注册表, Task 3: program.py 接线注册表, Task 4: webapp schema (db.py) + repo 新列, Task 5: webapp services (advance / tier→mode / preview / volume / recompute), Task 6: webapp routes + templates (+5 more)
 
 ### Community 75 - "app.py"
-Cohesion: 0.20
-Nodes (18): _sbs(), _t2(), test_actual_tonnage_basic(), test_actual_tonnage_single_set(), test_actual_tonnage_zero_or_none_sets_falls_back_to_3(), test_t2_target_as_of_initial_when_no_prior_history(), test_t2_target_as_of_replays_miss_drop(), test_volume_current_not_logged_returns_none() (+10 more)
+Cohesion: 0.22
+Nodes (16): _sbs(), _t2(), test_actual_tonnage_basic(), test_actual_tonnage_single_set(), test_actual_tonnage_zero_or_none_sets_falls_back_to_3(), test_t2_target_as_of_initial_when_no_prior_history(), test_t2_target_as_of_replays_miss_drop(), test_volume_current_not_logged_returns_none() (+8 more)
 
 ### Community 76 - "helper.js"
 Cohesion: 0.42
@@ -552,8 +563,8 @@ Cohesion: 0.22
 Nodes (8): Sheet: 3x, Sheet: 4x, Sheet: 5xa, Sheet: 5xb, Sheet: 6x, Sheet: Quick Setup, Sheet: Setup, Sheet: Untouched
 
 ### Community 98 - "working_weight"
-Cohesion: 0.23
-Nodes (13): In-memory data model., ScheduleRow, Single source for reset-to-default settings + the standard SBS RTF 21-week ladde, _rows(), lookup_schedule(), Cyclic 1..21 schedule-row index for an absolute program week., Return the ScheduleRow for (kind, schedule_week(program_week)).      Raises Ke, schedule_week() (+5 more)
+Cohesion: 0.13
+Nodes (14): ScheduleRow, Single source for reset-to-default settings + the standard SBS RTF 21-week ladde, _rows(), lookup_schedule(), Cyclic 1..21 schedule-row index for an absolute program week., Return the ScheduleRow for (kind, schedule_week(program_week)).      Raises Ke, schedule_week(), Replay an sbs lift's TM from ``lift.max`` over its history (raw, no rounding), (+6 more)
 
 ### Community 99 - "SBS Linear Progression_022b317c.md"
 Cohesion: 0.22
@@ -672,8 +683,12 @@ Cohesion: 0.50
 Nodes (4): Build evaluations first, Develop Skills iteratively with the agent, Evaluation and iteration, Observe how agents navigate Skills
 
 ### Community 158 - "Recommendations"
-Cohesion: 0.15
-Nodes (23): One-shot: recompute lift_state.est1rm for bodyweight lifts whose stored value p, Recompute est1rm for every lift with bodyweight_pct > 0. Returns count., recompute_bodyweight_est1rm(), Same exercise on two days is two independent rows; logging by id targets each., Regression: legacy DBs that predate the lifts.incr column (pre-migrate_incr), _seed(), test_advance_week_handles_duplicate_names_per_day(), test_advance_week_rows_t2_hit_increments() (+15 more)
+Cohesion: 0.31
+Nodes (10): Regression: legacy DBs that predate the lifts.incr column (pre-migrate_incr), _seed(), test_advance_week_rows_t2_hit_increments(), test_advance_week_runs_engine_and_bumps_week(), test_advance_week_skips_unlogged_lifts(), test_lift_from_row_tolerates_missing_incr_column(), list_history(), advance_week() (+2 more)
+
+### Community 159 - "test_defaults.py"
+Cohesion: 0.12
+Nodes (18): One-shot migration: recompute every sbs lift's stored TM by replaying from its, cycle_number(), Which 21-week cycle a program week falls in (1-based)., app(), test_cycle_number(), create_app(), Flask app factory + launch., run() (+10 more)
 
 ### Community 160 - "anthropic-best-practices.md"
 Cohesion: 0.17
@@ -699,29 +714,49 @@ Nodes (4): 0007 — Offline phone export as a plate-loading list: single big num
 Cohesion: 0.40
 Nodes (4): [Analysis Title], Executive summary, Key findings, Recommendations
 
+### Community 166 - "_seed"
+Cohesion: 0.57
+Nodes (6): main(), _seed(), test_migrate_creates_backup(), test_migrate_is_idempotent(), test_migrate_replays_sbs_tm_raw_from_max(), test_migrate_skips_non_sbs_lifts()
+
 ### Community 168 - "settings.py"
-Cohesion: 0.29
-Nodes (8): Working-weight seam: the single translation point from stored added weight to t, added + bodyweight × bodyweight_pct.      bodyweight_pct == 0.0 for an ordinar, working_weight(), Progression-mode registry: single dispatch point for per-mode behaviour.  Each, test_full_bodyweight_zero_added(), test_ordinary_lift_pct_zero_returns_added_unchanged(), test_partial_bodyweight_pushup(), test_weighted_bodyweight_added_plus_bw()
+Cohesion: 0.36
+Nodes (7): Working-weight seam: the single translation point from stored added weight to t, added + bodyweight × bodyweight_pct.      bodyweight_pct == 0.0 for an ordinar, working_weight(), test_full_bodyweight_zero_added(), test_ordinary_lift_pct_zero_returns_added_unchanged(), test_partial_bodyweight_pushup(), test_weighted_bodyweight_added_plus_bw()
 
 ### Community 169 - "main"
-Cohesion: 0.37
+Cohesion: 0.28
 Nodes (13): T2 1-strike cascade: each miss drops one rep level (8 -> 6 -> 4); after `fail`, t2_next(), T2State, test_t2_fail_2_resets_after_two_misses(), test_t2_hit_adds_incr_without_snapping(), test_t2_hit_adds_weight_stays_at_target(), test_t2_hit_at_6_does_not_climb_back_to_8(), test_t2_miss_at_4_under_fail_floor_keeps_target() (+5 more)
 
 ### Community 170 - "snapshot"
-Cohesion: 0.20
-Nodes (10): Per-tier progression rules. Pure functions; the spec source of truth., SBS main/aux: next TM from rep-out performance. actual=None -> unchanged., _sbs_delta(), sbs_next(), test_sbs_beat_5_plus_caps_at_3pct(), test_sbs_beat_adds_pct(), test_sbs_hit_keeps_tm(), test_sbs_miss_by_1_drops_2pct() (+2 more)
+Cohesion: 0.18
+Nodes (18): Per-tier progression rules. Pure functions; the spec source of truth., SBS main/aux: next TM from rep-out performance. actual=None -> unchanged., T3 accessories: +incr when last set >= target, else repeat.      Pure arithmet, _sbs_delta(), sbs_next(), t3_next(), test_sbs_beat_5_plus_caps_at_3pct(), test_sbs_beat_adds_pct() (+10 more)
+
+### Community 171 - "test_routes_settings.py"
+Cohesion: 0.29
+Nodes (3): test_reset_t2_fail_restores_default(), test_settings_update(), test_update_settings_bodyweight()
 
 ### Community 172 - "schedule.py"
 Cohesion: 0.13
-Nodes (7): LinearT3Mode, SbsMode, Mirror Excel MROUND(w, quantum): round(w/quantum) half-away-from-zero, then * qu, round_weight(), test_linear_t2_derive_on_switch_seeds_reset_pct_of_est1rm(), test_linear_t3_derive_on_switch_seeds_60pct_of_est1rm(), test_round_weight_mround()
+Nodes (9): LinearT3Mode, Progression-mode registry: single dispatch point for per-mode behaviour.  Each, SbsMode, est1rm_from_history(), Best-of-history est1rm, or None when history is empty., Mirror Excel MROUND(w, quantum): round(w/quantum) half-away-from-zero, then * qu, round_weight(), test_advance_t2_reset_uses_profile_reset_pct() (+1 more)
 
 ### Community 173 - "test_day_states.py"
 Cohesion: 0.40
 Nodes (9): _item(), Direct unit tests for routes.plan._day_states — the day progress tri-state, now, test_all_full_falls_back_to_last_day(), test_empty_day_state(), test_empty_input(), test_full_day_collapses_and_yields_open_to_next(), test_part_day_is_owed_debt(), _day_states() (+1 more)
 
+### Community 174 - "t3_next"
+Cohesion: 0.19
+Nodes (14): test_get_and_replace_schedule(), test_reset_schedule_restores_defaults(), get_schedule(), Raw sqlite3.Row view of the schedule (for the /schedule editor template)., Wipe + insert. `rows` is an iterable of (kind, week, intensity, reps, repout)., Restore the 42-row DEFAULT_SCHEDULE (used by the /schedule reset button)., replace_schedule(), reset_schedule() (+6 more)
+
+### Community 175 - "test_schema.py"
+Cohesion: 0.17
+Nodes (11): test_legal_combos(), test_lift_defaults(), test_lift_has_load_model_and_mode(), test_lift_incr_can_be_set(), test_lift_incr_defaults_to_none(), test_lift_sbs_construction(), test_lift_t2_construction(), test_liftstate_mode_field() (+3 more)
+
+### Community 176 - "snapshot"
+Cohesion: 0.40
+Nodes (4): test_snapshot_filename_format(), Snapshot the SQLite db before destructive operations., Copy src_db to dest_dir/sbs-w<week>-<ts>.db.bak. Creates dest_dir. Returns dest, snapshot()
+
 ### Community 178 - "best_1rm"
-Cohesion: 0.20
-Nodes (20): SetEntry, Re-derive a linear_t2/linear_t3 lift's state by replaying progression     from, Replay an sbs lift's TM from ``lift.max`` over its history (raw, no rounding),, recompute_sbs_tm(), recompute_state(), _profile_with_schedule(), test_advance_lift_uses_scheduled_repout_for_tm_delta(), test_best_1rm_bodyweight_uses_working_weight_not_added() (+12 more)
+Cohesion: 0.40
+Nodes (5): best_1rm(), Return (working_weight, reps) of the history entry with the highest     estimat, test_best_1rm_bodyweight_uses_working_weight_not_added(), test_best_1rm_empty_returns_none(), test_best_1rm_picks_max_estimate()
 
 ## Knowledge Gaps
 - **833 isolated node(s):** `crypto`, `http`, `fs`, `path`, `OPCODES` (+828 more)
@@ -731,17 +766,17 @@ Nodes (20): SetEntry, Re-derive a linear_t2/linear_t3 lift's state by replaying 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `connect()` connect `Lift CRUD routes tests` to `_seed`, `Flask app & cycle index`, `migrate_incr.py`, `Advance service & DB tests`, `Settings routes & autosave`, `plan.py`, `app.py`, `1RM estimation formulas`, `00_cold_backup_0756400b.md`, `Tier switch service tests`, `TM recompute migration tests`, `Schedule migration tests`, `Reseed routes tests`, `Recommendations`?**
-  _High betweenness centrality (0.025) - this node is a cross-community bridge._
-- **Why does `SetEntry` connect `best_1rm` to `working_weight`, `21-week schedule defaults`, `settings.py`, `YAML profile/state I/O`, `schedule.py`, `Repository tests`, `1RM estimation formulas`, `CLI entry points`, `Tier switch service tests`, `Schedule migration tests`, `Recommendations`?**
-  _High betweenness centrality (0.010) - this node is a cross-community bridge._
-- **Why does `Lift` connect `YAML profile/state I/O` to `working_weight`, `21-week schedule defaults`, `Advance service & DB tests`, `schedule.py`, `Repository tests`, `Program advance & week plan`, `CLI entry points`, `best_1rm`, `Cold-backup xlsx importer`?**
-  _High betweenness centrality (0.008) - this node is a cross-community bridge._
+- **Why does `connect()` connect `Lift CRUD routes tests` to `Flask app & cycle index`, `Advance service & DB tests`, `Settings routes & autosave`, `Plan view & tonnage export`, `1RM estimation formulas`, `Tier switch service tests`, `TM recompute migration tests`, `Schedule migration tests`, `Incr column migration tests`, `Reseed routes tests`, `Recommendations`, `test_defaults.py`, `_seed`, `_seed`, `test_routes_settings.py`, `t3_next`, `snapshot`, `app.py`, `00_cold_backup_0756400b.md`, `migrate_incr.py`?**
+  _High betweenness centrality (0.026) - this node is a cross-community bridge._
+- **Why does `Lift` connect `YAML profile/state I/O` to `working_weight`, `21-week schedule defaults`, `Data schema & state recompute`, `Advance service & DB tests`, `plan.py`, `schedule.py`, `Repository tests`, `Program advance & week plan`, `CLI entry points`, `Tier switch service tests`, `test_schema.py`, `Cold-backup xlsx importer`?**
+  _High betweenness centrality (0.009) - this node is a cross-community bridge._
+- **Why does `create_lift()` connect `Settings routes & autosave` to `_seed`, `Flask app & cycle index`, `_seed`, `YAML profile/state I/O`, `Advance service & DB tests`, `Lift CRUD routes tests`, `Plan view & tonnage export`, `app.py`, `1RM estimation formulas`, `plan.py`, `Tier switch service tests`, `TM recompute migration tests`, `Schedule migration tests`, `Reseed routes tests`, `Recommendations`?**
+  _High betweenness centrality (0.009) - this node is a cross-community bridge._
 - **What connects `crypto`, `http`, `fs` to the rest of the system?**
   _833 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `HTMX vendored min.js` be split into smaller, more focused modules?**
   _Cohesion score 0.07875457875457875 - nodes in this community are weakly interconnected._
 - **Should `Flask app & cycle index` be split into smaller, more focused modules?**
-  _Cohesion score 0.052917232021709636 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.11174242424242424 - nodes in this community are weakly interconnected._
 - **Should `Excel builder tests` be split into smaller, more focused modules?**
   _Cohesion score 0.060153776571687016 - nodes in this community are weakly interconnected._

@@ -1398,8 +1398,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "migrate_bodyweight",
-      "community": 158,
-      "community_name": "Recommendations",
+      "community": 17,
+      "community_name": "Tier switch service tests",
       "norm_label": "migrate_bodyweight.py"
     },
     {
@@ -1409,8 +1409,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "migrate_bodyweight_recompute_bodyweight_est1rm",
-      "community": 158,
-      "community_name": "Recommendations",
+      "community": 17,
+      "community_name": "Tier switch service tests",
       "norm_label": "recompute_bodyweight_est1rm()"
     },
     {
@@ -1420,8 +1420,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "migrate_bodyweight_rationale_1",
-      "community": 158,
-      "community_name": "Recommendations",
+      "community": 17,
+      "community_name": "Tier switch service tests",
       "norm_label": "one-shot: recompute lift_state.est1rm for bodyweight lifts whose stored value p"
     },
     {
@@ -1431,8 +1431,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "migrate_bodyweight_rationale_15",
-      "community": 158,
-      "community_name": "Recommendations",
+      "community": 17,
+      "community_name": "Tier switch service tests",
       "norm_label": "recompute est1rm for every lift with bodyweight_pct > 0. returns count."
     },
     {
@@ -1596,8 +1596,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "migrate_recompute",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 43,
+      "community_name": "plan.py",
       "norm_label": "migrate_recompute.py"
     },
     {
@@ -1618,8 +1618,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "migrate_recompute_rationale_1",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 43,
+      "community_name": "plan.py",
       "norm_label": "one-shot migration: bump t2_reset_pct 0.70 -> 0.75 and resync every t2/t3 lift_"
     },
     {
@@ -1629,8 +1629,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "migrate_sbs_tm",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "migrate_sbs_tm.py"
     },
     {
@@ -1640,8 +1640,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "migrate_sbs_tm_main",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 166,
+      "community_name": "_seed",
       "norm_label": "main()"
     },
     {
@@ -1651,8 +1651,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "migrate_sbs_tm_rationale_1",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "one-shot migration: recompute every sbs lift's stored tm by replaying from its"
     },
     {
@@ -2553,8 +2553,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sbs_cli_data_schema",
-      "community": 98,
-      "community_name": "working_weight",
+      "community": 17,
+      "community_name": "Tier switch service tests",
       "norm_label": "schema.py"
     },
     {
@@ -2564,8 +2564,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "sbs_cli_data_schema_is_legal_combo",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 17,
+      "community_name": "Tier switch service tests",
       "norm_label": "is_legal_combo()"
     },
     {
@@ -2619,8 +2619,8 @@
       "source_location": "L75",
       "_origin": "ast",
       "id": "sbs_cli_data_schema_setentry",
-      "community": 178,
-      "community_name": "best_1rm",
+      "community": 17,
+      "community_name": "Tier switch service tests",
       "norm_label": "setentry"
     },
     {
@@ -2630,8 +2630,8 @@
       "source_location": "L82",
       "_origin": "ast",
       "id": "sbs_cli_data_schema_liftstate",
-      "community": 8,
-      "community_name": "YAML profile/state I/O",
+      "community": 15,
+      "community_name": "Program advance & week plan",
       "norm_label": "liftstate"
     },
     {
@@ -2652,8 +2652,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sbs_cli_data_schema_rationale_1",
-      "community": 98,
-      "community_name": "working_weight",
+      "community": 17,
+      "community_name": "Tier switch service tests",
       "norm_label": "in-memory data model."
     },
     {
@@ -2674,8 +2674,8 @@
       "source_location": "L83",
       "_origin": "ast",
       "id": "sbs_cli_data_schema_rationale_83",
-      "community": 8,
-      "community_name": "YAML profile/state I/O",
+      "community": 15,
+      "community_name": "Program advance & week plan",
       "norm_label": "per-lift dynamic state in state.yaml."
     },
     {
@@ -2773,8 +2773,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sbs_cli_engine_modes",
-      "community": 168,
-      "community_name": "settings.py",
+      "community": 172,
+      "community_name": "schedule.py",
       "norm_label": "modes.py"
     },
     {
@@ -3081,8 +3081,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sbs_cli_engine_modes_rationale_1",
-      "community": 168,
-      "community_name": "settings.py",
+      "community": 172,
+      "community_name": "schedule.py",
       "norm_label": "progression-mode registry: single dispatch point for per-mode behaviour.  each"
     },
     {
@@ -3191,8 +3191,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "sbs_cli_engine_onerm_best_1rm",
-      "community": 14,
-      "community_name": "1RM estimation formulas",
+      "community": 178,
+      "community_name": "best_1rm",
       "norm_label": "best_1rm()"
     },
     {
@@ -3202,8 +3202,8 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "sbs_cli_engine_onerm_est1rm_from_history",
-      "community": 14,
-      "community_name": "1RM estimation formulas",
+      "community": 172,
+      "community_name": "schedule.py",
       "norm_label": "est1rm_from_history()"
     },
     {
@@ -3235,8 +3235,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "sbs_cli_engine_onerm_rationale_38",
-      "community": 14,
-      "community_name": "1RM estimation formulas",
+      "community": 178,
+      "community_name": "best_1rm",
       "norm_label": "return (working_weight, reps) of the history entry with the highest     estimat"
     },
     {
@@ -3246,8 +3246,8 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "sbs_cli_engine_onerm_rationale_53",
-      "community": 14,
-      "community_name": "1RM estimation formulas",
+      "community": 172,
+      "community_name": "schedule.py",
       "norm_label": "best-of-history est1rm, or none when history is empty."
     },
     {
@@ -3301,8 +3301,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "sbs_cli_engine_progression_t3_next",
-      "community": 5,
-      "community_name": "Data schema & state recompute",
+      "community": 170,
+      "community_name": "snapshot",
       "norm_label": "t3_next()"
     },
     {
@@ -3345,8 +3345,8 @@
       "source_location": "L85",
       "_origin": "ast",
       "id": "sbs_cli_engine_progression_cycle_number",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "cycle_number()"
     },
     {
@@ -3400,8 +3400,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "sbs_cli_engine_progression_rationale_43",
-      "community": 5,
-      "community_name": "Data schema & state recompute",
+      "community": 170,
+      "community_name": "snapshot",
       "norm_label": "t3 accessories: +incr when last set >= target, else repeat.      pure arithmet"
     },
     {
@@ -3433,8 +3433,8 @@
       "source_location": "L86",
       "_origin": "ast",
       "id": "sbs_cli_engine_progression_rationale_86",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "which 21-week cycle a program week falls in (1-based)."
     },
     {
@@ -3499,8 +3499,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sbs_cli_program",
-      "community": 16,
-      "community_name": "CLI entry points",
+      "community": 5,
+      "community_name": "Data schema & state recompute",
       "norm_label": "program.py"
     },
     {
@@ -3532,8 +3532,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "sbs_cli_program_planitem",
-      "community": 16,
-      "community_name": "CLI entry points",
+      "community": 5,
+      "community_name": "Data schema & state recompute",
       "norm_label": "planitem"
     },
     {
@@ -3543,8 +3543,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "sbs_cli_program_planitem_init",
-      "community": 16,
-      "community_name": "CLI entry points",
+      "community": 5,
+      "community_name": "Data schema & state recompute",
       "norm_label": ".__init__()"
     },
     {
@@ -3554,8 +3554,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "sbs_cli_program_week_plan",
-      "community": 16,
-      "community_name": "CLI entry points",
+      "community": 5,
+      "community_name": "Data schema & state recompute",
       "norm_label": "week_plan()"
     },
     {
@@ -3565,8 +3565,8 @@
       "source_location": "L63",
       "_origin": "ast",
       "id": "sbs_cli_program_recompute_state",
-      "community": 178,
-      "community_name": "best_1rm",
+      "community": 15,
+      "community_name": "Program advance & week plan",
       "norm_label": "recompute_state()"
     },
     {
@@ -3576,8 +3576,8 @@
       "source_location": "L92",
       "_origin": "ast",
       "id": "sbs_cli_program_recompute_sbs_tm",
-      "community": 178,
-      "community_name": "best_1rm",
+      "community": 98,
+      "community_name": "working_weight",
       "norm_label": "recompute_sbs_tm()"
     },
     {
@@ -3587,8 +3587,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sbs_cli_program_rationale_1",
-      "community": 16,
-      "community_name": "CLI entry points",
+      "community": 5,
+      "community_name": "Data schema & state recompute",
       "norm_label": "tie engine rules to lift state; manage history + est1rm + week plan.  adr 0005"
     },
     {
@@ -3609,8 +3609,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "sbs_cli_program_rationale_49",
-      "community": 16,
-      "community_name": "CLI entry points",
+      "community": 5,
+      "community_name": "Data schema & state recompute",
       "norm_label": "build the display plan for a given day (or all lifts if day=none)."
     },
     {
@@ -3620,8 +3620,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "sbs_cli_program_rationale_64",
-      "community": 178,
-      "community_name": "best_1rm",
+      "community": 15,
+      "community_name": "Program advance & week plan",
       "norm_label": "re-derive a linear_t2/linear_t3 lift's state by replaying progression     from"
     },
     {
@@ -3631,8 +3631,8 @@
       "source_location": "L93",
       "_origin": "ast",
       "id": "sbs_cli_program_rationale_93",
-      "community": 178,
-      "community_name": "best_1rm",
+      "community": 98,
+      "community_name": "working_weight",
       "norm_label": "replay an sbs lift's tm from ``lift.max`` over its history (raw, no rounding),"
     },
     {
@@ -3708,8 +3708,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sbs_cli_view_terminal",
-      "community": 16,
-      "community_name": "CLI entry points",
+      "community": 5,
+      "community_name": "Data schema & state recompute",
       "norm_label": "terminal.py"
     },
     {
@@ -3719,8 +3719,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "sbs_cli_view_terminal_render_week_text",
-      "community": 16,
-      "community_name": "CLI entry points",
+      "community": 5,
+      "community_name": "Data schema & state recompute",
       "norm_label": "render_week_text()"
     },
     {
@@ -3730,8 +3730,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "sbs_cli_view_terminal_render_show_text",
-      "community": 16,
-      "community_name": "CLI entry points",
+      "community": 5,
+      "community_name": "Data schema & state recompute",
       "norm_label": "render_show_text()"
     },
     {
@@ -3741,8 +3741,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "sbs_cli_view_terminal_rationale_1",
-      "community": 16,
-      "community_name": "CLI entry points",
+      "community": 5,
+      "community_name": "Data schema & state recompute",
       "norm_label": "plain-text plan + status for the terminal."
     },
     {
@@ -3763,75 +3763,31 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_conftest",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "conftest.py"
     },
     {
       "label": "app()",
       "file_type": "code",
       "source_file": "tests/conftest.py",
-      "source_location": "L7",
+      "source_location": "L8",
       "_origin": "ast",
       "id": "tests_conftest_app",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "app()"
     },
     {
       "label": "client()",
       "file_type": "code",
       "source_file": "tests/conftest.py",
-      "source_location": "L20",
+      "source_location": "L21",
       "_origin": "ast",
       "id": "tests_conftest_client",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "client()"
-    },
-    {
-      "label": "db_conn()",
-      "file_type": "code",
-      "source_file": "tests/conftest.py",
-      "source_location": "L25",
-      "_origin": "ast",
-      "id": "tests_conftest_db_conn",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
-      "norm_label": "db_conn()"
-    },
-    {
-      "label": "make_lift()",
-      "file_type": "code",
-      "source_file": "tests/conftest.py",
-      "source_location": "L38",
-      "_origin": "ast",
-      "id": "tests_conftest_make_lift",
-      "community": 12,
-      "community_name": "Plan view & tonnage export",
-      "norm_label": "make_lift()"
-    },
-    {
-      "label": "Yield an open connection to the test DB; close on teardown.      Replaces the re",
-      "file_type": "rationale",
-      "source_file": "tests/conftest.py",
-      "source_location": "L26",
-      "_origin": "ast",
-      "id": "tests_conftest_rationale_26",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
-      "norm_label": "yield an open connection to the test db; close on teardown.      replaces the re"
-    },
-    {
-      "label": "Factory: create a lift row and return its id.      Keyword args pass straight th",
-      "file_type": "rationale",
-      "source_file": "tests/conftest.py",
-      "source_location": "L39",
-      "_origin": "ast",
-      "id": "tests_conftest_rationale_39",
-      "community": 12,
-      "community_name": "Plan view & tonnage export",
-      "norm_label": "factory: create a lift row and return its id.      keyword args pass straight th"
     },
     {
       "label": "test_advance_service.py",
@@ -3895,8 +3851,8 @@
       "source_location": "L55",
       "_origin": "ast",
       "id": "tests_test_advance_service_test_advance_week_handles_duplicate_names_per_day",
-      "community": 158,
-      "community_name": "Recommendations",
+      "community": 10,
+      "community_name": "Settings routes & autosave",
       "norm_label": "test_advance_week_handles_duplicate_names_per_day()"
     },
     {
@@ -3917,8 +3873,8 @@
       "source_location": "L114",
       "_origin": "ast",
       "id": "tests_test_advance_service_test_lift_from_row_maps_bodyweight_pct_and_progression",
-      "community": 11,
-      "community_name": "Lift CRUD routes tests",
+      "community": 19,
+      "community_name": "TM recompute migration tests",
       "norm_label": "test_lift_from_row_maps_bodyweight_pct_and_progression()"
     },
     {
@@ -3939,8 +3895,8 @@
       "source_location": "L56",
       "_origin": "ast",
       "id": "tests_test_advance_service_rationale_56",
-      "community": 158,
-      "community_name": "Recommendations",
+      "community": 10,
+      "community_name": "Settings routes & autosave",
       "norm_label": "same exercise on two days is two independent rows; logging by id targets each."
     },
     {
@@ -3961,8 +3917,8 @@
       "source_location": "L115",
       "_origin": "ast",
       "id": "tests_test_advance_service_rationale_115",
-      "community": 11,
-      "community_name": "Lift CRUD routes tests",
+      "community": 19,
+      "community_name": "TM recompute migration tests",
       "norm_label": "_lift_from_row must carry bodyweight_pct from the db row into the lift     data"
     },
     {
@@ -3983,8 +3939,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_backup",
-      "community": 43,
-      "community_name": "plan.py",
+      "community": 176,
+      "community_name": "snapshot",
       "norm_label": "test_backup.py"
     },
     {
@@ -3994,8 +3950,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "tests_test_backup_test_snapshot_copies_db",
-      "community": 43,
-      "community_name": "plan.py",
+      "community": 19,
+      "community_name": "TM recompute migration tests",
       "norm_label": "test_snapshot_copies_db()"
     },
     {
@@ -4005,8 +3961,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "tests_test_backup_test_snapshot_filename_format",
-      "community": 43,
-      "community_name": "plan.py",
+      "community": 176,
+      "community_name": "snapshot",
       "norm_label": "test_snapshot_filename_format()"
     },
     {
@@ -4654,8 +4610,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_defaults",
-      "community": 26,
-      "community_name": "Incr column migration tests",
+      "community": 98,
+      "community_name": "working_weight",
       "norm_label": "test_defaults.py"
     },
     {
@@ -4665,8 +4621,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "tests_test_defaults_test_default_settings_exclude_weight_params",
-      "community": 26,
-      "community_name": "Incr column migration tests",
+      "community": 98,
+      "community_name": "working_weight",
       "norm_label": "test_default_settings_exclude_weight_params()"
     },
     {
@@ -4676,8 +4632,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "tests_test_defaults_test_resettable_fields_match",
-      "community": 26,
-      "community_name": "Incr column migration tests",
+      "community": 98,
+      "community_name": "working_weight",
       "norm_label": "test_resettable_fields_match()"
     },
     {
@@ -4687,8 +4643,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "tests_test_defaults_test_ladders_have_21_weeks",
-      "community": 26,
-      "community_name": "Incr column migration tests",
+      "community": 98,
+      "community_name": "working_weight",
       "norm_label": "test_ladders_have_21_weeks()"
     },
     {
@@ -4698,8 +4654,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "tests_test_defaults_test_main_week1_and_deloads",
-      "community": 26,
-      "community_name": "Incr column migration tests",
+      "community": 98,
+      "community_name": "working_weight",
       "norm_label": "test_main_week1_and_deloads()"
     },
     {
@@ -4709,8 +4665,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "tests_test_defaults_test_aux_week1_and_deloads",
-      "community": 26,
-      "community_name": "Incr column migration tests",
+      "community": 98,
+      "community_name": "working_weight",
       "norm_label": "test_aux_week1_and_deloads()"
     },
     {
@@ -4720,8 +4676,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "tests_test_defaults_test_default_schedule_is_42_rows",
-      "community": 26,
-      "community_name": "Incr column migration tests",
+      "community": 98,
+      "community_name": "working_weight",
       "norm_label": "test_default_schedule_is_42_rows()"
     },
     {
@@ -5237,8 +5193,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_migrate_incr",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 26,
+      "community_name": "Incr column migration tests",
       "norm_label": "test_migrate_incr.py"
     },
     {
@@ -5248,8 +5204,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "tests_test_migrate_incr_legacy_db",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 26,
+      "community_name": "Incr column migration tests",
       "norm_label": "_legacy_db()"
     },
     {
@@ -5259,8 +5215,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "tests_test_migrate_incr_has_incr",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 26,
+      "community_name": "Incr column migration tests",
       "norm_label": "_has_incr()"
     },
     {
@@ -5270,8 +5226,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "tests_test_migrate_incr_test_migrate_adds_incr_column",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 26,
+      "community_name": "Incr column migration tests",
       "norm_label": "test_migrate_adds_incr_column()"
     },
     {
@@ -5281,8 +5237,8 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "tests_test_migrate_incr_test_migrate_idempotent_on_already_migrated",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 26,
+      "community_name": "Incr column migration tests",
       "norm_label": "test_migrate_idempotent_on_already_migrated()"
     },
     {
@@ -5292,8 +5248,8 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "tests_test_migrate_incr_test_migrate_idempotent_on_fresh_schema",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 26,
+      "community_name": "Incr column migration tests",
       "norm_label": "test_migrate_idempotent_on_fresh_schema()"
     },
     {
@@ -5303,8 +5259,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "tests_test_migrate_incr_rationale_6",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 26,
+      "community_name": "Incr column migration tests",
       "norm_label": "build a lifts table without the incr column, mirroring a pre-migration db."
     },
     {
@@ -5391,8 +5347,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_migrate_recompute",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 43,
+      "community_name": "plan.py",
       "norm_label": "test_migrate_recompute.py"
     },
     {
@@ -5435,8 +5391,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_migrate_sbs_tm",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 166,
+      "community_name": "_seed",
       "norm_label": "test_migrate_sbs_tm.py"
     },
     {
@@ -5446,8 +5402,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "tests_test_migrate_sbs_tm_seed",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 166,
+      "community_name": "_seed",
       "norm_label": "_seed()"
     },
     {
@@ -5457,8 +5413,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "tests_test_migrate_sbs_tm_test_migrate_replays_sbs_tm_raw_from_max",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 166,
+      "community_name": "_seed",
       "norm_label": "test_migrate_replays_sbs_tm_raw_from_max()"
     },
     {
@@ -5468,8 +5424,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "tests_test_migrate_sbs_tm_test_migrate_skips_non_sbs_lifts",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 166,
+      "community_name": "_seed",
       "norm_label": "test_migrate_skips_non_sbs_lifts()"
     },
     {
@@ -5479,8 +5435,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "tests_test_migrate_sbs_tm_test_migrate_creates_backup",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 166,
+      "community_name": "_seed",
       "norm_label": "test_migrate_creates_backup()"
     },
     {
@@ -5490,8 +5446,8 @@
       "source_location": "L56",
       "_origin": "ast",
       "id": "tests_test_migrate_sbs_tm_test_migrate_is_idempotent",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 166,
+      "community_name": "_seed",
       "norm_label": "test_migrate_is_idempotent()"
     },
     {
@@ -5743,8 +5699,8 @@
       "source_location": "L104",
       "_origin": "ast",
       "id": "tests_test_mode_service_test_apply_switch_preserves_incr",
-      "community": 17,
-      "community_name": "Tier switch service tests",
+      "community": 19,
+      "community_name": "TM recompute migration tests",
       "norm_label": "test_apply_switch_preserves_incr()"
     },
     {
@@ -5787,8 +5743,8 @@
       "source_location": "L105",
       "_origin": "ast",
       "id": "tests_test_mode_service_rationale_105",
-      "community": 17,
-      "community_name": "Tier switch service tests",
+      "community": 19,
+      "community_name": "TM recompute migration tests",
       "norm_label": "d6:mode \u5207\u6362\u4e0d\u89e6\u78b0 lifts.incr \u5217\u3002"
     },
     {
@@ -5996,8 +5952,8 @@
       "source_location": "L146",
       "_origin": "ast",
       "id": "tests_test_modes_test_linear_t2_derive_on_switch_seeds_reset_pct_of_est1rm",
-      "community": 172,
-      "community_name": "schedule.py",
+      "community": 8,
+      "community_name": "YAML profile/state I/O",
       "norm_label": "test_linear_t2_derive_on_switch_seeds_reset_pct_of_est1rm()"
     },
     {
@@ -6018,8 +5974,8 @@
       "source_location": "L164",
       "_origin": "ast",
       "id": "tests_test_modes_test_linear_t3_derive_on_switch_seeds_60pct_of_est1rm",
-      "community": 172,
-      "community_name": "schedule.py",
+      "community": 8,
+      "community_name": "YAML profile/state I/O",
       "norm_label": "test_linear_t3_derive_on_switch_seeds_60pct_of_est1rm()"
     },
     {
@@ -6194,8 +6150,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "tests_test_preview_service_test_live_preview_t2_uses_state_weight",
-      "community": 14,
-      "community_name": "1RM estimation formulas",
+      "community": 19,
+      "community_name": "TM recompute migration tests",
       "norm_label": "test_live_preview_t2_uses_state_weight()"
     },
     {
@@ -6205,8 +6161,8 @@
       "source_location": "L57",
       "_origin": "ast",
       "id": "tests_test_preview_service_test_live_preview_bodyweight_est1rm_uses_working_weight",
-      "community": 14,
-      "community_name": "1RM estimation formulas",
+      "community": 19,
+      "community_name": "TM recompute migration tests",
       "norm_label": "test_live_preview_bodyweight_est1rm_uses_working_weight()"
     },
     {
@@ -6216,8 +6172,8 @@
       "source_location": "L58",
       "_origin": "ast",
       "id": "tests_test_preview_service_rationale_58",
-      "community": 14,
-      "community_name": "1RM estimation formulas",
+      "community": 19,
+      "community_name": "TM recompute migration tests",
       "norm_label": "bodyweight lift (t2 chin-ups, bw=75, pct=1.0): working weight is 75, not 0."
     },
     {
@@ -6227,8 +6183,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_program",
-      "community": 178,
-      "community_name": "best_1rm",
+      "community": 15,
+      "community_name": "Program advance & week plan",
       "norm_label": "test_program.py"
     },
     {
@@ -6260,8 +6216,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "tests_test_program_test_best_1rm_empty_returns_none",
-      "community": 14,
-      "community_name": "1RM estimation formulas",
+      "community": 178,
+      "community_name": "best_1rm",
       "norm_label": "test_best_1rm_empty_returns_none()"
     },
     {
@@ -6326,8 +6282,8 @@
       "source_location": "L86",
       "_origin": "ast",
       "id": "tests_test_program_test_advance_t2_reset_uses_profile_reset_pct",
-      "community": 15,
-      "community_name": "Program advance & week plan",
+      "community": 172,
+      "community_name": "schedule.py",
       "norm_label": "test_advance_t2_reset_uses_profile_reset_pct()"
     },
     {
@@ -6337,8 +6293,8 @@
       "source_location": "L99",
       "_origin": "ast",
       "id": "tests_test_program_test_recompute_state_t3_replays_hits_and_misses",
-      "community": 178,
-      "community_name": "best_1rm",
+      "community": 15,
+      "community_name": "Program advance & week plan",
       "norm_label": "test_recompute_state_t3_replays_hits_and_misses()"
     },
     {
@@ -6348,8 +6304,8 @@
       "source_location": "L111",
       "_origin": "ast",
       "id": "tests_test_program_test_recompute_state_t2_all_hits_increments_from_start",
-      "community": 178,
-      "community_name": "best_1rm",
+      "community": 15,
+      "community_name": "Program advance & week plan",
       "norm_label": "test_recompute_state_t2_all_hits_increments_from_start()"
     },
     {
@@ -6359,8 +6315,8 @@
       "source_location": "L122",
       "_origin": "ast",
       "id": "tests_test_program_test_recompute_state_t2_one_miss_drops_to_6",
-      "community": 178,
-      "community_name": "best_1rm",
+      "community": 15,
+      "community_name": "Program advance & week plan",
       "norm_label": "test_recompute_state_t2_one_miss_drops_to_6()"
     },
     {
@@ -6370,8 +6326,8 @@
       "source_location": "L131",
       "_origin": "ast",
       "id": "tests_test_program_test_recompute_state_empty_history_seeds_start",
-      "community": 178,
-      "community_name": "best_1rm",
+      "community": 15,
+      "community_name": "Program advance & week plan",
       "norm_label": "test_recompute_state_empty_history_seeds_start()"
     },
     {
@@ -6381,8 +6337,8 @@
       "source_location": "L142",
       "_origin": "ast",
       "id": "tests_test_program_test_recompute_state_sbs_raises",
-      "community": 178,
-      "community_name": "best_1rm",
+      "community": 15,
+      "community_name": "Program advance & week plan",
       "norm_label": "test_recompute_state_sbs_raises()"
     },
     {
@@ -6403,8 +6359,8 @@
       "source_location": "L169",
       "_origin": "ast",
       "id": "tests_test_program_profile_with_schedule",
-      "community": 178,
-      "community_name": "best_1rm",
+      "community": 15,
+      "community_name": "Program advance & week plan",
       "norm_label": "_profile_with_schedule()"
     },
     {
@@ -6414,8 +6370,8 @@
       "source_location": "L176",
       "_origin": "ast",
       "id": "tests_test_program_test_week_plan_uses_scheduled_intensity_reps_repout_at_week_2",
-      "community": 178,
-      "community_name": "best_1rm",
+      "community": 15,
+      "community_name": "Program advance & week plan",
       "norm_label": "test_week_plan_uses_scheduled_intensity_reps_repout_at_week_2()"
     },
     {
@@ -6425,8 +6381,8 @@
       "source_location": "L188",
       "_origin": "ast",
       "id": "tests_test_program_test_advance_lift_uses_scheduled_repout_for_tm_delta",
-      "community": 178,
-      "community_name": "best_1rm",
+      "community": 15,
+      "community_name": "Program advance & week plan",
       "norm_label": "test_advance_lift_uses_scheduled_repout_for_tm_delta()"
     },
     {
@@ -6436,8 +6392,8 @@
       "source_location": "L197",
       "_origin": "ast",
       "id": "tests_test_program_test_recompute_sbs_tm_uses_schedule_repout_per_week",
-      "community": 178,
-      "community_name": "best_1rm",
+      "community": 15,
+      "community_name": "Program advance & week plan",
       "norm_label": "test_recompute_sbs_tm_uses_schedule_repout_per_week()"
     },
     {
@@ -6480,8 +6436,8 @@
       "source_location": "L235",
       "_origin": "ast",
       "id": "tests_test_program_test_recompute_state_t2_reset_snaps_to_eff_incr",
-      "community": 178,
-      "community_name": "best_1rm",
+      "community": 15,
+      "community_name": "Program advance & week plan",
       "norm_label": "test_recompute_state_t2_reset_snaps_to_eff_incr()"
     },
     {
@@ -6502,8 +6458,8 @@
       "source_location": "L264",
       "_origin": "ast",
       "id": "tests_test_program_test_est1rm_from_history_bodyweight_nonzero",
-      "community": 178,
-      "community_name": "best_1rm",
+      "community": 14,
+      "community_name": "1RM estimation formulas",
       "norm_label": "test_est1rm_from_history_bodyweight_nonzero()"
     },
     {
@@ -6513,8 +6469,8 @@
       "source_location": "L271",
       "_origin": "ast",
       "id": "tests_test_program_test_est1rm_from_history_ordinary_lift_unchanged",
-      "community": 178,
-      "community_name": "best_1rm",
+      "community": 14,
+      "community_name": "1RM estimation formulas",
       "norm_label": "test_est1rm_from_history_ordinary_lift_unchanged()"
     },
     {
@@ -6524,8 +6480,8 @@
       "source_location": "L280",
       "_origin": "ast",
       "id": "tests_test_program_test_recompute_state_t2_bodyweight_reset_uses_working_weight",
-      "community": 178,
-      "community_name": "best_1rm",
+      "community": 15,
+      "community_name": "Program advance & week plan",
       "norm_label": "test_recompute_state_t2_bodyweight_reset_uses_working_weight()"
     },
     {
@@ -6535,8 +6491,8 @@
       "source_location": "L301",
       "_origin": "ast",
       "id": "tests_test_program_bw_profile",
-      "community": 8,
-      "community_name": "YAML profile/state I/O",
+      "community": 15,
+      "community_name": "Program advance & week plan",
       "norm_label": "_bw_profile()"
     },
     {
@@ -6546,8 +6502,8 @@
       "source_location": "L305",
       "_origin": "ast",
       "id": "tests_test_program_test_advance_lift_progression_none_skips_weight_progression",
-      "community": 8,
-      "community_name": "YAML profile/state I/O",
+      "community": 15,
+      "community_name": "Program advance & week plan",
       "norm_label": "test_advance_lift_progression_none_skips_weight_progression()"
     },
     {
@@ -6557,8 +6513,8 @@
       "source_location": "L317",
       "_origin": "ast",
       "id": "tests_test_program_test_advance_lift_linear_t3_still_increments_added",
-      "community": 8,
-      "community_name": "YAML profile/state I/O",
+      "community": 15,
+      "community_name": "Program advance & week plan",
       "norm_label": "test_advance_lift_linear_t3_still_increments_added()"
     },
     {
@@ -6568,8 +6524,8 @@
       "source_location": "L327",
       "_origin": "ast",
       "id": "tests_test_program_test_advance_lift_bodyweight_history_stores_added_not_working",
-      "community": 8,
-      "community_name": "YAML profile/state I/O",
+      "community": 15,
+      "community_name": "Program advance & week plan",
       "norm_label": "test_advance_lift_bodyweight_history_stores_added_not_working()"
     },
     {
@@ -6579,8 +6535,8 @@
       "source_location": "L340",
       "_origin": "ast",
       "id": "tests_test_program_test_week_plan_bodyweight_t2_shows_working_weight_not_zero",
-      "community": 13,
-      "community_name": "Repository tests",
+      "community": 15,
+      "community_name": "Program advance & week plan",
       "norm_label": "test_week_plan_bodyweight_t2_shows_working_weight_not_zero()"
     },
     {
@@ -6590,8 +6546,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_progression",
-      "community": 169,
-      "community_name": "main",
+      "community": 170,
+      "community_name": "snapshot",
       "norm_label": "test_progression.py"
     },
     {
@@ -6678,8 +6634,8 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "tests_test_progression_test_t3_hit_adds",
-      "community": 5,
-      "community_name": "Data schema & state recompute",
+      "community": 170,
+      "community_name": "snapshot",
       "norm_label": "test_t3_hit_adds()"
     },
     {
@@ -6689,8 +6645,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "tests_test_progression_test_t3_miss_repeats",
-      "community": 5,
-      "community_name": "Data schema & state recompute",
+      "community": 170,
+      "community_name": "snapshot",
       "norm_label": "test_t3_miss_repeats()"
     },
     {
@@ -6700,8 +6656,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "tests_test_progression_test_t3_no_log_repeats",
-      "community": 5,
-      "community_name": "Data schema & state recompute",
+      "community": 170,
+      "community_name": "snapshot",
       "norm_label": "test_t3_no_log_repeats()"
     },
     {
@@ -6799,8 +6755,8 @@
       "source_location": "L89",
       "_origin": "ast",
       "id": "tests_test_progression_test_t3_hit_adds_incr_without_snapping",
-      "community": 5,
-      "community_name": "Data schema & state recompute",
+      "community": 170,
+      "community_name": "snapshot",
       "norm_label": "test_t3_hit_adds_incr_without_snapping()"
     },
     {
@@ -6810,8 +6766,8 @@
       "source_location": "L94",
       "_origin": "ast",
       "id": "tests_test_progression_test_t3_hit_default_incr_backcompat",
-      "community": 5,
-      "community_name": "Data schema & state recompute",
+      "community": 170,
+      "community_name": "snapshot",
       "norm_label": "test_t3_hit_default_incr_backcompat()"
     },
     {
@@ -6821,8 +6777,8 @@
       "source_location": "L99",
       "_origin": "ast",
       "id": "tests_test_progression_test_t3_next_signature_has_no_quantum",
-      "community": 5,
-      "community_name": "Data schema & state recompute",
+      "community": 170,
+      "community_name": "snapshot",
       "norm_label": "test_t3_next_signature_has_no_quantum()"
     },
     {
@@ -6854,8 +6810,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_recompute_service",
-      "community": 158,
-      "community_name": "Recommendations",
+      "community": 27,
+      "community_name": "Reseed routes tests",
       "norm_label": "test_recompute_service.py"
     },
     {
@@ -6865,8 +6821,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "tests_test_recompute_service_t2",
-      "community": 158,
-      "community_name": "Recommendations",
+      "community": 27,
+      "community_name": "Reseed routes tests",
       "norm_label": "_t2()"
     },
     {
@@ -6876,8 +6832,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "tests_test_recompute_service_test_recompute_t2_no_history_sets_weight_to_start",
-      "community": 158,
-      "community_name": "Recommendations",
+      "community": 27,
+      "community_name": "Reseed routes tests",
       "norm_label": "test_recompute_t2_no_history_sets_weight_to_start()"
     },
     {
@@ -6887,8 +6843,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "tests_test_recompute_service_test_recompute_sbs_is_noop",
-      "community": 158,
-      "community_name": "Recommendations",
+      "community": 10,
+      "community_name": "Settings routes & autosave",
       "norm_label": "test_recompute_sbs_is_noop()"
     },
     {
@@ -6898,8 +6854,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "tests_test_recompute_service_test_recompute_preserves_est1rm_from_history",
-      "community": 158,
-      "community_name": "Recommendations",
+      "community": 27,
+      "community_name": "Reseed routes tests",
       "norm_label": "test_recompute_preserves_est1rm_from_history()"
     },
     {
@@ -6909,8 +6865,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "tests_test_recompute_service_test_recompute_on_start_change_uses_per_lift_incr",
-      "community": 158,
-      "community_name": "Recommendations",
+      "community": 27,
+      "community_name": "Reseed routes tests",
       "norm_label": "test_recompute_on_start_change_uses_per_lift_incr()"
     },
     {
@@ -6920,8 +6876,8 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "tests_test_recompute_service_rationale_47",
-      "community": 158,
-      "community_name": "Recommendations",
+      "community": 27,
+      "community_name": "Reseed routes tests",
       "norm_label": "recompute \u670d\u52a1\u7ecf _lift_from_row(incr) + recompute_state(eff_incr) \u81ea\u52a8\u7ee7\u627f per-lift inc"
     },
     {
@@ -7085,8 +7041,8 @@
       "source_location": "L152",
       "_origin": "ast",
       "id": "tests_test_repo_test_init_schema_seeds_schedule",
-      "community": 10,
-      "community_name": "Settings routes & autosave",
+      "community": 11,
+      "community_name": "Lift CRUD routes tests",
       "norm_label": "test_init_schema_seeds_schedule()"
     },
     {
@@ -7096,8 +7052,8 @@
       "source_location": "L160",
       "_origin": "ast",
       "id": "tests_test_repo_test_get_and_replace_schedule",
-      "community": 10,
-      "community_name": "Settings routes & autosave",
+      "community": 174,
+      "community_name": "t3_next",
       "norm_label": "test_get_and_replace_schedule()"
     },
     {
@@ -7107,8 +7063,8 @@
       "source_location": "L171",
       "_origin": "ast",
       "id": "tests_test_repo_test_reset_schedule_restores_defaults",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 174,
+      "community_name": "t3_next",
       "norm_label": "test_reset_schedule_restores_defaults()"
     },
     {
@@ -7118,8 +7074,8 @@
       "source_location": "L180",
       "_origin": "ast",
       "id": "tests_test_repo_test_load_schedule_returns_dataclasses",
-      "community": 10,
-      "community_name": "Settings routes & autosave",
+      "community": 11,
+      "community_name": "Lift CRUD routes tests",
       "norm_label": "test_load_schedule_returns_dataclasses()"
     },
     {
@@ -7228,8 +7184,8 @@
       "source_location": "L302",
       "_origin": "ast",
       "id": "tests_test_repo_test_create_lift_stores_load_model_mode_and_bodyweight_pct",
-      "community": 10,
-      "community_name": "Settings routes & autosave",
+      "community": 11,
+      "community_name": "Lift CRUD routes tests",
       "norm_label": "test_create_lift_stores_load_model_mode_and_bodyweight_pct()"
     },
     {
@@ -7261,8 +7217,8 @@
       "source_location": "L341",
       "_origin": "ast",
       "id": "tests_test_repo_test_get_settings_returns_bodyweight_default",
-      "community": 17,
-      "community_name": "Tier switch service tests",
+      "community": 10,
+      "community_name": "Settings routes & autosave",
       "norm_label": "test_get_settings_returns_bodyweight_default()"
     },
     {
@@ -7294,8 +7250,8 @@
       "source_location": "L303",
       "_origin": "ast",
       "id": "tests_test_repo_rationale_303",
-      "community": 10,
-      "community_name": "Settings routes & autosave",
+      "community": 11,
+      "community_name": "Lift CRUD routes tests",
       "norm_label": "create_lift persists load_model/mode (adr 0005) and round-trips bodyweight_pct."
     },
     {
@@ -7327,8 +7283,8 @@
       "source_location": "L342",
       "_origin": "ast",
       "id": "tests_test_repo_rationale_342",
-      "community": 17,
-      "community_name": "Tier switch service tests",
+      "community": 10,
+      "community_name": "Settings routes & autosave",
       "norm_label": "fresh db seeds settings.bodyweight = 0.0 (task 7)."
     },
     {
@@ -7698,7 +7654,7 @@
       "label": "test_plan_submit_advances()",
       "file_type": "code",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L19",
+      "source_location": "L27",
       "_origin": "ast",
       "id": "tests_test_routes_plan_test_plan_submit_advances",
       "community": 12,
@@ -7709,7 +7665,7 @@
       "label": "test_export_week_standalone_with_progress()",
       "file_type": "code",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L27",
+      "source_location": "L44",
       "_origin": "ast",
       "id": "tests_test_routes_plan_test_export_week_standalone_with_progress",
       "community": 12,
@@ -7720,29 +7676,29 @@
       "label": "test_plan_view_shows_week2_schedule_values()",
       "file_type": "code",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L41",
+      "source_location": "L63",
       "_origin": "ast",
       "id": "tests_test_routes_plan_test_plan_view_shows_week2_schedule_values",
-      "community": 9,
-      "community_name": "Advance service & DB tests",
+      "community": 27,
+      "community_name": "Reseed routes tests",
       "norm_label": "test_plan_view_shows_week2_schedule_values()"
     },
     {
       "label": "test_autosave_persists_and_prefills_then_advances()",
       "file_type": "code",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L60",
+      "source_location": "L87",
       "_origin": "ast",
       "id": "tests_test_routes_plan_test_autosave_persists_and_prefills_then_advances",
-      "community": 43,
-      "community_name": "plan.py",
+      "community": 12,
+      "community_name": "Plan view & tonnage export",
       "norm_label": "test_autosave_persists_and_prefills_then_advances()"
     },
     {
       "label": "test_plan_view_shows_tonnage_for_logged_lift()",
       "file_type": "code",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L78",
+      "source_location": "L114",
       "_origin": "ast",
       "id": "tests_test_routes_plan_test_plan_view_shows_tonnage_for_logged_lift",
       "community": 12,
@@ -7753,7 +7709,7 @@
       "label": "test_plan_view_shows_first_time_when_no_last_week()",
       "file_type": "code",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L86",
+      "source_location": "L128",
       "_origin": "ast",
       "id": "tests_test_routes_plan_test_plan_view_shows_first_time_when_no_last_week",
       "community": 12,
@@ -7764,7 +7720,7 @@
       "label": "test_plan_view_omits_tonnage_when_not_logged()",
       "file_type": "code",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L94",
+      "source_location": "L142",
       "_origin": "ast",
       "id": "tests_test_routes_plan_test_plan_view_omits_tonnage_when_not_logged",
       "community": 12,
@@ -7775,7 +7731,7 @@
       "label": "test_save_log_response_includes_tonnage()",
       "file_type": "code",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L101",
+      "source_location": "L155",
       "_origin": "ast",
       "id": "tests_test_routes_plan_test_save_log_response_includes_tonnage",
       "community": 12,
@@ -7786,7 +7742,7 @@
       "label": "test_save_log_clear_empties_fragment()",
       "file_type": "code",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L112",
+      "source_location": "L172",
       "_origin": "ast",
       "id": "tests_test_routes_plan_test_save_log_clear_empties_fragment",
       "community": 12,
@@ -7797,7 +7753,7 @@
       "label": "test_plan_view_shows_tonnage_wow_delta_for_t2()",
       "file_type": "code",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L121",
+      "source_location": "L187",
       "_origin": "ast",
       "id": "tests_test_routes_plan_test_plan_view_shows_tonnage_wow_delta_for_t2",
       "community": 12,
@@ -7808,7 +7764,7 @@
       "label": "test_plan_view_renders_bodyweight_added_plus_working_weight()",
       "file_type": "code",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L142",
+      "source_location": "L214",
       "_origin": "ast",
       "id": "tests_test_routes_plan_test_plan_view_renders_bodyweight_added_plus_working_weight",
       "community": 12,
@@ -7819,7 +7775,7 @@
       "label": "test_export_week_plate_loading_structure()",
       "file_type": "code",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L157",
+      "source_location": "L234",
       "_origin": "ast",
       "id": "tests_test_routes_plan_test_export_week_plate_loading_structure",
       "community": 12,
@@ -7830,7 +7786,7 @@
       "label": "test_export_week_bodyweight_shows_added_only()",
       "file_type": "code",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L169",
+      "source_location": "L252",
       "_origin": "ast",
       "id": "tests_test_routes_plan_test_export_week_bodyweight_shows_added_only",
       "community": 12,
@@ -7841,7 +7797,7 @@
       "label": "test_export_week_day_tristate_and_default_open()",
       "file_type": "code",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L179",
+      "source_location": "L267",
       "_origin": "ast",
       "id": "tests_test_routes_plan_test_export_week_day_tristate_and_default_open",
       "community": 12,
@@ -7852,7 +7808,7 @@
       "label": "test_export_week_card_done_mark()",
       "file_type": "code",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L194",
+      "source_location": "L292",
       "_origin": "ast",
       "id": "tests_test_routes_plan_test_export_week_card_done_mark",
       "community": 12,
@@ -7874,31 +7830,31 @@
       "label": "Week-2 plan view pulls intensity/reps/repout from sbs_schedule, not lifts column",
       "file_type": "rationale",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L42",
+      "source_location": "L64",
       "_origin": "ast",
-      "id": "tests_test_routes_plan_rationale_42",
-      "community": 9,
-      "community_name": "Advance service & DB tests",
+      "id": "tests_test_routes_plan_rationale_64",
+      "community": 27,
+      "community_name": "Reseed routes tests",
       "norm_label": "week-2 plan view pulls intensity/reps/repout from sbs_schedule, not lifts column"
     },
     {
       "label": "Daily logging: save per-field (no advance), prefill on reopen, advance consumes",
       "file_type": "rationale",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L61",
+      "source_location": "L88",
       "_origin": "ast",
-      "id": "tests_test_routes_plan_rationale_61",
-      "community": 43,
-      "community_name": "plan.py",
+      "id": "tests_test_routes_plan_rationale_88",
+      "community": 12,
+      "community_name": "Plan view & tonnage export",
       "norm_label": "daily logging: save per-field (no advance), prefill on reopen, advance consumes"
     },
     {
       "label": "A lift with this week's last-set logged renders its tonnage inline.",
       "file_type": "rationale",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L79",
+      "source_location": "L115",
       "_origin": "ast",
-      "id": "tests_test_routes_plan_rationale_79",
+      "id": "tests_test_routes_plan_rationale_115",
       "community": 12,
       "community_name": "Plan view & tonnage export",
       "norm_label": "a lift with this week's last-set logged renders its tonnage inline."
@@ -7907,9 +7863,9 @@
       "label": "Week 1 -> no last week -> tonnage shows \u9996\u6b21.",
       "file_type": "rationale",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L87",
+      "source_location": "L129",
       "_origin": "ast",
-      "id": "tests_test_routes_plan_rationale_87",
+      "id": "tests_test_routes_plan_rationale_129",
       "community": 12,
       "community_name": "Plan view & tonnage export",
       "norm_label": "week 1 -> no last week -> tonnage shows \u9996\u6b21."
@@ -7918,9 +7874,9 @@
       "label": "A lift whose last-set is not yet logged shows no tonnage fragment.",
       "file_type": "rationale",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L95",
+      "source_location": "L143",
       "_origin": "ast",
-      "id": "tests_test_routes_plan_rationale_95",
+      "id": "tests_test_routes_plan_rationale_143",
       "community": 12,
       "community_name": "Plan view & tonnage export",
       "norm_label": "a lift whose last-set is not yet logged shows no tonnage fragment."
@@ -7929,9 +7885,9 @@
       "label": "Filling the last-set returns live est1RM + tonnage in the same fragment.",
       "file_type": "rationale",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L102",
+      "source_location": "L156",
       "_origin": "ast",
-      "id": "tests_test_routes_plan_rationale_102",
+      "id": "tests_test_routes_plan_rationale_156",
       "community": 12,
       "community_name": "Plan view & tonnage export",
       "norm_label": "filling the last-set returns live est1rm + tonnage in the same fragment."
@@ -7940,9 +7896,9 @@
       "label": "Clearing the last-set returns 200 with empty body so .save-ok is wiped.",
       "file_type": "rationale",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L113",
+      "source_location": "L173",
       "_origin": "ast",
-      "id": "tests_test_routes_plan_rationale_113",
+      "id": "tests_test_routes_plan_rationale_173",
       "community": 12,
       "community_name": "Plan view & tonnage export",
       "norm_label": "clearing the last-set returns 200 with empty body so .save-ok is wiped."
@@ -7951,9 +7907,9 @@
       "label": "Two-week t2: past tonnage uses the replayed target; \u0394% renders with arrow + colo",
       "file_type": "rationale",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L122",
+      "source_location": "L188",
       "_origin": "ast",
-      "id": "tests_test_routes_plan_rationale_122",
+      "id": "tests_test_routes_plan_rationale_188",
       "community": 12,
       "community_name": "Plan view & tonnage export",
       "norm_label": "two-week t2: past tonnage uses the replayed target; \u03b4% renders with arrow + colo"
@@ -7962,9 +7918,9 @@
       "label": "Bodyweight lift renders '+added (working)' meta format (Task 11).      Chin-up",
       "file_type": "rationale",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L143",
+      "source_location": "L215",
       "_origin": "ast",
-      "id": "tests_test_routes_plan_rationale_143",
+      "id": "tests_test_routes_plan_rationale_215",
       "community": 12,
       "community_name": "Plan view & tonnage export",
       "norm_label": "bodyweight lift renders '+added (working)' meta format (task 11).      chin-up"
@@ -7973,9 +7929,9 @@
       "label": "\u88c5\u7247\u6e05\u5355\uff1abarbell \u663e\u793a\u5927\u6570\u5b57 kg\u3001sbs \u65b9\u6848\u884c\u542b rep-out\u3001mode tag\uff0c\u65e0\u5bb9\u91cf/est1RM \u72b6\u6001\u3002",
       "file_type": "rationale",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L158",
+      "source_location": "L235",
       "_origin": "ast",
-      "id": "tests_test_routes_plan_rationale_158",
+      "id": "tests_test_routes_plan_rationale_235",
       "community": 12,
       "community_name": "Plan view & tonnage export",
       "norm_label": "\u88c5\u7247\u6e05\u5355:barbell \u663e\u793a\u5927\u6570\u5b57 kg\u3001sbs \u65b9\u6848\u884c\u542b rep-out\u3001mode tag,\u65e0\u5bb9\u91cf/est1rm \u72b6\u6001\u3002"
@@ -7984,9 +7940,9 @@
       "label": "bodyweight \u52a8\u4f5c\u53ea\u663e\u793a +added kg\uff0c\u4e0d\u663e\u793a\u5de5\u4f5c\u91cd\u91cf\u62ec\u53f7\u3002",
       "file_type": "rationale",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L170",
+      "source_location": "L253",
       "_origin": "ast",
-      "id": "tests_test_routes_plan_rationale_170",
+      "id": "tests_test_routes_plan_rationale_253",
       "community": 12,
       "community_name": "Plan view & tonnage export",
       "norm_label": "bodyweight \u52a8\u4f5c\u53ea\u663e\u793a +added kg,\u4e0d\u663e\u793a\u5de5\u4f5c\u91cd\u91cf\u62ec\u53f7\u3002"
@@ -7995,9 +7951,9 @@
       "label": "day \u4e09\u6001\uff1a\u5168\u7a7a day1 + \u90e8\u5206\u586b day2 \u2192 day2 \u6807 \u25d0 \u4e14\u9ed8\u8ba4\u5c55\u5f00\uff08\u6700\u5c0f\u975e\u5168\u586b\u662f day1\uff0c\u4f46 day1 \u5168\u7a7a\u4e5f\u975e\u5168\u586b\uff09\u3002      \u6784\u9020",
       "file_type": "rationale",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L180",
+      "source_location": "L268",
       "_origin": "ast",
-      "id": "tests_test_routes_plan_rationale_180",
+      "id": "tests_test_routes_plan_rationale_268",
       "community": 12,
       "community_name": "Plan view & tonnage export",
       "norm_label": "day \u4e09\u6001:\u5168\u7a7a day1 + \u90e8\u5206\u586b day2 \u2192 day2 \u6807 \u25d0 \u4e14\u9ed8\u8ba4\u5c55\u5f00(\u6700\u5c0f\u975e\u5168\u586b\u662f day1,\u4f46 day1 \u5168\u7a7a\u4e5f\u975e\u5168\u586b)\u3002      \u6784\u9020"
@@ -8006,9 +7962,9 @@
       "label": "\u5361\u7247\u7ea7\u8fdb\u5ea6\uff1a\u5df2\u586b\u672b\u7ec4\u7684\u52a8\u4f5c\u540d\u5b57\u5e26 \u2713 + done class\uff08\u7eff\uff09\uff0c\u672a\u586b\u65e0\u6807\u8bb0\u3002      \u5065\u8eab\u623f\u626b\u4e00\u773c\u5373\u53ef\u89c1 day \u5185\u54ea\u4e9b\u52a8\u4f5c\u7ec3\u8fc7\u3001\u54ea\u4e9b\u5f85\u7ec3 \u2014 \u4e0d\u9760",
       "file_type": "rationale",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L195",
+      "source_location": "L293",
       "_origin": "ast",
-      "id": "tests_test_routes_plan_rationale_195",
+      "id": "tests_test_routes_plan_rationale_293",
       "community": 12,
       "community_name": "Plan view & tonnage export",
       "norm_label": "\u5361\u7247\u7ea7\u8fdb\u5ea6:\u5df2\u586b\u672b\u7ec4\u7684\u52a8\u4f5c\u540d\u5b57\u5e26 \u2713 + done class(\u7eff),\u672a\u586b\u65e0\u6807\u8bb0\u3002      \u5065\u8eab\u623f\u626b\u4e00\u773c\u5373\u53ef\u89c1 day \u5185\u54ea\u4e9b\u52a8\u4f5c\u7ec3\u8fc7\u3001\u54ea\u4e9b\u5f85\u7ec3 \u2014 \u4e0d\u9760"
@@ -8152,8 +8108,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_routes_settings",
-      "community": 11,
-      "community_name": "Lift CRUD routes tests",
+      "community": 171,
+      "community_name": "test_routes_settings.py",
       "norm_label": "test_routes_settings.py"
     },
     {
@@ -8163,8 +8119,8 @@
       "source_location": "L4",
       "_origin": "ast",
       "id": "tests_test_routes_settings_test_settings_view",
-      "community": 11,
-      "community_name": "Lift CRUD routes tests",
+      "community": 171,
+      "community_name": "test_routes_settings.py",
       "norm_label": "test_settings_view()"
     },
     {
@@ -8174,8 +8130,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "tests_test_routes_settings_test_settings_update",
-      "community": 11,
-      "community_name": "Lift CRUD routes tests",
+      "community": 171,
+      "community_name": "test_routes_settings.py",
       "norm_label": "test_settings_update()"
     },
     {
@@ -8185,8 +8141,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "tests_test_routes_settings_test_reset_t2_fail_restores_default",
-      "community": 11,
-      "community_name": "Lift CRUD routes tests",
+      "community": 171,
+      "community_name": "test_routes_settings.py",
       "norm_label": "test_reset_t2_fail_restores_default()"
     },
     {
@@ -8196,8 +8152,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "tests_test_routes_settings_test_reset_rounding_is_not_a_route",
-      "community": 11,
-      "community_name": "Lift CRUD routes tests",
+      "community": 171,
+      "community_name": "test_routes_settings.py",
       "norm_label": "test_reset_rounding_is_not_a_route()"
     },
     {
@@ -8207,8 +8163,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "tests_test_routes_settings_test_reset_unknown_field_is_404",
-      "community": 11,
-      "community_name": "Lift CRUD routes tests",
+      "community": 171,
+      "community_name": "test_routes_settings.py",
       "norm_label": "test_reset_unknown_field_is_404()"
     },
     {
@@ -8218,8 +8174,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "tests_test_routes_settings_test_update_settings_bodyweight",
-      "community": 11,
-      "community_name": "Lift CRUD routes tests",
+      "community": 171,
+      "community_name": "test_routes_settings.py",
       "norm_label": "test_update_settings_bodyweight()"
     },
     {
@@ -8251,8 +8207,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "tests_test_schedule_test_cycle_number",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "test_cycle_number()"
     },
     {
@@ -8306,8 +8262,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_schema",
-      "community": 8,
-      "community_name": "YAML profile/state I/O",
+      "community": 175,
+      "community_name": "test_schema.py",
       "norm_label": "test_schema.py"
     },
     {
@@ -8317,8 +8273,8 @@
       "source_location": "L3",
       "_origin": "ast",
       "id": "tests_test_schema_test_lift_sbs_construction",
-      "community": 8,
-      "community_name": "YAML profile/state I/O",
+      "community": 175,
+      "community_name": "test_schema.py",
       "norm_label": "test_lift_sbs_construction()"
     },
     {
@@ -8328,8 +8284,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "tests_test_schema_test_lift_t2_construction",
-      "community": 8,
-      "community_name": "YAML profile/state I/O",
+      "community": 175,
+      "community_name": "test_schema.py",
       "norm_label": "test_lift_t2_construction()"
     },
     {
@@ -8339,8 +8295,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "tests_test_schema_test_profile_defaults",
-      "community": 8,
-      "community_name": "YAML profile/state I/O",
+      "community": 175,
+      "community_name": "test_schema.py",
       "norm_label": "test_profile_defaults()"
     },
     {
@@ -8350,8 +8306,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "tests_test_schema_test_setentry_and_liftstate",
-      "community": 8,
-      "community_name": "YAML profile/state I/O",
+      "community": 175,
+      "community_name": "test_schema.py",
       "norm_label": "test_setentry_and_liftstate()"
     },
     {
@@ -8361,8 +8317,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "tests_test_schema_test_programstate_holds_lifts_by_name",
-      "community": 13,
-      "community_name": "Repository tests",
+      "community": 175,
+      "community_name": "test_schema.py",
       "norm_label": "test_programstate_holds_lifts_by_name()"
     },
     {
@@ -8372,8 +8328,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "tests_test_schema_test_lift_incr_defaults_to_none",
-      "community": 8,
-      "community_name": "YAML profile/state I/O",
+      "community": 175,
+      "community_name": "test_schema.py",
       "norm_label": "test_lift_incr_defaults_to_none()"
     },
     {
@@ -8383,8 +8339,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "tests_test_schema_test_lift_incr_can_be_set",
-      "community": 8,
-      "community_name": "YAML profile/state I/O",
+      "community": 175,
+      "community_name": "test_schema.py",
       "norm_label": "test_lift_incr_can_be_set()"
     },
     {
@@ -8394,8 +8350,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "tests_test_schema_test_lift_has_load_model_and_mode",
-      "community": 8,
-      "community_name": "YAML profile/state I/O",
+      "community": 175,
+      "community_name": "test_schema.py",
       "norm_label": "test_lift_has_load_model_and_mode()"
     },
     {
@@ -8405,8 +8361,8 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "tests_test_schema_test_lift_defaults",
-      "community": 8,
-      "community_name": "YAML profile/state I/O",
+      "community": 175,
+      "community_name": "test_schema.py",
       "norm_label": "test_lift_defaults()"
     },
     {
@@ -8416,8 +8372,8 @@
       "source_location": "L57",
       "_origin": "ast",
       "id": "tests_test_schema_test_liftstate_mode_field",
-      "community": 8,
-      "community_name": "YAML profile/state I/O",
+      "community": 175,
+      "community_name": "test_schema.py",
       "norm_label": "test_liftstate_mode_field()"
     },
     {
@@ -8427,8 +8383,8 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "tests_test_schema_test_legal_combos",
-      "community": 8,
-      "community_name": "YAML profile/state I/O",
+      "community": 175,
+      "community_name": "test_schema.py",
       "norm_label": "test_legal_combos()"
     },
     {
@@ -8438,8 +8394,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_test_terminal",
-      "community": 15,
-      "community_name": "Program advance & week plan",
+      "community": 5,
+      "community_name": "Data schema & state recompute",
       "norm_label": "test_terminal.py"
     },
     {
@@ -8449,8 +8405,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "tests_test_terminal_profile",
-      "community": 15,
-      "community_name": "Program advance & week plan",
+      "community": 5,
+      "community_name": "Data schema & state recompute",
       "norm_label": "_profile()"
     },
     {
@@ -8460,8 +8416,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "tests_test_terminal_test_render_week_text_has_day_and_lifts",
-      "community": 15,
-      "community_name": "Program advance & week plan",
+      "community": 5,
+      "community_name": "Data schema & state recompute",
       "norm_label": "test_render_week_text_has_day_and_lifts()"
     },
     {
@@ -8471,8 +8427,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "tests_test_terminal_test_render_show_text_has_est1rm_and_history_count",
-      "community": 15,
-      "community_name": "Program advance & week plan",
+      "community": 5,
+      "community_name": "Data schema & state recompute",
       "norm_label": "test_render_show_text_has_est1rm_and_history_count()"
     },
     {
@@ -8614,8 +8570,8 @@
       "source_location": "L93",
       "_origin": "ast",
       "id": "tests_test_volume_service_test_volume_current_t3",
-      "community": 75,
-      "community_name": "app.py",
+      "community": 12,
+      "community_name": "Plan view & tonnage export",
       "norm_label": "test_volume_current_t3()"
     },
     {
@@ -8625,8 +8581,8 @@
       "source_location": "L105",
       "_origin": "ast",
       "id": "tests_test_volume_service_test_volume_current_t2",
-      "community": 75,
-      "community_name": "app.py",
+      "community": 12,
+      "community_name": "Plan view & tonnage export",
       "norm_label": "test_volume_current_t2()"
     },
     {
@@ -9164,8 +9120,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "webapp_main",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "webapp/__main__.py"
     },
     {
@@ -9175,8 +9131,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "webapp_main_rationale_1",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "entry point: python -m webapp  -> starts local server + opens browser. absolute"
     },
     {
@@ -9186,8 +9142,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "webapp_app",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "app.py"
     },
     {
@@ -9197,8 +9153,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "webapp_app_create_app",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "create_app()"
     },
     {
@@ -9219,8 +9175,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "webapp_app_run",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "run()"
     },
     {
@@ -9230,8 +9186,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "webapp_app_rationale_1",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "flask app factory + launch."
     },
     {
@@ -9241,8 +9197,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "webapp_backup",
-      "community": 43,
-      "community_name": "plan.py",
+      "community": 176,
+      "community_name": "snapshot",
       "norm_label": "backup.py"
     },
     {
@@ -9252,8 +9208,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "webapp_backup_snapshot",
-      "community": 43,
-      "community_name": "plan.py",
+      "community": 176,
+      "community_name": "snapshot",
       "norm_label": "snapshot()"
     },
     {
@@ -9263,8 +9219,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "webapp_backup_rationale_1",
-      "community": 43,
-      "community_name": "plan.py",
+      "community": 176,
+      "community_name": "snapshot",
       "norm_label": "snapshot the sqlite db before destructive operations."
     },
     {
@@ -9274,8 +9230,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "webapp_backup_rationale_8",
-      "community": 43,
-      "community_name": "plan.py",
+      "community": 176,
+      "community_name": "snapshot",
       "norm_label": "copy src_db to dest_dir/sbs-w<week>-<ts>.db.bak. creates dest_dir. returns dest"
     },
     {
@@ -9285,8 +9241,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "webapp_db",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "db.py"
     },
     {
@@ -9351,8 +9307,8 @@
       "source_location": "L137",
       "_origin": "ast",
       "id": "webapp_db_close_db",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "close_db()"
     },
     {
@@ -9362,8 +9318,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "webapp_db_rationale_1",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "sqlite connection + schema bootstrap."
     },
     {
@@ -9395,8 +9351,8 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "webapp_db_rationale_103",
-      "community": 19,
-      "community_name": "TM recompute migration tests",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "# note: the legacy tier/progression -> load_model/mode migration is handled"
     },
     {
@@ -9406,8 +9362,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "webapp_repo",
-      "community": 3,
-      "community_name": "21-week schedule defaults",
+      "community": 43,
+      "community_name": "plan.py",
       "norm_label": "repo.py"
     },
     {
@@ -9439,8 +9395,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "webapp_repo_py_connection",
-      "community": 9,
-      "community_name": "Advance service & DB tests",
+      "community": 10,
+      "community_name": "Settings routes & autosave",
       "norm_label": "connection"
     },
     {
@@ -9461,8 +9417,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "webapp_repo_set_week",
-      "community": 158,
-      "community_name": "Recommendations",
+      "community": 27,
+      "community_name": "Reseed routes tests",
       "norm_label": "set_week()"
     },
     {
@@ -9549,8 +9505,8 @@
       "source_location": "L106",
       "_origin": "ast",
       "id": "webapp_repo_delete_lift",
-      "community": 9,
-      "community_name": "Advance service & DB tests",
+      "community": 10,
+      "community_name": "Settings routes & autosave",
       "norm_label": "delete_lift()"
     },
     {
@@ -9560,8 +9516,8 @@
       "source_location": "L112",
       "_origin": "ast",
       "id": "webapp_repo_get_lift_state",
-      "community": 158,
-      "community_name": "Recommendations",
+      "community": 10,
+      "community_name": "Settings routes & autosave",
       "norm_label": "get_lift_state()"
     },
     {
@@ -9659,8 +9615,8 @@
       "source_location": "L190",
       "_origin": "ast",
       "id": "webapp_repo_get_schedule",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 174,
+      "community_name": "t3_next",
       "norm_label": "get_schedule()"
     },
     {
@@ -9670,8 +9626,8 @@
       "source_location": "L197",
       "_origin": "ast",
       "id": "webapp_repo_replace_schedule",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 174,
+      "community_name": "t3_next",
       "norm_label": "replace_schedule()"
     },
     {
@@ -9681,8 +9637,8 @@
       "source_location": "L208",
       "_origin": "ast",
       "id": "webapp_repo_reset_schedule",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 174,
+      "community_name": "t3_next",
       "norm_label": "reset_schedule()"
     },
     {
@@ -9703,8 +9659,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "webapp_repo_rationale_1",
-      "community": 3,
-      "community_name": "21-week schedule defaults",
+      "community": 43,
+      "community_name": "plan.py",
       "norm_label": "sqlite repository: settings / lifts / lift_state / history crud."
     },
     {
@@ -9769,8 +9725,8 @@
       "source_location": "L191",
       "_origin": "ast",
       "id": "webapp_repo_rationale_191",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 174,
+      "community_name": "t3_next",
       "norm_label": "raw sqlite3.row view of the schedule (for the /schedule editor template)."
     },
     {
@@ -9780,8 +9736,8 @@
       "source_location": "L198",
       "_origin": "ast",
       "id": "webapp_repo_rationale_198",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 174,
+      "community_name": "t3_next",
       "norm_label": "wipe + insert. `rows` is an iterable of (kind, week, intensity, reps, repout)."
     },
     {
@@ -9791,8 +9747,8 @@
       "source_location": "L209",
       "_origin": "ast",
       "id": "webapp_repo_rationale_209",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 174,
+      "community_name": "t3_next",
       "norm_label": "restore the 42-row default_schedule (used by the /schedule reset button)."
     },
     {
@@ -10198,8 +10154,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "webapp_routes_reseed",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "reseed.py"
     },
     {
@@ -10209,8 +10165,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "webapp_routes_reseed_due_lifts",
-      "community": 43,
-      "community_name": "plan.py",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "_due_lifts()"
     },
     {
@@ -10220,8 +10176,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "webapp_routes_reseed_view",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "view()"
     },
     {
@@ -10231,8 +10187,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "webapp_routes_reseed_apply",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "apply()"
     },
     {
@@ -10242,8 +10198,8 @@
       "source_location": "L56",
       "_origin": "ast",
       "id": "webapp_routes_reseed_skip",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "skip()"
     },
     {
@@ -10253,8 +10209,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "webapp_routes_reseed_rationale_1",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "cycle-boundary tm reseed: per-lift, skippable (adr 0002)."
     },
     {
@@ -10264,8 +10220,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "webapp_routes_reseed_rationale_11",
-      "community": 43,
-      "community_name": "plan.py",
+      "community": 159,
+      "community_name": "test_defaults.py",
       "norm_label": "sbs lifts due for reseed at the current program week.      a lift is due iff w"
     },
     {
@@ -10275,8 +10231,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "webapp_routes_schedule",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 174,
+      "community_name": "t3_next",
       "norm_label": "schedule.py"
     },
     {
@@ -10286,8 +10242,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "webapp_routes_schedule_view",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 174,
+      "community_name": "t3_next",
       "norm_label": "view()"
     },
     {
@@ -10297,8 +10253,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "webapp_routes_schedule_parse_form",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 174,
+      "community_name": "t3_next",
       "norm_label": "_parse_form()"
     },
     {
@@ -10308,8 +10264,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "webapp_routes_schedule_save",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 174,
+      "community_name": "t3_next",
       "norm_label": "save()"
     },
     {
@@ -10319,8 +10275,8 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "webapp_routes_schedule_reset",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 174,
+      "community_name": "t3_next",
       "norm_label": "reset()"
     },
     {
@@ -10330,8 +10286,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "webapp_routes_schedule_rationale_1",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 174,
+      "community_name": "t3_next",
       "norm_label": "21-week schedule editor (main + aux) + reset-to-default."
     },
     {
@@ -10341,8 +10297,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "webapp_routes_schedule_rationale_23",
-      "community": 1,
-      "community_name": "Flask app & cycle index",
+      "community": 174,
+      "community_name": "t3_next",
       "norm_label": "collect {kind: {week: (intensity, reps, repout)}} from form fields <kind>_<week>"
     },
     {
@@ -10484,8 +10440,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "webapp_services_mode",
-      "community": 3,
-      "community_name": "21-week schedule defaults",
+      "community": 17,
+      "community_name": "Tier switch service tests",
       "norm_label": "mode.py"
     },
     {
@@ -10528,8 +10484,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "webapp_services_mode_rationale_1",
-      "community": 3,
-      "community_name": "21-week schedule defaults",
+      "community": 17,
+      "community_name": "Tier switch service tests",
       "norm_label": "mode switch: keep history, recompute est1rm, derive new-mode start state. read-o"
     },
     {
@@ -10638,8 +10594,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "webapp_services_preview_live_preview",
-      "community": 14,
-      "community_name": "1RM estimation formulas",
+      "community": 43,
+      "community_name": "plan.py",
       "norm_label": "live_preview()"
     },
     {
@@ -10649,8 +10605,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "webapp_services_preview_py_connection",
-      "community": 14,
-      "community_name": "1RM estimation formulas",
+      "community": 43,
+      "community_name": "plan.py",
       "norm_label": "connection"
     },
     {
@@ -10682,8 +10638,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "webapp_services_preview_rationale_23",
-      "community": 14,
-      "community_name": "1RM estimation formulas",
+      "community": 43,
+      "community_name": "plan.py",
       "norm_label": "estimate this set's 1rm and the delta vs the historical best est1rm.      retu"
     },
     {
@@ -22719,9 +22675,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 25,
+      "community": 28,
       "norm_label": "reseed.html (\u91cd\u6d4b max)",
-      "community_name": "Plan/reseed/export endpoints",
+      "community_name": "ADRs 0001/0002: TM rounding & reseed",
       "id": "webapp_templates_reseed"
     },
     {
@@ -23097,9 +23053,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 25,
+      "community": 28,
       "norm_label": "flask endpoint reseed.apply",
-      "community_name": "Plan/reseed/export endpoints",
+      "community_name": "ADRs 0001/0002: TM rounding & reseed",
       "id": "route_reseed_apply"
     },
     {
@@ -23111,9 +23067,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 25,
+      "community": 28,
       "norm_label": "flask endpoint reseed.skip",
-      "community_name": "Plan/reseed/export endpoints",
+      "community_name": "ADRs 0001/0002: TM rounding & reseed",
       "id": "route_reseed_skip"
     },
     {
@@ -36872,7 +36828,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/conftest.py",
-      "source_location": "L7",
+      "source_location": "L8",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_conftest",
@@ -36883,7 +36839,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/conftest.py",
-      "source_location": "L20",
+      "source_location": "L21",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_conftest",
@@ -36891,33 +36847,11 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "tests/conftest.py",
-      "source_location": "L25",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_conftest",
-      "target": "tests_conftest_db_conn",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "tests/conftest.py",
-      "source_location": "L38",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_conftest",
-      "target": "tests_conftest_make_lift",
-      "confidence_score": 1.0
-    },
-    {
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "tests/conftest.py",
-      "source_location": "L2",
+      "source_location": "L3",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_conftest",
@@ -36929,7 +36863,7 @@
       "context": "import",
       "confidence": "EXTRACTED",
       "source_file": "tests/conftest.py",
-      "source_location": "L2",
+      "source_location": "L3",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_conftest",
@@ -36941,23 +36875,11 @@
       "context": "submodule_import",
       "confidence": "EXTRACTED",
       "source_file": "tests/conftest.py",
-      "source_location": "L3",
+      "source_location": "L4",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_conftest",
       "target": "webapp_db",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "imports_from",
-      "context": "submodule_import",
-      "confidence": "EXTRACTED",
-      "source_file": "tests/conftest.py",
-      "source_location": "L3",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_conftest",
-      "target": "webapp_repo",
       "confidence_score": 1.0
     },
     {
@@ -36966,7 +36888,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/conftest.py",
-      "source_location": "L10",
+      "source_location": "L11",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_conftest_app",
@@ -36978,23 +36900,11 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/conftest.py",
-      "source_location": "L13",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_conftest_app",
-      "target": "webapp_db_connect"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "tests/conftest.py",
       "source_location": "L14",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_conftest_app",
-      "target": "webapp_db_init_schema"
+      "target": "webapp_db_connect"
     },
     {
       "relation": "calls",
@@ -37002,225 +36912,11 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/conftest.py",
-      "source_location": "L32",
+      "source_location": "L15",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "tests_conftest_db_conn",
-      "target": "webapp_db_connect"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "source_file": "tests/conftest.py",
-      "source_location": "L26",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_conftest_rationale_26",
-      "target": "tests_conftest_db_conn",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "source_file": "tests/conftest.py",
-      "source_location": "L39",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_conftest_rationale_39",
-      "target": "tests_conftest_make_lift",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "tests/test_routes_plan.py",
-      "source_location": "L62",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_routes_plan_test_autosave_persists_and_prefills_then_advances",
-      "target": "tests_conftest_make_lift"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "tests/test_routes_plan.py",
-      "source_location": "L172",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_routes_plan_test_export_week_bodyweight_shows_added_only",
-      "target": "tests_conftest_make_lift"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "tests/test_routes_plan.py",
-      "source_location": "L198",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_routes_plan_test_export_week_card_done_mark",
-      "target": "tests_conftest_make_lift"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "tests/test_routes_plan.py",
-      "source_location": "L184",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_routes_plan_test_export_week_day_tristate_and_default_open",
-      "target": "tests_conftest_make_lift"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "tests/test_routes_plan.py",
-      "source_location": "L159",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_routes_plan_test_export_week_plate_loading_structure",
-      "target": "tests_conftest_make_lift"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "tests/test_routes_plan.py",
-      "source_location": "L28",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_routes_plan_test_export_week_standalone_with_progress",
-      "target": "tests_conftest_make_lift"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "tests/test_routes_plan.py",
-      "source_location": "L12",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_routes_plan_test_plan_renders_duplicate_names_with_distinct_state",
-      "target": "tests_conftest_make_lift"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "tests/test_routes_plan.py",
-      "source_location": "L20",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_routes_plan_test_plan_submit_advances",
-      "target": "tests_conftest_make_lift"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "tests/test_routes_plan.py",
-      "source_location": "L96",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_routes_plan_test_plan_view_omits_tonnage_when_not_logged",
-      "target": "tests_conftest_make_lift"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "tests/test_routes_plan.py",
-      "source_location": "L150",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_routes_plan_test_plan_view_renders_bodyweight_added_plus_working_weight",
-      "target": "tests_conftest_make_lift"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "tests/test_routes_plan.py",
-      "source_location": "L88",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_routes_plan_test_plan_view_shows_first_time_when_no_last_week",
-      "target": "tests_conftest_make_lift"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "tests/test_routes_plan.py",
-      "source_location": "L80",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_routes_plan_test_plan_view_shows_tonnage_for_logged_lift",
-      "target": "tests_conftest_make_lift"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "tests/test_routes_plan.py",
-      "source_location": "L131",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_routes_plan_test_plan_view_shows_tonnage_wow_delta_for_t2",
-      "target": "tests_conftest_make_lift"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "tests/test_routes_plan.py",
-      "source_location": "L48",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_routes_plan_test_plan_view_shows_week2_schedule_values",
-      "target": "tests_conftest_make_lift"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "tests/test_routes_plan.py",
-      "source_location": "L114",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_routes_plan_test_save_log_clear_empties_fragment",
-      "target": "tests_conftest_make_lift"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "tests/test_routes_plan.py",
-      "source_location": "L103",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_routes_plan_test_save_log_response_includes_tonnage",
-      "target": "tests_conftest_make_lift"
+      "source": "tests_conftest_app",
+      "target": "webapp_db_init_schema"
     },
     {
       "relation": "contains",
@@ -47063,7 +46759,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L60",
+      "source_location": "L87",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan",
@@ -47074,7 +46770,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L169",
+      "source_location": "L252",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan",
@@ -47085,7 +46781,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L194",
+      "source_location": "L292",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan",
@@ -47096,7 +46792,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L179",
+      "source_location": "L267",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan",
@@ -47107,7 +46803,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L157",
+      "source_location": "L234",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan",
@@ -47118,7 +46814,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L27",
+      "source_location": "L44",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan",
@@ -47140,7 +46836,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L19",
+      "source_location": "L27",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan",
@@ -47162,7 +46858,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L94",
+      "source_location": "L142",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan",
@@ -47173,7 +46869,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L142",
+      "source_location": "L214",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan",
@@ -47184,7 +46880,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L86",
+      "source_location": "L128",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan",
@@ -47195,7 +46891,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L78",
+      "source_location": "L114",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan",
@@ -47206,7 +46902,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L121",
+      "source_location": "L187",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan",
@@ -47217,7 +46913,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L41",
+      "source_location": "L63",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan",
@@ -47228,7 +46924,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L112",
+      "source_location": "L172",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan",
@@ -47239,11 +46935,23 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L101",
+      "source_location": "L155",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan",
       "target": "tests_test_routes_plan_test_save_log_response_includes_tonnage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L13",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan",
+      "target": "webapp_db_connect",
       "confidence_score": 1.0
     },
     {
@@ -47273,9 +46981,57 @@
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L14",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_plan_renders_duplicate_names_with_distinct_state",
+      "target": "webapp_db_connect",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L24",
+      "source_location": "L15",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_plan_renders_duplicate_names_with_distinct_state",
+      "target": "webapp_repo_create_lift"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L30",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_plan_submit_advances",
+      "target": "webapp_db_connect",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L31",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_plan_submit_advances",
+      "target": "webapp_repo_create_lift"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L40",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan_test_plan_submit_advances",
@@ -47285,9 +47041,33 @@
       "relation": "calls",
       "context": "call",
       "confidence": "EXTRACTED",
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L47",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_export_week_standalone_with_progress",
+      "target": "webapp_db_connect",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L30",
+      "source_location": "L48",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_export_week_standalone_with_progress",
+      "target": "webapp_repo_create_lift"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L51",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan_test_export_week_standalone_with_progress",
@@ -47297,11 +47077,23 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L42",
+      "source_location": "L64",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "tests_test_routes_plan_rationale_42",
+      "source": "tests_test_routes_plan_rationale_64",
       "target": "tests_test_routes_plan_test_plan_view_shows_week2_schedule_values",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L72",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_plan_view_shows_week2_schedule_values",
+      "target": "webapp_db_connect",
       "confidence_score": 1.0
     },
     {
@@ -47310,7 +47102,19 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L50",
+      "source_location": "L73",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_plan_view_shows_week2_schedule_values",
+      "target": "webapp_repo_create_lift"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L76",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan_test_plan_view_shows_week2_schedule_values",
@@ -47322,7 +47126,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L52",
+      "source_location": "L78",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan_test_plan_view_shows_week2_schedule_values",
@@ -47332,11 +47136,23 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L61",
+      "source_location": "L88",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "tests_test_routes_plan_rationale_61",
+      "source": "tests_test_routes_plan_rationale_88",
       "target": "tests_test_routes_plan_test_autosave_persists_and_prefills_then_advances",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L91",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_autosave_persists_and_prefills_then_advances",
+      "target": "webapp_db_connect",
       "confidence_score": 1.0
     },
     {
@@ -47345,7 +47161,19 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L74",
+      "source_location": "L92",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_autosave_persists_and_prefills_then_advances",
+      "target": "webapp_repo_create_lift"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L109",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan_test_autosave_persists_and_prefills_then_advances",
@@ -47357,7 +47185,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L75",
+      "source_location": "L110",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan_test_autosave_persists_and_prefills_then_advances",
@@ -47367,11 +47195,23 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L79",
+      "source_location": "L115",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "tests_test_routes_plan_rationale_79",
+      "source": "tests_test_routes_plan_rationale_115",
       "target": "tests_test_routes_plan_test_plan_view_shows_tonnage_for_logged_lift",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L118",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_plan_view_shows_tonnage_for_logged_lift",
+      "target": "webapp_db_connect",
       "confidence_score": 1.0
     },
     {
@@ -47380,7 +47220,19 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L81",
+      "source_location": "L119",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_plan_view_shows_tonnage_for_logged_lift",
+      "target": "webapp_repo_create_lift"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L122",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan_test_plan_view_shows_tonnage_for_logged_lift",
@@ -47390,11 +47242,23 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L87",
+      "source_location": "L129",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "tests_test_routes_plan_rationale_87",
+      "source": "tests_test_routes_plan_rationale_129",
       "target": "tests_test_routes_plan_test_plan_view_shows_first_time_when_no_last_week",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L132",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_plan_view_shows_first_time_when_no_last_week",
+      "target": "webapp_db_connect",
       "confidence_score": 1.0
     },
     {
@@ -47403,7 +47267,19 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L89",
+      "source_location": "L133",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_plan_view_shows_first_time_when_no_last_week",
+      "target": "webapp_repo_create_lift"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L136",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan_test_plan_view_shows_first_time_when_no_last_week",
@@ -47413,33 +47289,23 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L95",
+      "source_location": "L143",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "tests_test_routes_plan_rationale_95",
+      "source": "tests_test_routes_plan_rationale_143",
       "target": "tests_test_routes_plan_test_plan_view_omits_tonnage_when_not_logged",
       "confidence_score": 1.0
     },
     {
-      "relation": "rationale_for",
+      "relation": "calls",
+      "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L102",
+      "source_location": "L146",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "tests_test_routes_plan_rationale_102",
-      "target": "tests_test_routes_plan_test_save_log_response_includes_tonnage",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "source_file": "tests/test_routes_plan.py",
-      "source_location": "L113",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "tests_test_routes_plan_rationale_113",
-      "target": "tests_test_routes_plan_test_save_log_clear_empties_fragment",
+      "source": "tests_test_routes_plan_test_plan_view_omits_tonnage_when_not_logged",
+      "target": "webapp_db_connect",
       "confidence_score": 1.0
     },
     {
@@ -47448,7 +47314,89 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L115",
+      "source_location": "L147",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_plan_view_omits_tonnage_when_not_logged",
+      "target": "webapp_repo_create_lift"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L156",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_rationale_156",
+      "target": "tests_test_routes_plan_test_save_log_response_includes_tonnage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L159",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_save_log_response_includes_tonnage",
+      "target": "webapp_db_connect",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L160",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_save_log_response_includes_tonnage",
+      "target": "webapp_repo_create_lift"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L173",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_rationale_173",
+      "target": "tests_test_routes_plan_test_save_log_clear_empties_fragment",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L176",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_save_log_clear_empties_fragment",
+      "target": "webapp_db_connect",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L177",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_save_log_clear_empties_fragment",
+      "target": "webapp_repo_create_lift"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L180",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan_test_save_log_clear_empties_fragment",
@@ -47458,11 +47406,23 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L122",
+      "source_location": "L188",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "tests_test_routes_plan_rationale_122",
+      "source": "tests_test_routes_plan_rationale_188",
       "target": "tests_test_routes_plan_test_plan_view_shows_tonnage_wow_delta_for_t2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L199",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_plan_view_shows_tonnage_wow_delta_for_t2",
+      "target": "webapp_db_connect",
       "confidence_score": 1.0
     },
     {
@@ -47471,7 +47431,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L132",
+      "source_location": "L203",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan_test_plan_view_shows_tonnage_wow_delta_for_t2",
@@ -47483,7 +47443,19 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L135",
+      "source_location": "L200",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_plan_view_shows_tonnage_wow_delta_for_t2",
+      "target": "webapp_repo_create_lift"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L206",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan_test_plan_view_shows_tonnage_wow_delta_for_t2",
@@ -47495,7 +47467,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L134",
+      "source_location": "L205",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan_test_plan_view_shows_tonnage_wow_delta_for_t2",
@@ -47505,11 +47477,23 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L143",
+      "source_location": "L215",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "tests_test_routes_plan_rationale_143",
+      "source": "tests_test_routes_plan_rationale_215",
       "target": "tests_test_routes_plan_test_plan_view_renders_bodyweight_added_plus_working_weight",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L223",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_plan_view_renders_bodyweight_added_plus_working_weight",
+      "target": "webapp_db_connect",
       "confidence_score": 1.0
     },
     {
@@ -47518,7 +47502,19 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L149",
+      "source_location": "L225",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_plan_view_renders_bodyweight_added_plus_working_weight",
+      "target": "webapp_repo_create_lift"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L224",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan_test_plan_view_renders_bodyweight_added_plus_working_weight",
@@ -47528,22 +47524,23 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L158",
+      "source_location": "L235",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "tests_test_routes_plan_rationale_158",
+      "source": "tests_test_routes_plan_rationale_235",
       "target": "tests_test_routes_plan_test_export_week_plate_loading_structure",
       "confidence_score": 1.0
     },
     {
-      "relation": "rationale_for",
+      "relation": "calls",
+      "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L170",
+      "source_location": "L238",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "tests_test_routes_plan_rationale_170",
-      "target": "tests_test_routes_plan_test_export_week_bodyweight_shows_added_only",
+      "source": "tests_test_routes_plan_test_export_week_plate_loading_structure",
+      "target": "webapp_db_connect",
       "confidence_score": 1.0
     },
     {
@@ -47552,7 +47549,54 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L171",
+      "source_location": "L239",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_export_week_plate_loading_structure",
+      "target": "webapp_repo_create_lift"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L253",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_rationale_253",
+      "target": "tests_test_routes_plan_test_export_week_bodyweight_shows_added_only",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L256",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_export_week_bodyweight_shows_added_only",
+      "target": "webapp_db_connect",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L258",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_export_week_bodyweight_shows_added_only",
+      "target": "webapp_repo_create_lift"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L257",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan_test_export_week_bodyweight_shows_added_only",
@@ -47562,11 +47606,23 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L180",
+      "source_location": "L268",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "tests_test_routes_plan_rationale_180",
+      "source": "tests_test_routes_plan_rationale_268",
       "target": "tests_test_routes_plan_test_export_week_day_tristate_and_default_open",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L274",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_export_week_day_tristate_and_default_open",
+      "target": "webapp_db_connect",
       "confidence_score": 1.0
     },
     {
@@ -47575,7 +47631,19 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L187",
+      "source_location": "L275",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_export_week_day_tristate_and_default_open",
+      "target": "webapp_repo_create_lift"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L284",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan_test_export_week_day_tristate_and_default_open",
@@ -47585,11 +47653,23 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L195",
+      "source_location": "L293",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "tests_test_routes_plan_rationale_195",
+      "source": "tests_test_routes_plan_rationale_293",
       "target": "tests_test_routes_plan_test_export_week_card_done_mark",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L298",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_export_week_card_done_mark",
+      "target": "webapp_db_connect",
       "confidence_score": 1.0
     },
     {
@@ -47598,7 +47678,19 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/test_routes_plan.py",
-      "source_location": "L202",
+      "source_location": "L299",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "tests_test_routes_plan_test_export_week_card_done_mark",
+      "target": "webapp_repo_create_lift"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "tests/test_routes_plan.py",
+      "source_location": "L305",
       "weight": 1.0,
       "_origin": "ast",
       "source": "tests_test_routes_plan_test_export_week_card_done_mark",

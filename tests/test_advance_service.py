@@ -1,4 +1,5 @@
 import sqlite3
+import pytest
 from webapp import db, repo
 from webapp.services import advance
 from webapp.services import rows as row_conv
@@ -65,6 +66,47 @@ def test_advance_week_handles_duplicate_names_per_day(tmp_path):
     advance.advance_week(conn, {d1: 20, d4: 12})  # d1 hit (+2.5), d4 missed (unchanged)
     assert repo.get_lift_state(conn, d1)["weight"] == 32.5
     assert repo.get_lift_state(conn, d4)["weight"] == 45.0
+    conn.close()
+
+
+def test_advance_week_rolls_back_on_mid_loop_failure(tmp_path, monkeypatch):
+    """ADR 0009 batch 2: advance_week's per-lift fan-out is atomic. With the
+    repo-level commits stripped, every save_lift_state/append_history in the
+    loop accumulates in ONE uncommitted transaction until set_week flushes it
+    at the end — so a mid-loop failure rolls back EVERY prior lift's writes,
+    not just the failing one. This is the ADR's real prize: a crash can no
+    longer leave the DB in 'some lifts advanced, others not'.
+
+    Scope note: set_week still self-commits (ADR 0009 keeps it as advance's
+    single end-of-loop commit by design — batch 2 strips only the 5 fan-out
+    helpers). This test proves loop atomicity for failures before set_week fires.
+
+    Discriminator: with the old per-call repo commits, Squat's advance was
+    committed before the 2nd lift blew up (tm=137.025, history=1 row leaked).
+    With the boundary moved up, conn.rollback() undoes it all (tm stays 135.0,
+    history stays empty)."""
+    conn, ids = _seed(tmp_path)
+    squat_id, rows_id = ids["Squat"], ids["Rows"]
+
+    original = repo.save_lift_state
+    calls = {"n": 0}
+
+    def boom(conn, lift_id, **kw):
+        calls["n"] += 1
+        if calls["n"] == 2:               # 2nd lift's save → simulate failure
+            raise RuntimeError("simulated mid-advance failure")
+        return original(conn, lift_id, **kw)
+
+    monkeypatch.setattr(repo, "save_lift_state", boom)
+
+    with pytest.raises(RuntimeError):
+        advance.advance_week(conn, {squat_id: 13, rows_id: 10})
+
+    conn.rollback()                        # drop the uncommitted transaction
+    assert repo.get_settings(conn)["week"] == 1                       # not bumped
+    assert repo.get_lift_state(conn, squat_id)["tm"] == 135.0          # not 137.025
+    assert repo.list_history(conn, squat_id) == []                     # no leaked row
+    assert repo.list_history(conn, rows_id) == []
     conn.close()
 
 

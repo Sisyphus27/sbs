@@ -6,10 +6,9 @@ derive_on_switch. All load computation routes through the working_weight seam
 Adding a mode = one handler class + one PROGRESSION_REGISTRY line. See ADR 0005.
 
 Circular-import note (ADR 0005): modes.py imports est1rm_from_history from
-. onerm — NOT from ..program. program.py will (in Task 3) import
-.get_mode from this module, so importing program here would cycle. The
-est1rm_from_history in engine/onerm.py is a verbatim port of the one in
-program.py; program.py retains its private copy until Task 3 migrates callers.
+.onerm — NOT from ..program. program.py imports .get_mode from this module,
+so importing program here would cycle. ``best_1rm`` / ``est1rm_from_history``
+both live in ``engine/onerm.py`` (their canonical home).
 """
 from ..data.schema import LiftState, SetEntry
 from .onerm import est1rm_from_history

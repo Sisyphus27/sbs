@@ -35,4 +35,6 @@ def recompute_bodyweight_est1rm(conn) -> int:
 if __name__ == "__main__":
     conn = connect(); init_schema(conn)
     fixed = recompute_bodyweight_est1rm(conn)
+    conn.commit()   # ADR 0009 batch 2: save_lift_state no longer self-commits
+    conn.close()
     print(f"recomputed est1rm for {fixed} bodyweight lift(s)")

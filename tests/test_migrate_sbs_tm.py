@@ -14,6 +14,7 @@ def _seed(db_path):
     repo.save_lift_state(conn, lid, mode="sbs", tm=127.5, weight=None,
                          target=None, streak=0, est1rm=120.0)
     repo.append_history(conn, lid, week=1, weight=90.0, reps=8)
+    conn.commit()   # ADR 0009 batch 2: repo writes no longer self-commit; seed must persist
     conn.close()
     return lid
 
@@ -38,6 +39,7 @@ def test_migrate_skips_non_sbs_lifts(tmp_path):
                            sets=4, max=None, intensity=None, reps=None, repout=None, start=65.0)
     repo.save_lift_state(conn, lid, mode="linear_t2", tm=None, weight=85.0,
                          target=8, streak=0, est1rm=None)
+    conn.commit()   # ADR 0009 batch 2: seed must persist before fresh-conn read
     conn.close()
     migrate_sbs_tm.main(db_path=dbp, backup_dir=str(tmp_path / "bak"))
     conn = db.connect(dbp)

@@ -3,7 +3,7 @@ import os
 import webbrowser
 from threading import Timer
 from flask import Flask
-from .db import close_db, DEFAULT_DB_PATH
+from .db import close_db, connect, init_schema, DEFAULT_DB_PATH
 
 
 def create_app(db_path: str | None = None, backup_dir: str | None = None,
@@ -16,6 +16,13 @@ def create_app(db_path: str | None = None, backup_dir: str | None = None,
     if test_config:
         app.config.update(test_config)
 
+    # ADR 0009: bootstrap schema once at startup (out of the per-request get_db()).
+    _bootstrap = connect(app.config["DB_PATH"])
+    try:
+        init_schema(_bootstrap)
+    finally:
+        _bootstrap.close()
+
     from .routes.plan import bp as plan_bp
     app.register_blueprint(plan_bp)
     from .routes.lifts import bp as lifts_bp
@@ -27,7 +34,7 @@ def create_app(db_path: str | None = None, backup_dir: str | None = None,
     from .routes.reseed import bp as reseed_bp
     app.register_blueprint(reseed_bp)
 
-    from .routes.reseed import _due_lifts
+    from .services.reseed import due_lifts
     from sbs_cli.data.schema import LEGAL_COMBOS, LOAD_MODELS, MODES
 
     @app.context_processor
@@ -35,7 +42,7 @@ def create_app(db_path: str | None = None, backup_dir: str | None = None,
         from .db import get_db
         conn = get_db()
         try:
-            due, _ = _due_lifts(conn)
+            due, _ = due_lifts(conn)
             reseed_count = len(due)
         except Exception:
             reseed_count = 0

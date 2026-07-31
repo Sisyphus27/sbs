@@ -1,0 +1,1 @@
+≈{{ "%.2f"|format(live.est1rm) }}{% if live.delta is none %} <span class="first">(首次)</span>{% else %} <span class="{{ 'up' if live.delta >= 0 else 'down' }}">{{ '+' if live.delta >= 0 else '' }}{{ "%.2f"|format(live.delta) }}</span>{% endif %}{% if live.tonnage %} {% with t = live.tonnage %}{% include '_tonnage_fragment.html' %}{% endwith %}{% endif %}

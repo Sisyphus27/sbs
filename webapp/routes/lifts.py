@@ -135,6 +135,7 @@ def edit(lid):
     if lift["mode"] in ("linear_t2", "linear_t3") and "start" in fields:
         from ..services import recompute as recompute_service
         recompute_service.recompute_on_start_change(conn, lid, lift["start"])
+    conn.commit()   # ADR 0009 batch 2: recompute writes via repo no longer self-commit
     return render_template("_lift_row.html", lift=lift)
 
 
@@ -180,4 +181,5 @@ def mode_apply(lid):
         flash("重量 / TM 必须是数字", "error")
         return redirect(url_for("lifts.view"))
     mode_service.apply_switch(conn, lid, preview)
+    conn.commit()   # ADR 0009 batch 2: apply_switch writes via repo no longer self-commit
     return redirect(url_for("lifts.view"))

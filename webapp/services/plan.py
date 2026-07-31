@@ -13,6 +13,7 @@ from types import SimpleNamespace
 from sbs_cli.engine.modes import get_mode
 from .. import repo
 from .rows import lift_from_row, profile_from_rows, state_from_rows
+from .volume import live_context
 
 
 def plan_items(conn: sqlite3.Connection):
@@ -42,3 +43,45 @@ def plan_items(conn: sqlite3.Connection):
             target=f["target"], streak=f["streak"], est1rm=st["est1rm"],
         ))
     return week, items
+
+
+def assemble_by_day(conn: sqlite3.Connection):
+    """Group plan items by training day and decorate with this week's logged
+    reps + live (est1RM/tonnage) context. Returns ``(week, by_day)`` where
+    ``by_day`` is ``[(day, [items])]`` sorted, filtered to ``days_per_week`` and
+    non-empty. Each item gains ``.logged``, ``.is_logged``, ``.live`` (the latter
+    is :func:`volume.live_context` data, or None when not logged)."""
+    week, items = plan_items(conn)
+    logged = repo.get_week_logs(conn, week)
+    days_per_week = repo.get_settings(conn)["days_per_week"]
+    rows_by_day = {}
+    for item in items:
+        item.logged = logged.get(item.id, "")
+        item.is_logged = item.logged not in (None, "")
+        item.live = live_context(conn, item.id, item.logged if item.is_logged else None)
+        rows_by_day.setdefault(item.day, []).append(item)
+    by_day = [(d, rows_by_day[d]) for d in sorted(rows_by_day)
+              if d <= days_per_week and rows_by_day[d]]
+    return week, by_day
+
+
+def day_states(by_day):
+    """Day progress tri-state for the offline export (ADR 0007).
+
+    Returns (days, first_open). days = [(day, state, filled, items)] where state
+    is 'full' (all logged), 'part' (some logged — an owed debt, surfaced), or
+    'empty' (none logged). first_open = lowest-numbered non-full day (the
+    next-to-train); falls back to the last day when all are full. Pure Python,
+    no I/O — unit-testable without a request context."""
+    days = []
+    first_open = None
+    for day, items in by_day:
+        filled = sum(1 for it in items if it.is_logged)
+        total = len(items)
+        state = "full" if filled == total else ("part" if filled > 0 else "empty")
+        if first_open is None and state != "full":
+            first_open = day
+        days.append((day, state, filled, items))
+    if first_open is None and days:
+        first_open = days[-1][0]
+    return days, first_open

@@ -72,6 +72,7 @@ CREATE TABLE IF NOT EXISTS sbs_schedule (
     repout    INTEGER NOT NULL,
     PRIMARY KEY (kind, week)
 );
+CREATE INDEX IF NOT EXISTS idx_history_lift ON history(lift_id);
 """
 
 _DEFAULT_SETTINGS = dict(
@@ -84,6 +85,9 @@ def connect(path: str | None = None) -> sqlite3.Connection:
     conn = sqlite3.connect(path or DEFAULT_DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    # ADR 0009: WAL is a persistent DB property; synchronous is per-connection.
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA synchronous = NORMAL")
     return conn
 
 
@@ -126,11 +130,12 @@ def init_schema(conn: sqlite3.Connection) -> None:
 
 # ---------- Flask integration ----------
 def get_db():
-    """Per-request connection stored in flask.g."""
+    """Per-request connection stored in flask.g.
+
+    Schema bootstrap lives in create_app() (ADR 0009) — get_db() only connects."""
     from flask import g, current_app
     if "db" not in g:
         g.db = connect(current_app.config["DB_PATH"])
-        init_schema(g.db)
     return g.db
 
 

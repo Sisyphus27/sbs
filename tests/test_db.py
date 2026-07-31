@@ -62,6 +62,47 @@ def test_foreign_keys_enforced(tmp_path):
     conn.close()
 
 
+# ---------- ADR 0009 batch 1: index + WAL/NORMAL + init_schema move ----------
+
+def test_history_lift_id_index_exists(tmp_path):
+    """ADR 0009 #1: history(lift_id) gets an index so list_history stops full-scanning."""
+    conn = db.connect(str(tmp_path / "t.db"))
+    db.init_schema(conn)
+    idx = {r[1] for r in conn.execute(
+        "SELECT type, name FROM sqlite_master WHERE type='index'").fetchall()}
+    assert "idx_history_lift" in idx
+    conn.close()
+
+
+def test_connect_sets_wal_and_synchronous_normal(tmp_path):
+    """ADR 0009 #2: connect() enables WAL (persistent) + synchronous=NORMAL (per-conn)."""
+    path = str(tmp_path / "t.db")
+    conn = db.connect(path)
+    mode = conn.execute("PRAGMA journal_mode").fetchone()[0]
+    sync = conn.execute("PRAGMA synchronous").fetchone()[0]
+    assert mode.lower() == "wal"
+    assert sync == 1          # NORMAL == 1 (OFF=0, FULL=2)
+    conn.close()
+    # WAL is a persistent DB property — a fresh connection still sees WAL.
+    conn2 = db.connect(path)
+    assert conn2.execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"
+    conn2.close()
+
+
+def test_create_app_initializes_schema(tmp_path):
+    """ADR 0009 #3: create_app() runs init_schema once so get_db() need not."""
+    from webapp.app import create_app
+    db_path = str(tmp_path / "app.db")
+    app = create_app(db_path=db_path, backup_dir=str(tmp_path / "bk"),
+                     test_config={"TESTING": True})
+    # schema must exist WITHOUT any request / get_db call having run.
+    conn = db.connect(db_path)
+    tables = {r[0] for r in conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
+    assert {"settings", "lifts", "history", "sbs_schedule"} <= tables
+    conn.close()
+
+
 # ---------- Task 7: bodyweight / bodyweight_pct (ADR 0004 legacy add-column) ----------
 
 def test_init_schema_adds_bodyweight_columns_to_legacy_db():

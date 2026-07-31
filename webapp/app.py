@@ -3,7 +3,7 @@ import os
 import webbrowser
 from threading import Timer
 from flask import Flask
-from .db import close_db, DEFAULT_DB_PATH
+from .db import close_db, connect, init_schema, DEFAULT_DB_PATH
 
 
 def create_app(db_path: str | None = None, backup_dir: str | None = None,
@@ -15,6 +15,13 @@ def create_app(db_path: str | None = None, backup_dir: str | None = None,
     app.config["SECRET_KEY"] = os.environ.get("FLASK_SECRET_KEY", "dev-secret")
     if test_config:
         app.config.update(test_config)
+
+    # ADR 0009: bootstrap schema once at startup (out of the per-request get_db()).
+    _bootstrap = connect(app.config["DB_PATH"])
+    try:
+        init_schema(_bootstrap)
+    finally:
+        _bootstrap.close()
 
     from .routes.plan import bp as plan_bp
     app.register_blueprint(plan_bp)

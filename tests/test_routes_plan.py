@@ -24,6 +24,18 @@ def test_plan_submit_advances(client, make_lift, db_conn):
     assert repo.get_settings(db_conn)["week"] == 2
 
 
+def test_plan_submit_form_has_double_click_guard(client):
+    """Submit form must disable its buttons on submit (ADR 0010).
+
+    plan.submit is non-idempotent: a double-click double-advances the week.
+    The guard is client-side JS, so at the pytest level we assert the opt-in
+    marker is present on the rendered form; the JS body itself is not
+    unit-tested here (no browser/JS runner in the suite).
+    """
+    html = client.get("/").get_data(as_text=True)
+    assert "data-disable-submit" in html
+
+
 def test_export_week_standalone_with_progress(client, make_lift, db_conn):
     lid = make_lift(name="Squat", mode="sbs", sets=5, max=135.0, intensity=0.7,
                     reps=5, repout=10, start=None, lift_kind="main")

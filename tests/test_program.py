@@ -1,5 +1,6 @@
 from sbs_cli.data.schema import Lift, Profile, SetEntry, LiftState, ProgramState, ScheduleRow
-from sbs_cli.program import (best_1rm, _est1rm_from_history, initial_state,
+from sbs_cli.engine.onerm import best_1rm, est1rm_from_history
+from sbs_cli.program import (initial_state,
                              advance_lift, week_plan,
                              recompute_state, recompute_sbs_tm)
 
@@ -97,7 +98,7 @@ def test_advance_t2_reset_uses_profile_reset_pct():
 
 
 def test_recompute_state_t3_replays_hits_and_misses():
-    from sbs_cli.program import _est1rm_from_history
+    from sbs_cli.engine.onerm import est1rm_from_history
     p = Profile(lifts=[Lift(name="Curls", mode="linear_t3", day=1, start=40)])
     lift = p.lift("Curls")
     hist = [SetEntry(1, 42.5, 16), SetEntry(2, 45.0, 14), SetEntry(3, 45.0, 16)]
@@ -105,18 +106,18 @@ def test_recompute_state_t3_replays_hits_and_misses():
     # replay from 40: w1 16>=15 hit -> 42.5; w2 14<15 miss -> 42.5; w3 16>=15 hit -> 45.0
     assert ls.mode == "linear_t3" and ls.weight == 45.0 and ls.target is None and ls.streak == 0
     # est1rm drawn from the real history weights (Option A) -- unchanged by start
-    assert ls.est1rm == _est1rm_from_history(hist)
+    assert ls.est1rm == est1rm_from_history(hist)
 
 
 def test_recompute_state_t2_all_hits_increments_from_start():
-    from sbs_cli.program import _est1rm_from_history
+    from sbs_cli.engine.onerm import est1rm_from_history
     p = Profile(lifts=[Lift(name="Row", mode="linear_t2", day=1, start=50)])
     lift = p.lift("Row")
     hist = [SetEntry(1, 50.0, 8), SetEntry(2, 52.5, 8), SetEntry(3, 55.0, 8)]
     ls = recompute_state(lift, hist, p)
     # 3 hits @ target 8 -> 50 -> 52.5 -> 55.0 -> 57.5
     assert ls.weight == 57.5 and ls.target == 8 and ls.streak == 0
-    assert ls.est1rm == _est1rm_from_history(hist)
+    assert ls.est1rm == est1rm_from_history(hist)
 
 
 def test_recompute_state_t2_one_miss_drops_to_6():
@@ -235,7 +236,7 @@ def test_advance_sbs_ignores_incr():
 def test_recompute_state_t2_reset_snaps_to_eff_incr():
     # recompute 重放：incr=5 的 t2，reset 重量 snap 到 eff_incr=5 网格，而非全局 rounding=2.5
     from sbs_cli.engine.progression import round_weight
-    from sbs_cli.program import _est1rm_from_history
+    from sbs_cli.engine.onerm import est1rm_from_history
     p = Profile(t2_reset_pct=0.75, incr=2.5, rounding=2.5,
                 lifts=[Lift(name="PD", mode="linear_t2", day=1, start=100, incr=5)])
     lift = p.lift("PD")
@@ -243,12 +244,12 @@ def test_recompute_state_t2_reset_snaps_to_eff_incr():
     hist = [SetEntry(1, 100.0, 5), SetEntry(2, 100.0, 3),
             SetEntry(3, 100.0, 3), SetEntry(4, 100.0, 3)]  # 1 hit 后 3 连 miss -> reset
     ls = recompute_state(lift, hist, p)
-    est = _est1rm_from_history(hist)
+    est = est1rm_from_history(hist)
     assert ls.weight == round_weight(est * 0.75, 5)       # NEW: eff_incr 网格
     assert ls.weight != round_weight(est * 0.75, 2.5)     # OLD: 全局 rounding 会给不同值
 
 
-# -- Task 3: bodyweight working-weight seam (best_1rm / _est1rm_from_history) --
+# -- Task 3: bodyweight working-weight seam (best_1rm / est1rm_from_history) --
 
 from sbs_cli.engine.onerm import estimate_1rm
 
@@ -263,7 +264,7 @@ def test_best_1rm_bodyweight_uses_working_weight_not_added():
 
 def test_est1rm_from_history_bodyweight_nonzero():
     hist = [SetEntry(week=1, weight=0.0, reps=5)]
-    est = _est1rm_from_history(hist, bodyweight=75.0, bodyweight_pct=1.0)
+    est = est1rm_from_history(hist, bodyweight=75.0, bodyweight_pct=1.0)
     assert est == estimate_1rm(75.0, 5)
     assert est > 0.0
 
@@ -271,7 +272,7 @@ def test_est1rm_from_history_bodyweight_nonzero():
 def test_est1rm_from_history_ordinary_lift_unchanged():
     # pct 0 -> working weight == added; legacy behavior preserved
     hist = [SetEntry(week=1, weight=100.0, reps=5)]
-    est = _est1rm_from_history(hist, bodyweight=75.0, bodyweight_pct=0.0)
+    est = est1rm_from_history(hist, bodyweight=75.0, bodyweight_pct=0.0)
     assert est == estimate_1rm(100.0, 5)
 
 

@@ -3,22 +3,17 @@
 ADR 0005 (mode unification): per-mode behaviour lives in ``engine.modes``;
 this module's ``advance_lift`` / ``week_plan`` / ``initial_state`` /
 ``recompute_state`` are now thin dispatchers over ``get_mode(lift.mode)``.
-The original ``best_1rm`` / ``_est1rm_from_history`` bodies were ported to
-``engine.onerm`` (to break the program<->modes cycle) and are re-exported
-here so webapp services importing ``sbs_cli.program._est1rm_from_history``
-keep working until Task 5 migrates them.
+
+``best_1rm`` / ``est1rm_from_history`` live in ``engine.onerm`` (placed there
+to break the program<->modes cycle); this module imports ``est1rm_from_history``
+for its own use in ``recompute_state``.
 """
 from typing import Optional, List
 from .data.schema import Lift, Profile, SetEntry, LiftState, ProgramState
-from .engine.onerm import (best_1rm,
-                           est1rm_from_history as _est1rm_from_history)
+from .engine.onerm import est1rm_from_history
 from .engine.modes import get_mode
 from .engine.progression import (sbs_next, t3_next, t2_next, T2State,
                                  lookup_schedule)
-
-# Re-export so webapp services / tests importing ``sbs_cli.program.best_1rm``
-# keep working without depending on ``engine.onerm`` directly.
-__all__ = ["best_1rm"]
 
 
 def initial_state(profile: Profile) -> ProgramState:
@@ -67,7 +62,7 @@ def recompute_state(lift: Lift, history: List[SetEntry], profile: Profile) -> Li
     weight (added + bodyweight * pct, per ADR 0004). Not applicable to sbs
     (sbs has no start-based progression)."""
     bw, pct = profile.bodyweight, lift.bodyweight_pct
-    est = _est1rm_from_history(history, bw, pct)
+    est = est1rm_from_history(history, bw, pct)
     # effective step: per-lift incr ?? global incr (ADR 0003).
     eff_incr = lift.incr if lift.incr is not None else profile.incr
     if lift.mode == "linear_t3":
@@ -79,7 +74,7 @@ def recompute_state(lift: Lift, history: List[SetEntry], profile: Profile) -> Li
     if lift.mode == "linear_t2":
         target, streak, weight = 8, 0, lift.start or 0.0
         for k, h in enumerate(history):
-            est_k = _est1rm_from_history(history[:k + 1], bw, pct) or 0.0
+            est_k = est1rm_from_history(history[:k + 1], bw, pct) or 0.0
             ns = t2_next(T2State(target, streak, weight), h.reps, est_k,
                          fail=profile.t2_fail, incr=eff_incr,
                          reset_pct=profile.t2_reset_pct, quantum=eff_incr)

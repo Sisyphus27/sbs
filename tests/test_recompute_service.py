@@ -29,7 +29,7 @@ def test_recompute_sbs_is_noop(tmp_path):
 
 
 def test_recompute_preserves_est1rm_from_history(tmp_path):
-    from sbs_cli.program import _est1rm_from_history
+    from sbs_cli.engine.onerm import est1rm_from_history
     from sbs_cli.data.schema import SetEntry
     conn = db.connect(str(tmp_path / "t.db")); db.init_schema(conn)
     lid = _t2(conn, start=50.0)
@@ -37,7 +37,7 @@ def test_recompute_preserves_est1rm_from_history(tmp_path):
         repo.append_history(conn, lid, week=wk, weight=w, reps=r)
     hist = [SetEntry(week=h["week"], weight=h["weight"], reps=h["reps"])
             for h in repo.list_history(conn, lid)]
-    expected_est = _est1rm_from_history(hist)
+    expected_est = est1rm_from_history(hist)
     recompute_service.recompute_on_start_change(conn, lid, 55.0)  # change start; est1rm must not move
     assert repo.get_lift_state(conn, lid)["est1rm"] == expected_est
     conn.close()

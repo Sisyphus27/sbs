@@ -67,7 +67,7 @@ def test_guard_advance_t2_reset_uses_working_weight():
 
 def test_guard_mode_switch_derive_state_is_bodyweight_driven():
     """ADR 0004 guard: mode.derive_state (preview + apply path) must thread
-    bodyweight into _est1rm_from_history. A bodyweight lift (bw=75, pct=1.0,
+    bodyweight into est1rm_from_history. A bodyweight lift (bw=75, pct=1.0,
     added=0) switched to linear_t2 must derive est1rm == estimate_1rm(75, reps),
     NOT estimate_1rm(0, reps) ~= 0. Regression for the call-site inventory miss
     in the bodyweight-working-weight plan (whole-branch review finding)."""

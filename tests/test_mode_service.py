@@ -66,7 +66,7 @@ def test_derive_state_rejects_illegal_combo(tmp_path):
 def test_derive_state_linear_t2_snaps_to_eff_incr(tmp_path):
     """linear_t2 derive：incr=5 的动作，起始重量 snap 到 eff_incr=5 网格，而非全局 rounding=2.5。"""
     from sbs_cli.engine.progression import round_weight
-    from sbs_cli.program import _est1rm_from_history
+    from sbs_cli.engine.onerm import est1rm_from_history
     from sbs_cli.data.schema import SetEntry
     conn, _ = _seed_with_history(tmp_path)  # 复用既有 fixture 建一个 sbs lift+history
     # 另建一个 incr=5 的 linear_t2 动作，灌入产生已知 est1rm 的 history
@@ -77,7 +77,7 @@ def test_derive_state_linear_t2_snaps_to_eff_incr(tmp_path):
     repo.append_history(conn, lid, week=1, weight=100.0, reps=5)  # 100x5 -> est1rm≈115
     settings = repo.get_settings(conn)
     preview = mode.derive_state(conn, lid, "linear_t2", settings)
-    est = _est1rm_from_history([SetEntry(1, 100.0, 5)])
+    est = est1rm_from_history([SetEntry(1, 100.0, 5)])
     assert preview["weight"] == round_weight(est * settings["t2_reset_pct"], 5)   # eff_incr=5
     assert preview["weight"] != round_weight(est * settings["t2_reset_pct"], 2.5)  # 旧全局 rounding
     conn.close()
@@ -85,7 +85,7 @@ def test_derive_state_linear_t2_snaps_to_eff_incr(tmp_path):
 
 def test_derive_state_linear_t3_snaps_to_eff_incr(tmp_path):
     from sbs_cli.engine.progression import round_weight
-    from sbs_cli.program import _est1rm_from_history
+    from sbs_cli.engine.onerm import est1rm_from_history
     from sbs_cli.data.schema import SetEntry
     conn = db.connect(str(tmp_path / "t2.db"))
     db.init_schema(conn)
@@ -96,7 +96,7 @@ def test_derive_state_linear_t3_snaps_to_eff_incr(tmp_path):
     repo.append_history(conn, lid, week=1, weight=100.0, reps=5)  # est1rm≈115 -> *0.6≈69
     settings = repo.get_settings(conn)
     preview = mode.derive_state(conn, lid, "linear_t3", settings)
-    est = _est1rm_from_history([SetEntry(1, 100.0, 5)])
+    est = est1rm_from_history([SetEntry(1, 100.0, 5)])
     assert preview["weight"] == round_weight(est * 0.6, 5)   # eff_incr=5 网格
     conn.close()
 

@@ -120,7 +120,10 @@ _STATE_COLS = ("mode", "tm", "weight", "target", "streak", "est1rm")
 def save_lift_state(conn: sqlite3.Connection, lift_id: int, *, mode: str, tm,
                     weight, target, streak: int, est1rm) -> None:
     """Upsert lift_state from engine-produced fields. Does NOT touch history table
-    (history is appended separately via append_history)."""
+    (history is appended separately via append_history).
+
+    Transaction boundary lives at the caller (ADR 0009 batch 2): this only
+    executes — the owning service/route commits the unit of work."""
     conn.execute(
         "INSERT INTO lift_state (lift_id, mode, tm, weight, target, streak, est1rm) "
         "VALUES (?, ?, ?, ?, ?, ?, ?) "
@@ -129,7 +132,6 @@ def save_lift_state(conn: sqlite3.Connection, lift_id: int, *, mode: str, tm,
         "target=excluded.target, streak=excluded.streak, est1rm=excluded.est1rm",
         (lift_id, mode, tm, weight, target, streak, est1rm),
     )
-    conn.commit()
 
 
 # ---------- history ----------
@@ -142,7 +144,6 @@ def append_history(conn: sqlite3.Connection, lift_id: int, *, week: int,
         "INSERT INTO history (lift_id, week, weight, reps, ts) VALUES (?, ?, ?, ?, ?)",
         (lift_id, week, weight, reps, ts),
     )
-    conn.commit()
 
 
 def list_history(conn: sqlite3.Connection, lift_id: int):
@@ -152,6 +153,8 @@ def list_history(conn: sqlite3.Connection, lift_id: int):
 
 
 # ---------- week_log (per-week last-set reps, saved immediately, not yet advanced) ----------
+# ADR 0009 batch 2: these execute only — the caller owns the commit. The autosave
+# route commits per request; submit commits once after the advance+clear unit.
 def save_log(conn: sqlite3.Connection, lift_id: int, week: int, reps: int) -> None:
     """Upsert this lift's logged last-set reps for the given week."""
     conn.execute(
@@ -159,12 +162,10 @@ def save_log(conn: sqlite3.Connection, lift_id: int, week: int, reps: int) -> No
         "ON CONFLICT(lift_id, week) DO UPDATE SET reps=excluded.reps",
         (lift_id, week, reps),
     )
-    conn.commit()
 
 
 def clear_one_log(conn: sqlite3.Connection, lift_id: int, week: int) -> None:
     conn.execute("DELETE FROM week_log WHERE lift_id = ? AND week = ?", (lift_id, week))
-    conn.commit()
 
 
 def get_week_logs(conn: sqlite3.Connection, week: int) -> dict:
@@ -174,7 +175,6 @@ def get_week_logs(conn: sqlite3.Connection, week: int) -> dict:
 
 def clear_week_logs(conn: sqlite3.Connection, week: int) -> None:
     conn.execute("DELETE FROM week_log WHERE week = ?", (week,))
-    conn.commit()
 
 
 # ---------- schedule (Task 5) ----------

@@ -78,7 +78,10 @@ def view():
 
 @bp.route("/log/save", methods=["POST"])
 def save_log():
-    """Autosave one lift's last-set reps for the week (HTMX, on change). No advance."""
+    """Autosave one lift's last-set reps for the week (HTMX, on change). No advance.
+
+    Owns its single commit (ADR 0009 batch 2): repo.save_log/clear_one_log
+    execute only; this is one-logical-write-per-request."""
     conn = get_db()
     lid = request.args.get("lid", type=int)
     if lid is None:
@@ -87,6 +90,7 @@ def save_log():
     week = repo.get_settings(conn)["week"]
     if raw == "":
         repo.clear_one_log(conn, lid, week)
+        conn.commit()
         return ("", 200)
     try:
         reps = int(raw)
@@ -95,6 +99,7 @@ def save_log():
     if reps < 0:
         return ("negative", 400)
     repo.save_log(conn, lid, week, reps)
+    conn.commit()
     return _live_html(conn, lid, reps)
 
 
@@ -124,6 +129,7 @@ def submit():
              week=week, ts=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S"))
     new_week = advance.advance_week(conn, logs)
     repo.clear_week_logs(conn, week)
+    conn.commit()                  # ADR 0009 batch 2: clear_week_logs no longer self-commits
     flash(f"已推进到 week {new_week}")
     return redirect(url_for("plan.view"))
 

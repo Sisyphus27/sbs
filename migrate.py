@@ -73,6 +73,7 @@ def migrate_from_yaml(db_path: str, profile_path: str, state_path: str, *, force
                              target=ls.target, streak=ls.streak, est1rm=ls.est1rm)
         for h in ls.history:
             repo.append_history(conn, lid, week=h.week, weight=h.weight, reps=h.reps)
+    conn.commit()   # ADR 0009 batch 2: pass-2 writes via repo no longer self-commit
     conn.close()
     print(f"migrated {len(p.lifts)} lifts, week {s.week} -> {db_path}")
 

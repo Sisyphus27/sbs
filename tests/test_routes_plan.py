@@ -79,6 +79,7 @@ def test_plan_view_shows_tonnage_for_logged_lift(client, make_lift, db_conn):
     """A lift with this week's last-set logged renders its tonnage inline."""
     lid = make_lift(name="Curl", start=30.0)
     repo.save_log(db_conn, lid, 1, 18)   # 30 * (2*15 + 18) = 1440
+    db_conn.commit()                     # ADR 0009 batch 2: seed must persist for fresh-conn read
     html = client.get("/").get_data(as_text=True)
     assert "容量" in html and "1440kg" in html
 
@@ -87,6 +88,7 @@ def test_plan_view_shows_first_time_when_no_last_week(client, make_lift, db_conn
     """Week 1 -> no last week -> tonnage shows 首次."""
     lid = make_lift(name="Curl", start=30.0)
     repo.save_log(db_conn, lid, 1, 18)
+    db_conn.commit()                     # ADR 0009 batch 2: seed must persist for fresh-conn read
     html = client.get("/").get_data(as_text=True)
     assert "首次" in html
 
@@ -113,6 +115,7 @@ def test_save_log_clear_empties_fragment(client, make_lift, db_conn):
     """Clearing the last-set returns 200 with empty body so .save-ok is wiped."""
     lid = make_lift(name="Curl", start=30.0)
     repo.save_log(db_conn, lid, 1, 18)
+    db_conn.commit()                     # ADR 0009 batch 2: release write lock + persist seed
     rv = client.post(f"/log/save?lid={lid}", data={f"log_{lid}": ""})
     assert rv.status_code == 200
     assert rv.get_data(as_text=True) == ""
@@ -133,6 +136,7 @@ def test_plan_view_shows_tonnage_wow_delta_for_t2(client, make_lift, db_conn):
     repo.append_history(db_conn, lid, week=2, weight=50.0, reps=5)
     repo.set_week(db_conn, 3)
     repo.save_log(db_conn, lid, 3, 8)
+    db_conn.commit()                     # ADR 0009 batch 2: save_log no longer self-commits
     html = client.get("/").get_data(as_text=True)
     assert "1200kg" in html        # current tonnage
     assert "↗+41%" in html         # WoW delta: up arrow, +sign, 41%
@@ -185,6 +189,7 @@ def test_export_week_day_tristate_and_default_open(client, make_lift, db_conn):
     lid_b1 = make_lift(name="B1", day=2, sort_order=0, start=30.0)
     make_lift(name="B2", day=2, sort_order=1, start=30.0)
     repo.save_log(db_conn, lid_b1, 1, 12)   # day2 填一个 → 部分填
+    db_conn.commit()                         # ADR 0009 batch 2: seed must persist for fresh-conn read
     html = client.get("/export/week.html").get_data(as_text=True)
     assert '<details data-day="1" class="st-empty" open>' in html   # 最小非全填默认展开
     assert '<details data-day="2" class="st-part">' in html         # 部分填折叠
@@ -200,6 +205,7 @@ def test_export_week_card_done_mark(client, make_lift, db_conn):
     make_lift(name="Bench", mode="sbs", sets=4, max=80.0,
               start=None, lift_kind="main", sort_order=1)
     repo.save_log(db_conn, lid_done, 1, 10)   # Squat 已填 → 练过；Bench 未填 → 待练
+    db_conn.commit()                           # ADR 0009 batch 2: seed must persist for fresh-conn read
     html = client.get("/export/week.html").get_data(as_text=True)
     assert 'class="name done">✓ Squat' in html    # 已填：✓ + done class
     assert 'class="name">Bench' in html            # 未填：无 done、无 ✓

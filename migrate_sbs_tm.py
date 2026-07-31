@@ -33,6 +33,7 @@ def main(db_path: str = "sbs.db", backup_dir: str = "backups") -> None:
             if row["mode"] == "sbs" and \
                recompute_service.recompute_sbs_tm(conn, row["id"]) is not None:
                 n += 1
+        conn.commit()   # ADR 0009 batch 2: recompute writes via repo no longer self-commit
     finally:
         conn.close()
     print(f"recomputed {n} sbs lift TMs from max -> {db_path}")

@@ -1,7 +1,7 @@
-"""Direct unit tests for routes.plan._day_states — the day progress tri-state,
+"""Direct unit tests for services.plan.day_states — the day progress tri-state,
 now computable without a request context or template render (ADR 0007)."""
 from types import SimpleNamespace
-from webapp.routes.plan import _day_states
+from webapp.services.plan import day_states as _day_states
 
 
 def _item(is_logged):

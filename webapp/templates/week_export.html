@@ -43,7 +43,7 @@
 <h1>Week {{ week }} 计划</h1>
 <p class="sub">离线装片清单。练完回家在 app 填末组次数。</p>
 
-{# 日三态 / first_open / logged 均在 Python 算好（routes.plan._day_states + _by_day）#}
+{# 日三态 / first_open / logged 均在 Python 算好（services.plan.day_states + assemble_by_day）#}
 {% for day, state, filled, items in days %}
   <details data-day="{{ day }}" class="st-{{ state }}"{% if day==first_open %} open{% endif %}>
     <summary>

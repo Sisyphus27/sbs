@@ -83,3 +83,37 @@ def lift_week_volume(conn: sqlite3.Connection, lift_id: int, week: int,
         planned = state["target"] if is_current else _t2_target_as_of(conn, lift_id, week)
 
     return _actual_tonnage(weight, sets, planned, last_set)
+
+
+def tonnage_wow(conn: sqlite3.Connection, lift_id: int):
+    """This-week tonnage + week-over-week delta for one lift, as data.
+
+    Returns ``{"kg", "pct", "is_first"}`` or ``None`` when this week's last-set
+    isn't logged yet. ``pct``/``is_first``: ``is_first`` is True when there is no
+    prior-week tonnage (week 1 or no past history); otherwise ``pct`` holds the
+    WoW percent (positive = up). Replaces the former HTML f-string in
+    routes/plan.py::_tonnage_html — the Jinja partial renders this dict."""
+    week = repo.get_settings(conn)["week"]
+    this = lift_week_volume(conn, lift_id, week, is_current=True)
+    if this is None:
+        return None
+    last = (lift_week_volume(conn, lift_id, week - 1, is_current=False)
+            if week > 1 else None)
+    if not last:                       # None (no history) or 0 -> avoid div-by-zero
+        return {"kg": this, "pct": None, "is_first": True}
+    pct = (this - last) / last * 100
+    return {"kg": this, "pct": pct, "is_first": False}
+
+
+def live_context(conn: sqlite3.Connection, lift_id: int, reps):
+    """Compose the live-fragment data: est1RM preview + tonnage WoW.
+
+    Returns ``{"est1rm", "delta", "tonnage"}`` or ``None`` when ``reps`` is None
+    (nothing logged). ``tonnage`` is :func:`tonnage_wow` (itself None when this
+    week isn't logged). Lives here rather than in preview.py because volume
+    already depends on preview (for ``_working_weight``); the reverse import
+    would cycle. Replaces routes/plan.py::_live_html's composition."""
+    if reps is None:
+        return None
+    p = preview.live_preview(conn, lift_id, reps)
+    return {"est1rm": p["est1rm"], "delta": p["delta"], "tonnage": tonnage_wow(conn, lift_id)}

@@ -16,3 +16,8 @@ webapp/graphify-out/
 # editor / tooling noise
 node_modules/
 week-*.html
+
+# dormant GZCLP Excel builder (tools/sbs_gzclp) — reference-only; the webapp is
+# the source of truth now. Local artifact, not a repo decision. See #23.
+tools/
+*.xlsx

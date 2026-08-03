@@ -13,7 +13,7 @@ from .data.schema import Lift, Profile, SetEntry, LiftState, ProgramState
 from .engine.onerm import est1rm_from_history
 from .engine.modes import get_mode
 from .engine.progression import (sbs_next, t3_next, t2_next, T2State,
-                                 lookup_schedule)
+                                 lookup_schedule, clamp_bodyweight_target)
 
 
 def initial_state(profile: Profile) -> ProgramState:
@@ -72,6 +72,13 @@ def recompute_state(lift: Lift, history: List[SetEntry], profile: Profile) -> Li
         return LiftState(name=lift.name, mode="linear_t3", weight=weight, target=None,
                          streak=0, est1rm=est, history=history)
     if lift.mode == "linear_t2":
+        if lift.bodyweight_pct > 0:
+            # 自重 t2: 不 reset/级联。目标次数 = 最后一次实做，夹 4~10；weight 恒为 start。
+            target = 8
+            for h in history:
+                target = clamp_bodyweight_target(h.reps)
+            return LiftState(name=lift.name, mode="linear_t2", weight=lift.start or 0.0,
+                             target=target, streak=0, est1rm=est, history=history)
         target, streak, weight = 8, 0, lift.start or 0.0
         for k, h in enumerate(history):
             est_k = est1rm_from_history(history[:k + 1], bw, pct) or 0.0

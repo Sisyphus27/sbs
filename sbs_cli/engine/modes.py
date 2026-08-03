@@ -13,7 +13,7 @@ both live in ``engine/onerm.py`` (their canonical home).
 from ..data.schema import LiftState, SetEntry
 from .onerm import est1rm_from_history
 from .progression import (sbs_next, t2_next, t3_next, T2State,
-                          round_weight, lookup_schedule)
+                          round_weight, lookup_schedule, clamp_bodyweight_target)
 from .load import working_weight
 
 
@@ -81,6 +81,11 @@ class LinearT2Mode(Mode):
     def advance(self, profile, lift, state, actual, week):
         w = state.weight
         self._record(profile, lift, state, actual, week, w)
+        if lift.bodyweight_pct > 0:
+            # 自重 t2: 无重量可降，不 reset/级联。目标次数镜像上次实做，夹在 4~10。
+            if actual is not None:
+                state.target = clamp_bodyweight_target(actual)
+            return
         eff_incr = lift.incr if lift.incr is not None else profile.incr
         est = state.est1rm if state.est1rm is not None else 0.0
         ns = t2_next(T2State(state.target, state.streak, state.weight), actual, est,

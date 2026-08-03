@@ -52,17 +52,18 @@ def test_guard_advance_progression_none_keeps_added_zero():
     assert state.est1rm == estimate_1rm(75.0, 20)
 
 
-def test_guard_advance_t2_reset_uses_working_weight():
+def test_guard_advance_t2_bodyweight_no_reset_mirrors_reps():
     from sbs_cli.program import advance_lift
     from sbs_cli.data.schema import Lift, LiftState, Profile
-    # Chin-ups linear_t2: drive 3 misses so a reset fires; reset weight must be bodyweight-scale.
+    # Chin-ups 自重 t2: 连 miss 也不 reset/级联。weight 恒为 start，target 镜像上次实做（夹 4~10）。
     lift = Lift(name="Chin-ups", load_model="bodyweight", mode="linear_t2", day=2,
                 start=0.0, bodyweight_pct=1.0, incr=2.5)
     state = LiftState(name="Chin-ups", mode="linear_t2", weight=0.0, target=8, streak=0)
     p = Profile(bodyweight=75.0, incr=2.5, t2_fail=3, t2_reset_pct=0.75, schedule=[])
     for _ in range(3):
         advance_lift(p, lift, state, 3, 1)   # miss each time
-    assert state.weight > 50.0   # reset to ~est1rm(75,3)*0.75, not near 0
+    assert state.weight == 0.0   # 自重不 reset 降重
+    assert state.target == 4     # clamp(3, 4, 10)
 
 
 def test_guard_mode_switch_derive_state_is_bodyweight_driven():

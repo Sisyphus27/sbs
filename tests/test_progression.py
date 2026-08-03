@@ -55,18 +55,32 @@ def test_t2_miss_at_6_drops_to_4_same_weight():
     assert s == T2State(target=4, streak=2, weight=50)
 
 
-def test_t2_third_miss_resets_to_8_at_est1rm_pct():
-    # streak 2 -> +1 = 3 >= fail(3) -> reset: target 8, weight round(100*0.75, 2.5)=75
+def test_t2_third_miss_resets_anchored_below_failing_weight():
+    # streak 2 -> +1 = 3 >= fail(3) -> reset. est1rm=100 来自旧巅峰，>> 失败重量 50。
+    # B1: min(100*0.75, 50-2.5) = min(75, 47.5) = 47.5（锚定保证必低于失败重量，破死循环）
     s = t2_next(T2State(target=4, streak=2, weight=50), actual=3, est1rm=100)
-    assert s == T2State(target=8, streak=0, weight=75.0)
+    assert s == T2State(target=8, streak=0, weight=47.5)
+
+
+def test_t2_reset_uses_est1rm_pct_when_below_anchor():
+    # est1rm*0.75 < weight-incr 时，用 est1rm 分支（min 取小）。est1rm=40 -> 30；anchor=50-2.5=47.5
+    s = t2_next(T2State(target=4, streak=2, weight=50), actual=3, est1rm=40)
+    assert s == T2State(target=8, streak=0, weight=30.0)
+
+
+def test_t2_reset_anchor_floored_at_zero():
+    # weight < incr 时 anchor 防负：max(2.5-5, 0)=0；min(est1rm*0.75, 0)=0
+    s = t2_next(T2State(target=4, streak=2, weight=2.5), actual=3, est1rm=100, incr=5)
+    assert s == T2State(target=8, streak=0, weight=0.0)
 
 
 def test_t2_fail_2_resets_after_two_misses():
     # fail=2: miss @8 -> streak1 (<2) drop to 6; miss @6 -> streak2 (>=2) reset
+    # est1rm=100 >> weight=50 -> B1 锚定: min(75, 50-2.5)=47.5
     s1 = t2_next(T2State(target=8, streak=0, weight=50), actual=6, est1rm=100, fail=2)
     assert s1 == T2State(target=6, streak=1, weight=50)
     s2 = t2_next(s1, actual=5, est1rm=100, fail=2)
-    assert s2 == T2State(target=8, streak=0, weight=75.0)
+    assert s2 == T2State(target=8, streak=0, weight=47.5)
 
 
 def test_t2_hit_at_6_does_not_climb_back_to_8():
@@ -110,9 +124,9 @@ def test_t2_hit_adds_incr_without_snapping():
 
 
 def test_t2_reset_snaps_to_provided_quantum():
-    # reset 分支保留 round_weight(est1rm*reset_pct, quantum)：characterization，
+    # reset 分支保留 round_weight(min(est1rm*reset_pct, weight-incr), quantum)：characterization，
     # 锁定 reset 仍由调用方传入的 quantum 决定（Task 3 把 quantum 从 rounding 改为 eff_incr）。
-    # est1rm=90, reset_pct=0.75 -> 67.5；round_weight(67.5, 5)=70（5kg 堆可加载）
+    # B1: min(90*0.75, 50-5) = min(67.5, 45) = 45；round_weight(45, 5)=45（锚定生效，5kg 网格）
     s = t2_next(T2State(target=4, streak=2, weight=50), actual=3, est1rm=90,
                 incr=5, reset_pct=0.75, quantum=5)
-    assert s == T2State(target=8, streak=0, weight=70.0)
+    assert s == T2State(target=8, streak=0, weight=45.0)

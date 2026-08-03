@@ -52,6 +52,16 @@ def t3_next(weight: float, actual, target: int = 15, incr: float = 2.5) -> float
     return weight
 
 
+# 自重 t2 目标次数区间（bodyweight_pct > 0 时启用）：镜像上次实做，夹在此区间。
+BW_TARGET_MIN = 4
+BW_TARGET_MAX = 10
+
+
+def clamp_bodyweight_target(actual: int) -> int:
+    """自重 t2 无重量可降、不 reset/级联；目标次数镜像上次实做，夹在 4~10。"""
+    return max(BW_TARGET_MIN, min(BW_TARGET_MAX, actual))
+
+
 @dataclass(frozen=True)
 class T2State:
     target: int     # 8 / 6 / 4
@@ -62,15 +72,21 @@ class T2State:
 def t2_next(state: T2State, actual, est1rm: float, fail: int = 3,
             incr: float = 2.5, reset_pct: float = 0.75, quantum: float = 2.5) -> T2State:
     """T2 1-strike cascade: each miss drops one rep level (8 -> 6 -> 4); after `fail`
-    consecutive misses, reset to target 8 at round(est1rm * reset_pct, quantum).
-    A hit adds `incr` and stays at the current level (no climb-back)."""
+    consecutive misses, reset to target 8 at round(min(est1rm*reset_pct, weight-incr), quantum).
+    A hit adds `incr` and stays at the current level (no climb-back).
+
+    The reset is anchored below the failing weight: est1rm comes from the best of the
+    WHOLE history (an old peak), so est1rm*reset_pct can stay at/above the weight that
+    just failed `fail` times — resetting to it would loop forever. min() with
+    (weight - incr) guarantees the reset is strictly lighter than what just failed."""
     if actual is None:
         return state
     if actual >= state.target:                                   # HIT — pure arithmetic (ADR 0003)
         return T2State(state.target, 0, state.weight + incr)
     new_streak = state.streak + 1                                # MISS
     if new_streak >= fail:                                       # Nth consecutive miss -> reset
-        return T2State(8, 0, round_weight(est1rm * reset_pct, quantum))
+        anchor = max(state.weight - incr, 0.0)                   # 防负 (ADR: B1 共识)
+        return T2State(8, 0, round_weight(min(est1rm * reset_pct, anchor), quantum))
     ladder = [8, 6, 4]
     idx = ladder.index(state.target) if state.target in ladder else 0
     next_target = ladder[min(idx + 1, len(ladder) - 1)]          # drop one level, floor at 4

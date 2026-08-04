@@ -54,6 +54,7 @@ def submit():
     conn = get_db()
     settings = repo.get_settings(conn)
     week = settings["week"]
+    pending_logs = {}
     for key, val in request.form.items():
         if key.startswith("log_") and val.strip():
             try:
@@ -65,12 +66,14 @@ def submit():
             if reps < 0:
                 flash(f"次数不能为负: {key}", "error")
                 return redirect(url_for("plan.view"))
-            repo.save_log(conn, lid, week, reps)
-    logs = repo.get_week_logs(conn, week)
+            pending_logs[lid] = reps
     from ..backup import snapshot
     from datetime import datetime, timezone
     snapshot(current_app.config["DB_PATH"], dest_dir=current_app.config["BACKUP_DIR"],
              week=week, ts=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S"))
+    for lid, reps in pending_logs.items():
+        repo.save_log(conn, lid, week, reps)
+    logs = repo.get_week_logs(conn, week)
     new_week = advance.advance_week(conn, logs)
     repo.clear_week_logs(conn, week)
     conn.commit()                  # ADR 0009 batch 2: clear_week_logs no longer self-commits

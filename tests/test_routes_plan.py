@@ -1,4 +1,4 @@
-from webapp import repo
+from webapp import backup, repo
 
 
 def test_plan_view_empty(client):
@@ -22,6 +22,28 @@ def test_plan_submit_advances(client, make_lift, db_conn):
     rv = client.post("/log", data={f"log_{lid}": "13"})
     assert rv.status_code == 302
     assert repo.get_settings(db_conn)["week"] == 2
+
+
+def test_plan_submit_snapshots_before_writing_form_logs(client, make_lift, monkeypatch):
+    lid = make_lift(name="Curl", start=30.0)
+    events = []
+    save_log = repo.save_log
+
+    def record_snapshot(*args, **kwargs):
+        events.append("snapshot")
+        return "unused.db.bak"
+
+    def record_save_log(*args, **kwargs):
+        events.append("save_log")
+        return save_log(*args, **kwargs)
+
+    monkeypatch.setattr(backup, "snapshot", record_snapshot)
+    monkeypatch.setattr(repo, "save_log", record_save_log)
+
+    rv = client.post("/log", data={f"log_{lid}": "18"})
+
+    assert rv.status_code == 302
+    assert events[:2] == ["snapshot", "save_log"]
 
 
 def test_plan_submit_form_has_double_click_guard(client):

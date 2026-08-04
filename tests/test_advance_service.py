@@ -24,7 +24,10 @@ def _seed(tmp_path):
 
 def test_advance_week_runs_engine_and_bumps_week(tmp_path):
     conn, ids = _seed(tmp_path)
-    new_week = advance.advance_week(conn, {ids["Squat"]: 13, ids["Rows"]: 10, ids["Curl"]: 15})
+    new_week = advance.advance_week(
+        conn, {ids["Squat"]: 13, ids["Rows"]: 10, ids["Curl"]: 15},
+        expected_week=1,
+    )
     assert new_week == 2
     assert repo.get_settings(conn)["week"] == 2
     # Squat beat repout(10) by 3 -> +1.5% -> tm 135*1.015=137.025 (raw, no MROUND)
@@ -38,16 +41,32 @@ def test_advance_week_runs_engine_and_bumps_week(tmp_path):
 
 def test_advance_week_skips_unlogged_lifts(tmp_path):
     conn, ids = _seed(tmp_path)
-    advance.advance_week(conn, {ids["Squat"]: 10})  # Rows/Curl not logged
+    advance.advance_week(conn, {ids["Squat"]: 10}, expected_week=1)  # Rows/Curl not logged
     curl_id = ids["Curl"]
     assert repo.list_history(conn, curl_id) == []   # no history
     assert repo.get_lift_state(conn, curl_id)["weight"] == 40.0  # unchanged
     conn.close()
 
 
+def test_advance_week_combines_saved_and_submitted_logs_after_claim(tmp_path):
+    conn, ids = _seed(tmp_path)
+    repo.save_log(conn, ids["Squat"], 1, 13)
+    conn.commit()
+
+    advance.advance_week(conn, {ids["Rows"]: 10}, expected_week=1)
+
+    assert [(row["week"], row["reps"]) for row in repo.list_history(conn, ids["Squat"])] == [
+        (1, 13)
+    ]
+    assert [(row["week"], row["reps"]) for row in repo.list_history(conn, ids["Rows"])] == [
+        (1, 10)
+    ]
+    conn.close()
+
+
 def test_advance_week_rows_t2_hit_increments(tmp_path):
     conn, ids = _seed(tmp_path)
-    advance.advance_week(conn, {ids["Rows"]: 10})  # reps 10 >= target 8 -> hit -> +incr 2.5
+    advance.advance_week(conn, {ids["Rows"]: 10}, expected_week=1)  # reps 10 >= target 8 -> hit -> +incr 2.5
     rows_id = ids["Rows"]
     assert repo.get_lift_state(conn, rows_id)["weight"] == 87.5
     conn.close()
@@ -63,28 +82,14 @@ def test_advance_week_handles_duplicate_names_per_day(tmp_path):
     d4 = repo.create_lift(conn, name="Face Pull", load_model="barbell", mode="linear_t3",
                           day=4, sort_order=0,
                           sets=3, max=None, intensity=None, reps=None, repout=None, start=45.0)
-    advance.advance_week(conn, {d1: 20, d4: 12})  # d1 hit (+2.5), d4 missed (unchanged)
+    advance.advance_week(conn, {d1: 20, d4: 12}, expected_week=1)  # d1 hit (+2.5), d4 missed (unchanged)
     assert repo.get_lift_state(conn, d1)["weight"] == 32.5
     assert repo.get_lift_state(conn, d4)["weight"] == 45.0
     conn.close()
 
 
 def test_advance_week_rolls_back_on_mid_loop_failure(tmp_path, monkeypatch):
-    """ADR 0009 batch 2: advance_week's per-lift fan-out is atomic. With the
-    repo-level commits stripped, every save_lift_state/append_history in the
-    loop accumulates in ONE uncommitted transaction until set_week flushes it
-    at the end — so a mid-loop failure rolls back EVERY prior lift's writes,
-    not just the failing one. This is the ADR's real prize: a crash can no
-    longer leave the DB in 'some lifts advanced, others not'.
-
-    Scope note: set_week still self-commits (ADR 0009 keeps it as advance's
-    single end-of-loop commit by design — batch 2 strips only the 5 fan-out
-    helpers). This test proves loop atomicity for failures before set_week fires.
-
-    Discriminator: with the old per-call repo commits, Squat's advance was
-    committed before the 2nd lift blew up (tm=137.025, history=1 row leaked).
-    With the boundary moved up, conn.rollback() undoes it all (tm stays 135.0,
-    history stays empty)."""
+    """A caller rollback removes the week claim and every prior lift write."""
     conn, ids = _seed(tmp_path)
     squat_id, rows_id = ids["Squat"], ids["Rows"]
 
@@ -100,7 +105,9 @@ def test_advance_week_rolls_back_on_mid_loop_failure(tmp_path, monkeypatch):
     monkeypatch.setattr(repo, "save_lift_state", boom)
 
     with pytest.raises(RuntimeError):
-        advance.advance_week(conn, {squat_id: 13, rows_id: 10})
+        advance.advance_week(
+            conn, {squat_id: 13, rows_id: 10}, expected_week=1
+        )
 
     conn.rollback()                        # drop the uncommitted transaction
     assert repo.get_settings(conn)["week"] == 1                       # not bumped

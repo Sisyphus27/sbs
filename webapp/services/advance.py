@@ -5,13 +5,21 @@ from .. import repo
 from .rows import lift_from_row, profile_from_rows, state_from_rows
 
 
-def advance_week(conn: sqlite3.Connection, logs: dict) -> int:
-    """Run the engine for every lift using this week's logged last-set reps.
-    `logs` maps lift_id -> last-set reps (lifts absent from logs are skipped).
+class StaleWeekError(Exception):
+    pass
+
+
+def advance_week(conn: sqlite3.Connection, submitted_logs: dict, *, expected_week: int) -> int:
+    """Claim and run one program week using saved and submitted last-set reps.
+    `submitted_logs` maps lift_id -> last-set reps and overrides saved autosaves.
     Keyed by row id (not name) so the same exercise can appear on multiple days
     as independent instances."""
+    if not repo.increment_week_if_current(conn, expected_week):
+        raise StaleWeekError
+    logs = repo.get_week_logs(conn, expected_week)
+    logs.update(submitted_logs)
     settings = repo.get_settings(conn)
-    week = settings["week"]
+    week = expected_week
     lift_rows = repo.list_lifts(conn)
     schedule = repo.load_schedule(conn)
     profile = profile_from_rows(settings, lift_rows, schedule)  # engine reads globals + schedule
@@ -29,5 +37,4 @@ def advance_week(conn: sqlite3.Connection, logs: dict) -> int:
             last = ls.history[-1]
             repo.append_history(conn, lid, week=week, weight=last.weight, reps=last.reps)
     new_week = week + 1
-    repo.set_week(conn, new_week)
     return new_week

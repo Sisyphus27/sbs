@@ -91,7 +91,7 @@ def test_rename_lift_via_post(client, app):
 def test_mode_preview_then_apply(client, app):
     lid = _lift(app)
     # build some history so est1rm exists
-    client.post("/log", data={f"log_{lid}": "12"})
+    client.post("/log", data={"expected_week": "1", f"log_{lid}": "12"})
     rv = client.get(f"/lifts/{lid}/mode?mode=linear_t3")
     assert rv.status_code == 200 and b"linear_t3" in rv.data
     rv = client.post(f"/lifts/{lid}/mode", data={"mode": "linear_t3"})

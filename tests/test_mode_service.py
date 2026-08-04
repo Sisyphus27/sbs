@@ -10,7 +10,7 @@ def _seed_with_history(tmp_path):
                            sets=5, max=135.0, intensity=0.7, reps=5, repout=10,
                            start=None, lift_kind="main")
     # one logged week -> est1rm derived from history
-    advance.advance_week(conn, {lid: 10})
+    advance.advance_week(conn, {lid: 10}, expected_week=1)
     repo.set_week(conn, 1)  # roll week back for test isolation
     return conn, lid
 

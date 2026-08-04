@@ -1,4 +1,5 @@
 import sqlite3
+import pytest
 from webapp.db import init_schema
 from webapp import db
 
@@ -71,6 +72,25 @@ def test_history_lift_id_index_exists(tmp_path):
     idx = {r[1] for r in conn.execute(
         "SELECT type, name FROM sqlite_master WHERE type='index'").fetchall()}
     assert "idx_history_lift" in idx
+    conn.close()
+
+
+def test_history_rejects_a_second_fact_for_the_same_lift_and_program_week(tmp_path):
+    conn = db.connect(str(tmp_path / "t.db"))
+    db.init_schema(conn)
+    lift_id = conn.execute(
+        "INSERT INTO lifts (name, day) VALUES ('Squat', 1)"
+    ).lastrowid
+    conn.execute(
+        "INSERT INTO history (lift_id, week, weight, reps, ts) VALUES (?, 1, 100, 10, 'first')",
+        (lift_id,),
+    )
+
+    with pytest.raises(sqlite3.IntegrityError):
+        conn.execute(
+            "INSERT INTO history (lift_id, week, weight, reps, ts) VALUES (?, 1, 105, 11, 'second')",
+            (lift_id,),
+        )
     conn.close()
 
 

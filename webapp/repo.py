@@ -23,7 +23,22 @@ def get_settings(conn: sqlite3.Connection) -> sqlite3.Row:
 
 def set_week(conn: sqlite3.Connection, week: int) -> None:
     conn.execute("UPDATE settings SET week = ?", (week,))
-    conn.commit()
+
+
+def increment_week_if_current(conn: sqlite3.Connection, expected_week: int) -> bool:
+    cursor = conn.execute(
+        "UPDATE settings SET week = week + 1 WHERE id = 1 AND week = ?",
+        (expected_week,),
+    )
+    return cursor.rowcount == 1
+
+
+def lock_week_if_current(conn: sqlite3.Connection, expected_week: int) -> bool:
+    cursor = conn.execute(
+        "UPDATE settings SET week = week WHERE id = 1 AND week = ?",
+        (expected_week,),
+    )
+    return cursor.rowcount == 1
 
 
 def update_settings(conn: sqlite3.Connection, **fields) -> None:

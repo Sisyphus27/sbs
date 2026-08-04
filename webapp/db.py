@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS sbs_schedule (
     PRIMARY KEY (kind, week)
 );
 CREATE INDEX IF NOT EXISTS idx_history_lift ON history(lift_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_history_lift_week ON history(lift_id, week);
 """
 
 _DEFAULT_SETTINGS = dict(

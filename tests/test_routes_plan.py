@@ -1,3 +1,10 @@
+import sqlite3
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
+import pytest
+
 from webapp import backup, repo
 
 
@@ -19,31 +26,88 @@ def test_plan_renders_duplicate_names_with_distinct_state(client, make_lift):
 def test_plan_submit_advances(client, make_lift, db_conn):
     lid = make_lift(name="Squat", mode="sbs", sets=5, max=135.0, intensity=0.7,
                     reps=5, repout=10, start=None, lift_kind="main")
-    rv = client.post("/log", data={f"log_{lid}": "13"})
+    rv = client.post("/log", data={"expected_week": "1", f"log_{lid}": "13"})
     assert rv.status_code == 302
     assert repo.get_settings(db_conn)["week"] == 2
 
 
-def test_plan_submit_snapshots_before_writing_form_logs(client, make_lift, monkeypatch):
-    lid = make_lift(name="Curl", start=30.0)
-    events = []
-    save_log = repo.save_log
+def test_plan_submit_rejects_stale_expected_week(client, make_lift, db_conn):
+    lid = make_lift(name="Squat", mode="sbs", sets=5, max=135.0, intensity=0.7,
+                    reps=5, repout=10, start=None, lift_kind="main")
+    data = {"expected_week": "1", f"log_{lid}": "13"}
 
-    def record_snapshot(*args, **kwargs):
-        events.append("snapshot")
+    assert client.post("/log", data=data).status_code == 302
+    assert client.post("/log", data=data).status_code == 409
+
+    assert repo.get_settings(db_conn)["week"] == 2
+    history = repo.list_history(db_conn, lid)
+    assert [(row["week"], row["reps"]) for row in history] == [(1, 13)]
+
+
+def test_plan_submit_allows_only_one_concurrent_expected_week(app, make_lift, db_conn,
+                                                              monkeypatch):
+    lid = make_lift(name="Squat", mode="sbs", sets=5, max=135.0, intensity=0.7,
+                    reps=5, repout=10, start=None, lift_kind="main")
+    both_checked_week = threading.Barrier(2)
+
+    def synchronized_snapshot(*args, **kwargs):
+        both_checked_week.wait(timeout=5)
         return "unused.db.bak"
 
-    def record_save_log(*args, **kwargs):
-        events.append("save_log")
-        return save_log(*args, **kwargs)
+    monkeypatch.setattr(backup, "snapshot", synchronized_snapshot)
 
-    monkeypatch.setattr(backup, "snapshot", record_snapshot)
-    monkeypatch.setattr(repo, "save_log", record_save_log)
+    def submit():
+        with app.test_client() as thread_client:
+            return thread_client.post(
+                "/log", data={"expected_week": "1", f"log_{lid}": "13"}
+            ).status_code
 
-    rv = client.post("/log", data={f"log_{lid}": "18"})
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        statuses = list(pool.map(lambda _n: submit(), range(2)))
+
+    assert sorted(statuses) == [302, 409]
+    assert repo.get_settings(db_conn)["week"] == 2
+    assert len(repo.list_history(db_conn, lid)) == 1
+
+
+def test_plan_submit_requires_expected_week(client):
+    assert client.post("/log", data={}).status_code == 400
+
+
+def test_plan_submit_snapshot_contains_pre_advance_state(client, app, make_lift):
+    lid = make_lift(name="Curl", start=30.0)
+    rv = client.post(
+        "/log", data={"expected_week": "1", f"log_{lid}": "18"}
+    )
 
     assert rv.status_code == 302
-    assert events[:2] == ["snapshot", "save_log"]
+    backup_path = next(Path(app.config["BACKUP_DIR"]).glob("sbs-w1-*.db.bak"))
+    with sqlite3.connect(backup_path) as snapshot_conn:
+        assert snapshot_conn.execute(
+            "SELECT week FROM settings WHERE id = 1"
+        ).fetchone()[0] == 1
+        assert snapshot_conn.execute("SELECT COUNT(*) FROM history").fetchone()[0] == 0
+
+
+def test_plan_submit_rolls_back_when_log_clear_fails(client, make_lift, db_conn):
+    lid = make_lift(name="Squat", mode="sbs", sets=5, max=135.0, intensity=0.7,
+                    reps=5, repout=10, start=None, lift_kind="main")
+    repo.save_log(db_conn, lid, 1, 13)
+    db_conn.execute("""
+        CREATE TRIGGER fail_week_log_clear
+        BEFORE DELETE ON week_log
+        BEGIN
+            SELECT RAISE(ABORT, 'simulated clear failure');
+        END
+    """)
+    db_conn.commit()
+
+    with pytest.raises(sqlite3.IntegrityError, match="simulated clear failure"):
+        client.post("/log", data={"expected_week": "1"})
+
+    assert repo.get_settings(db_conn)["week"] == 1
+    assert repo.list_history(db_conn, lid) == []
+    assert repo.get_week_logs(db_conn, 1) == {lid: 13}
 
 
 def test_plan_submit_form_has_double_click_guard(client):
@@ -56,6 +120,17 @@ def test_plan_submit_form_has_double_click_guard(client):
     """
     html = client.get("/").get_data(as_text=True)
     assert "data-disable-submit" in html
+
+
+def test_plan_form_carries_expected_program_week(client):
+    html = client.get("/").get_data(as_text=True)
+    assert 'type="hidden" name="expected_week" value="1"' in html
+
+
+def test_autosave_includes_expected_program_week(client, make_lift):
+    make_lift(name="Curl", start=30.0)
+    html = client.get("/").get_data(as_text=True)
+    assert 'hx-include="[name=\'expected_week\']"' in html
 
 
 def test_export_week_standalone_with_progress(client, make_lift, db_conn):
@@ -84,6 +159,7 @@ def test_plan_view_shows_week2_schedule_values(client, make_lift, db_conn):
     repo.save_lift_state(db_conn, lid, mode="sbs", tm=100.0, weight=None,
                          target=None, streak=0, est1rm=None)
     repo.set_week(db_conn, 2)
+    db_conn.commit()
     html = client.get("/").get_data(as_text=True)
     assert "Week 2" in html
     assert "75.0 kg" in html          # schedule-driven weight (MROUND(100*0.75,2.5))
@@ -96,17 +172,33 @@ def test_autosave_persists_and_prefills_then_advances(client, make_lift, db_conn
     lid = make_lift(name="Squat", mode="sbs", sets=5, max=135.0, intensity=0.7,
                     reps=5, repout=10, start=None, lift_kind="main")
     # autosave via /log/save (HTMX on change) — no advance, returns live est1RM preview
-    rv = client.post(f"/log/save?lid={lid}", data={f"log_{lid}": "11"})
+    rv = client.post(
+        f"/log/save?lid={lid}",
+        data={"expected_week": "1", f"log_{lid}": "11"},
+    )
     assert rv.status_code == 200
     body = rv.get_data(as_text=True)
     assert "≈" in body and "(首次)" in body   # live preview, no history yet
     # input is prefilled from week_log on next render
     assert 'value="11"' in client.get("/").get_data(as_text=True)
     # advancing with an EMPTY form still consumes the saved log
-    rv = client.post("/log", data={})
+    rv = client.post("/log", data={"expected_week": "1"})
     assert rv.status_code == 302
     assert repo.get_settings(db_conn)["week"] == 2
     assert repo.get_week_logs(db_conn, 1) == {}   # cleared after advance
+
+
+def test_autosave_rejects_stale_expected_week(client, make_lift, db_conn):
+    lid = make_lift(name="Curl", start=30.0)
+    assert client.post("/log", data={"expected_week": "1"}).status_code == 302
+
+    rv = client.post(
+        f"/log/save?lid={lid}",
+        data={"expected_week": "1", f"log_{lid}": "18"},
+    )
+
+    assert rv.status_code == 409
+    assert repo.get_week_logs(db_conn, 2) == {}
 
 
 def test_plan_view_shows_tonnage_for_logged_lift(client, make_lift, db_conn):
@@ -137,7 +229,10 @@ def test_plan_view_omits_tonnage_when_not_logged(client, make_lift):
 def test_save_log_response_includes_tonnage(client, make_lift):
     """Filling the last-set returns live est1RM + tonnage in the same fragment."""
     lid = make_lift(name="Curl", start=30.0)
-    rv = client.post(f"/log/save?lid={lid}", data={f"log_{lid}": "18"})
+    rv = client.post(
+        f"/log/save?lid={lid}",
+        data={"expected_week": "1", f"log_{lid}": "18"},
+    )
     assert rv.status_code == 200
     body = rv.get_data(as_text=True)
     assert "≈" in body                       # est1RM preview still present
@@ -150,7 +245,10 @@ def test_save_log_clear_empties_fragment(client, make_lift, db_conn):
     lid = make_lift(name="Curl", start=30.0)
     repo.save_log(db_conn, lid, 1, 18)
     db_conn.commit()                     # ADR 0009 batch 2: release write lock + persist seed
-    rv = client.post(f"/log/save?lid={lid}", data={f"log_{lid}": ""})
+    rv = client.post(
+        f"/log/save?lid={lid}",
+        data={"expected_week": "1", f"log_{lid}": ""},
+    )
     assert rv.status_code == 200
     assert rv.get_data(as_text=True) == ""
 

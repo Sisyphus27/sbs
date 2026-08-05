@@ -38,6 +38,8 @@ def create_app(db_path: str | None = None, backup_dir: str | None = None,
     app.register_blueprint(schedule_bp)
     from .routes.reseed import bp as reseed_bp
     app.register_blueprint(reseed_bp)
+    from .routes.training import bp as training_bp
+    app.register_blueprint(training_bp)
 
     from .services.reseed import due_lifts
     from sbs_cli.data.schema import LEGAL_COMBOS, LOAD_MODELS, MODES

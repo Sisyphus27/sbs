@@ -192,6 +192,126 @@ def clear_week_logs(conn: sqlite3.Connection, week: int) -> None:
     conn.execute("DELETE FROM week_log WHERE week = ?", (week,))
 
 
+# ---------- v1 training facts ----------
+_TRAINING_SLOT_SELECT = (
+    "SELECT ps.id, e.name, e.load_model, ps.mode, ps.day, ps.sort_order, "
+    "ps.sets, ps.max_seed AS max, ps.intensity, ps.reps, ps.repout, "
+    "ps.start_weight AS start, ps.lift_kind, ps.increment AS incr, "
+    "ps.bodyweight_pct FROM program_slot AS ps "
+    "JOIN exercise AS e ON e.id = ps.exercise_id "
+)
+
+
+def get_training_slot(conn: sqlite3.Connection, slot_id: int):
+    """Return one v1 slot in the row shape consumed by the existing Mode handlers."""
+    return conn.execute(
+        _TRAINING_SLOT_SELECT + "WHERE ps.id = ?", (slot_id,)
+    ).fetchone()
+
+
+def list_training_slots(conn: sqlite3.Connection):
+    return conn.execute(
+        _TRAINING_SLOT_SELECT + "ORDER BY ps.day, ps.sort_order, ps.id"
+    ).fetchall()
+
+
+def get_training_state(conn: sqlite3.Connection, slot_id: int):
+    return conn.execute(
+        "SELECT slot_id AS lift_id, mode, tm, weight, target, streak, est1rm, "
+        "reseeded_cycle FROM strength_state WHERE slot_id = ?",
+        (slot_id,),
+    ).fetchone()
+
+
+def get_training_session(conn: sqlite3.Connection, *, program_week: int, day: int):
+    return conn.execute(
+        "SELECT * FROM training_session WHERE program_week = ? AND day = ?",
+        (program_week, day),
+    ).fetchone()
+
+
+def create_training_session(conn: sqlite3.Connection, *, program_week: int, day: int,
+                            training_date, bodyweight_kg) -> int:
+    return conn.execute(
+        "INSERT INTO training_session "
+        "(program_week, day, training_date, bodyweight_kg) VALUES (?, ?, ?, ?)",
+        (program_week, day, training_date, bodyweight_kg),
+    ).lastrowid
+
+
+def update_training_session(conn: sqlite3.Connection, session_id: int,
+                            **fields) -> None:
+    allowed = {"training_date", "bodyweight_kg"}
+    if not fields:
+        return
+    if set(fields) - allowed:
+        raise ValueError("unknown training session field")
+    assignments = ", ".join(f"{column} = ?" for column in fields)
+    conn.execute(
+        f"UPDATE training_session SET {assignments} WHERE id = ?",
+        (*fields.values(), session_id),
+    )
+
+
+def create_prescription_snapshot(conn: sqlite3.Connection, values: dict) -> None:
+    columns = tuple(values)
+    placeholders = ", ".join("?" for _ in columns)
+    snapshot_columns = tuple(
+        column for column in columns if column not in {"session_id", "slot_id"}
+    )
+    assignments = ", ".join(
+        f"{column}=excluded.{column}" for column in snapshot_columns
+    )
+    conn.execute(
+        f"INSERT INTO progression_event ({', '.join(columns)}) "
+        f"VALUES ({placeholders}) ON CONFLICT(session_id, slot_id) DO UPDATE SET "
+        f"{assignments} WHERE progression_event.mode IS NULL",
+        tuple(values[column] for column in columns),
+    )
+
+
+def clear_progression_driver(conn: sqlite3.Connection, *, session_id: int,
+                             slot_id: int) -> None:
+    conn.execute(
+        "UPDATE set_log SET drives_progression = 0 "
+        "WHERE session_id = ? AND slot_id = ? AND drives_progression = 1",
+        (session_id, slot_id),
+    )
+
+
+def upsert_training_set(conn: sqlite3.Connection, *, session_id: int, slot_id: int,
+                        set_number: int, actual_added_weight: float, reps: int,
+                        warmup: bool, drives_progression: bool) -> None:
+    conn.execute(
+        "INSERT INTO set_log "
+        "(session_id, slot_id, set_number, actual_added_weight, reps, warmup, "
+        "drives_progression) VALUES (?, ?, ?, ?, ?, ?, ?) "
+        "ON CONFLICT(session_id, slot_id, set_number) DO UPDATE SET "
+        "actual_added_weight=excluded.actual_added_weight, reps=excluded.reps, "
+        "warmup=excluded.warmup, drives_progression=excluded.drives_progression",
+        (session_id, slot_id, set_number, actual_added_weight, reps,
+         int(warmup), int(drives_progression)),
+    )
+
+
+def list_training_facts(conn: sqlite3.Connection):
+    return conn.execute(
+        "SELECT ts.id AS session_id, ts.program_week, ts.day, ts.training_date, "
+        "ts.bodyweight_kg, ts.finalized_at, sl.slot_id, e.name AS exercise_name, "
+        "e.load_model, sl.set_number, sl.actual_added_weight, sl.reps, sl.warmup, "
+        "sl.drives_progression, pe.mode, pe.planned_sets, pe.planned_reps, "
+        "pe.planned_repout, pe.planned_target, pe.planned_intensity, "
+        "pe.planned_added_weight, pe.planned_working_weight, pe.bodyweight_pct "
+        "FROM set_log AS sl "
+        "JOIN training_session AS ts ON ts.id = sl.session_id "
+        "JOIN program_slot AS ps ON ps.id = sl.slot_id "
+        "JOIN exercise AS e ON e.id = ps.exercise_id "
+        "JOIN progression_event AS pe "
+        "ON pe.session_id = sl.session_id AND pe.slot_id = sl.slot_id "
+        "ORDER BY ts.program_week, ts.day, sl.slot_id, sl.set_number"
+    ).fetchall()
+
+
 # ---------- schedule (Task 5) ----------
 def load_schedule(conn: sqlite3.Connection):
     """Return the schedule as a list of ScheduleRow (the dataclass the engine wants).

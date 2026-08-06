@@ -1,4 +1,5 @@
 from sbs_cli.engine.progression import schedule_week, cycle_number
+from tests.v1_helpers import mirror_legacy_lift
 
 
 def _seed_squat_at(app, week):
@@ -10,6 +11,7 @@ def _seed_squat_at(app, week):
         lid = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
                                day=1, sort_order=0, sets=5, max=100.0, intensity=None,
                                reps=None, repout=None, start=None, lift_kind="main")
+        mirror_legacy_lift(conn, lid)
         conn.close()
         return lid
 
@@ -34,9 +36,13 @@ def test_reseed_apply_sets_max_and_tm(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        row = conn.execute("SELECT max FROM lifts WHERE id=?", (lid,)).fetchone()
-        st = conn.execute("SELECT tm, reseeded_cycle FROM lift_state WHERE lift_id=?", (lid,)).fetchone()
-        assert row["max"] == 120.0
+        row = conn.execute(
+            "SELECT max_seed FROM program_slot WHERE id=?", (lid,)
+        ).fetchone()
+        st = conn.execute(
+            "SELECT tm, reseeded_cycle FROM strength_state WHERE slot_id=?", (lid,)
+        ).fetchone()
+        assert row["max_seed"] == 120.0
         assert st["tm"] == 120.0
         assert st["reseeded_cycle"] == 2
         conn.close()
@@ -49,7 +55,9 @@ def test_reseed_skip_keeps_tm_advances_cycle(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        st = conn.execute("SELECT tm, reseeded_cycle FROM lift_state WHERE lift_id=?", (lid,)).fetchone()
+        st = conn.execute(
+            "SELECT tm, reseeded_cycle FROM strength_state WHERE slot_id=?", (lid,)
+        ).fetchone()
         assert st["tm"] == 100.0      # unchanged
         assert st["reseeded_cycle"] == 2
         conn.close()

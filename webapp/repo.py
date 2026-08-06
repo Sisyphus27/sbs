@@ -223,6 +223,79 @@ def get_training_state(conn: sqlite3.Connection, slot_id: int):
     ).fetchone()
 
 
+_TRAINING_SLOT_EDIT_COLUMNS = {
+    "day": "day",
+    "sets": "sets",
+    "max": "max_seed",
+    "intensity": "intensity",
+    "reps": "reps",
+    "repout": "repout",
+    "start": "start_weight",
+    "lift_kind": "lift_kind",
+    "incr": "increment",
+    "bodyweight_pct": "bodyweight_pct",
+}
+
+
+def update_training_slot(conn: sqlite3.Connection, slot_id: int, **fields) -> None:
+    """Update ordinary v1 plan fields; mode is deliberately not accepted."""
+    name = fields.pop("name", None)
+    bad = set(fields) - set(_TRAINING_SLOT_EDIT_COLUMNS)
+    if bad:
+        raise ValueError(f"unknown training slot columns: {bad}")
+    if name is not None:
+        conn.execute(
+            "UPDATE exercise SET name = ? WHERE id = "
+            "(SELECT exercise_id FROM program_slot WHERE id = ?)",
+            (name, slot_id),
+        )
+    if fields:
+        assignments = ", ".join(
+            f"{_TRAINING_SLOT_EDIT_COLUMNS[field]} = ?" for field in fields
+        )
+        conn.execute(
+            f"UPDATE program_slot SET {assignments} WHERE id = ?",
+            (*fields.values(), slot_id),
+        )
+
+
+def switch_training_mode(conn: sqlite3.Connection, slot_id: int, *, mode: str,
+                         tm, weight, target, streak: int, est1rm) -> None:
+    """Update the two sides of a v1 slot/state mode switch without committing."""
+    slot_update = conn.execute(
+        "UPDATE program_slot SET mode = ? WHERE id = ?", (mode, slot_id)
+    )
+    state_update = conn.execute(
+        "UPDATE strength_state SET mode = ?, tm = ?, weight = ?, target = ?, "
+        "streak = ?, est1rm = ? WHERE slot_id = ?",
+        (mode, tm, weight, target, streak, est1rm, slot_id),
+    )
+    if slot_update.rowcount != 1 or state_update.rowcount != 1:
+        raise ValueError("unknown training slot")
+
+
+def set_training_reseed(conn: sqlite3.Connection, slot_id: int, *, cycle: int,
+                        new_max=None) -> None:
+    """Apply the existing cycle reseed semantics to one v1 slot/state pair."""
+    state_update = conn.execute(
+        "UPDATE strength_state SET reseeded_cycle = ? "
+        "WHERE slot_id = ? AND mode = 'sbs' AND EXISTS "
+        "(SELECT 1 FROM program_slot WHERE id = ? AND mode = 'sbs')",
+        (cycle, slot_id, slot_id),
+    )
+    if state_update.rowcount != 1:
+        raise ValueError("unknown training slot")
+    if new_max is not None:
+        conn.execute(
+            "UPDATE program_slot SET max_seed = ? WHERE id = ?",
+            (new_max, slot_id),
+        )
+        conn.execute(
+            "UPDATE strength_state SET tm = ? WHERE slot_id = ?",
+            (new_max, slot_id),
+        )
+
+
 def get_training_session(conn: sqlite3.Connection, *, program_week: int, day: int):
     return conn.execute(
         "SELECT * FROM training_session WHERE program_week = ? AND day = ?",

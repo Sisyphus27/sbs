@@ -1,4 +1,5 @@
 from webapp import repo
+from tests.v1_helpers import mirror_legacy_lift
 
 
 def _lift(app):
@@ -7,6 +8,7 @@ def _lift(app):
     lid = repo.create_lift(conn, name="Squat", load_model="barbell", mode="sbs",
                            day=1, sort_order=0, sets=5, max=135.0, intensity=0.7,
                            reps=5, repout=10, start=None, lift_kind="main")
+    mirror_legacy_lift(conn, lid)
     conn.close()
     return lid
 
@@ -74,7 +76,7 @@ def test_edit_lift_params_via_post(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        assert repo.get_lift(conn, lid)["intensity"] == 0.75
+        assert repo.get_training_slot(conn, lid)["intensity"] == 0.75
         conn.close()
 
 
@@ -84,7 +86,7 @@ def test_rename_lift_via_post(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        assert repo.get_lift(conn, lid)["name"] == "Back Squat"
+        assert repo.get_training_slot(conn, lid)["name"] == "Back Squat"
         conn.close()
 
 
@@ -99,7 +101,7 @@ def test_mode_preview_then_apply(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        assert repo.get_lift(conn, lid)["mode"] == "linear_t3"
+        assert repo.get_training_slot(conn, lid)["mode"] == "linear_t3"
         conn.close()
 
 
@@ -112,7 +114,7 @@ def test_mode_apply_rejects_illegal_combo(client, app):
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
         # mode unchanged
-        assert repo.get_lift(conn, lid)["mode"] == "sbs"
+        assert repo.get_training_slot(conn, lid)["mode"] == "sbs"
         conn.close()
 
 
@@ -122,18 +124,20 @@ def _t2_lift(app):
     lid = repo.create_lift(conn, name="Rows", load_model="barbell", mode="linear_t2",
                            day=1, sort_order=0, sets=4, max=None, intensity=None,
                            reps=None, repout=None, start=85.0)
+    mirror_legacy_lift(conn, lid)
     conn.close()
     return lid
 
 
-def test_edit_start_t2_recomputes_weight(client, app):
+def test_edit_start_t2_changes_plan_without_rewriting_state(client, app):
     lid = _t2_lift(app)  # created with start=85 -> lift_state.weight seeded 85
     rv = client.post(f"/lifts/{lid}/edit", data={"start": "65"})
     assert rv.status_code == 200
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        assert repo.get_lift_state(conn, lid)["weight"] == 65.0  # recomputed to new start
+        assert repo.get_training_slot(conn, lid)["start"] == 65.0
+        assert repo.get_training_state(conn, lid)["weight"] == 85.0
         conn.close()
 
 
@@ -142,13 +146,13 @@ def test_edit_start_sbs_does_not_recompute(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        tm_before = repo.get_lift_state(conn, lid)["tm"]
+        tm_before = repo.get_training_state(conn, lid)["tm"]
         conn.close()
     client.post(f"/lifts/{lid}/edit", data={"start": "100"})
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        assert repo.get_lift_state(conn, lid)["tm"] == tm_before  # sbs tm unchanged
+        assert repo.get_training_state(conn, lid)["tm"] == tm_before
         conn.close()
 
 
@@ -174,7 +178,7 @@ def test_edit_changes_lift_kind(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        assert repo.get_lift(conn, lid)["lift_kind"] == "aux"
+        assert repo.get_training_slot(conn, lid)["lift_kind"] == "aux"
         conn.close()
 
 
@@ -187,6 +191,7 @@ def _t2_lift_with_incr(app, incr=None):
     if incr is not None:
         kwargs["incr"] = incr
     lid = repo.create_lift(conn, **kwargs)
+    mirror_legacy_lift(conn, lid)
     conn.close()
     return lid
 
@@ -238,7 +243,7 @@ def test_edit_changes_incr(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        assert repo.get_lift(conn, lid)["incr"] == 5.0
+        assert repo.get_training_slot(conn, lid)["incr"] == 5.0
         conn.close()
 
 
@@ -249,7 +254,7 @@ def test_edit_clears_incr_to_null(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        assert repo.get_lift(conn, lid)["incr"] is None
+        assert repo.get_training_slot(conn, lid)["incr"] is None
         conn.close()
 
 
@@ -260,19 +265,19 @@ def test_edit_rejects_nonpositive_incr_and_preserves_original(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        assert repo.get_lift(conn, lid)["incr"] == 5.0  # original preserved
+        assert repo.get_training_slot(conn, lid)["incr"] == 5.0
         conn.close()
 
 
-def test_edit_rejects_illegal_mode_combo(client, app):
-    # barbell sbs lift cannot be edited to mode=none (bad combo) -> 400, mode unchanged
+def test_ordinary_edit_ignores_mode_change(client, app):
     lid = _lift(app)
     rv = client.post(f"/lifts/{lid}/edit", data={"mode": "none"})
-    assert rv.status_code == 400
+    assert rv.status_code == 200
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        assert repo.get_lift(conn, lid)["mode"] == "sbs"
+        assert repo.get_training_slot(conn, lid)["mode"] == "sbs"
+        assert repo.get_training_state(conn, lid)["mode"] == "sbs"
         conn.close()
 
 
@@ -284,13 +289,14 @@ def test_edit_changes_bodyweight_pct(client, app):
                                mode="linear_t3", day=4, sort_order=1, sets=3,
                                max=None, intensity=None, reps=None, repout=None,
                                start=0.0)
+        mirror_legacy_lift(conn, lid)
         conn.close()
     rv = client.post(f"/lifts/{lid}/edit", data={"bodyweight_pct": "1.0"})
     assert rv.status_code == 200
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        assert repo.get_lift(conn, lid)["bodyweight_pct"] == 1.0
+        assert repo.get_training_slot(conn, lid)["bodyweight_pct"] == 1.0
         conn.close()
 
 

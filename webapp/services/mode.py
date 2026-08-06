@@ -7,6 +7,19 @@ from .. import repo
 from .rows import lift_from_row
 
 
+def _derive_start(lift, new_mode: str, settings, est1rm) -> dict:
+    if not is_legal_combo(lift["load_model"], new_mode):
+        raise ValueError(
+            f"illegal mode {new_mode} for load_model {lift['load_model']}"
+        )
+    lift_dc = lift_from_row(lift)
+    state = get_mode(new_mode).derive_on_switch(
+        lift_dc, [], settings, est1rm
+    )
+    state["est1rm"] = est1rm
+    return state
+
+
 def derive_state(conn: sqlite3.Connection, lift_id: int, new_mode: str,
                  settings) -> dict:
     """Compute the new-mode starting state from preserved history. Read-only.
@@ -19,10 +32,6 @@ def derive_state(conn: sqlite3.Connection, lift_id: int, new_mode: str,
     to the registered Mode handler via ``derive_on_switch``.
     """
     lift = repo.get_lift(conn, lift_id)
-    if not is_legal_combo(lift["load_model"], new_mode):
-        raise ValueError(
-            f"illegal mode {new_mode} for load_model {lift['load_model']}"
-        )
     hist = [SetEntry(week=h["week"], weight=h["weight"], reps=h["reps"])
             for h in repo.list_history(conn, lift_id)]
     # ADR 0004: history.weight is ADDED weight — thread bodyweight through the
@@ -31,14 +40,17 @@ def derive_state(conn: sqlite3.Connection, lift_id: int, new_mode: str,
     pct = repo.row_get(lift, "bodyweight_pct", 0.0)
     bw = repo.row_get(settings, "bodyweight", 0.0)
     est1rm = est1rm_from_history(hist, bw, pct)
-    # Build a Lift dataclass for the handler (handlers read lift.incr / .max /
-    # .start / .bodyweight_pct). Converters live in services/rows.py (no cycle).
-    lift_dc = lift_from_row(lift)
-    # derive_on_switch reads the settings DICT (subscript access, same shape as
-    # the rest of the service layer), NOT a Profile dataclass.
-    state = get_mode(new_mode).derive_on_switch(lift_dc, hist, settings, est1rm)
-    state["est1rm"] = est1rm
-    return state
+    return _derive_start(lift, new_mode, settings, est1rm)
+
+
+def derive_slot_state(conn: sqlite3.Connection, slot_id: int, new_mode: str,
+                      settings) -> dict:
+    """Preview a v1 slot's new state without writing either side of the pair."""
+    slot = repo.get_training_slot(conn, slot_id)
+    current_state = repo.get_training_state(conn, slot_id)
+    if slot is None or current_state is None:
+        raise ValueError("unknown training slot")
+    return _derive_start(slot, new_mode, settings, current_state["est1rm"])
 
 
 def apply_switch(conn: sqlite3.Connection, lift_id: int, state: dict) -> None:
@@ -47,4 +59,18 @@ def apply_switch(conn: sqlite3.Connection, lift_id: int, state: dict) -> None:
     repo.save_lift_state(
         conn, lift_id, mode=state["mode"], tm=state["tm"], weight=state["weight"],
         target=state["target"], streak=state["streak"], est1rm=state["est1rm"],
+    )
+
+
+def apply_slot_switch(conn: sqlite3.Connection, slot_id: int, state: dict) -> None:
+    """Write a v1 mode switch; the route owns the single transaction."""
+    repo.switch_training_mode(
+        conn,
+        slot_id,
+        mode=state["mode"],
+        tm=state["tm"],
+        weight=state["weight"],
+        target=state["target"],
+        streak=state["streak"],
+        est1rm=state["est1rm"],
     )

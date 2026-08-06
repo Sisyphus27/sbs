@@ -9,6 +9,13 @@ from .. import repo
 from sbs_cli.engine.progression import schedule_week, cycle_number
 
 
+def reseed_cycle(week: int):
+    """Return the active reseed cycle, or None outside a cycle boundary."""
+    if week == 1 or schedule_week(week) != 1:
+        return None
+    return cycle_number(week)
+
+
 def due_lifts(conn: sqlite3.Connection) -> Tuple[List[Tuple], int]:
     """sbs lifts due for reseed at the current program week.
 
@@ -19,14 +26,14 @@ def due_lifts(conn: sqlite3.Connection) -> Tuple[List[Tuple], int]:
     ``(lift_row, state_row)`` tuples (raw sqlite3.Row pairs).
     """
     week = repo.get_settings(conn)["week"]
-    if schedule_week(week) != 1 or week == 1:
+    cyc = reseed_cycle(week)
+    if cyc is None:
         return [], cycle_number(week)
-    cyc = cycle_number(week)
     out = []
-    for r in repo.list_lifts(conn):
+    for r in repo.list_training_slots(conn):
         if r["mode"] != "sbs":
             continue
-        st = repo.get_lift_state(conn, r["id"])
+        st = repo.get_training_state(conn, r["id"])
         if (st["reseeded_cycle"] or 0) < cyc:
             out.append((r, st))
     return out, cyc

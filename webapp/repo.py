@@ -385,6 +385,51 @@ def list_training_facts(conn: sqlite3.Connection):
     ).fetchall()
 
 
+def list_progression_drivers(conn: sqlite3.Connection, *, program_week: int):
+    """Return the one explicit progression set for each current-week session-slot."""
+    return conn.execute(
+        "SELECT ts.id AS session_id, ts.program_week, ts.day, ts.bodyweight_kg, "
+        "sl.slot_id, sl.actual_added_weight, sl.reps, e.name, e.load_model, "
+        "ps.lift_kind, ps.mode AS current_slot_mode, "
+        "ss.mode AS current_state_mode, pe.mode, pe.planned_sets, pe.planned_reps, "
+        "pe.planned_repout, pe.planned_target, pe.planned_intensity, "
+        "pe.bodyweight_pct, pe.state_tm, pe.state_weight, pe.state_target, "
+        "pe.state_streak, COALESCE(pe.state_est1rm, ss.est1rm) AS state_est1rm, "
+        "pe.rounding, pe.increment, pe.t2_reset_pct, pe.t2_fail, pe.t3_target "
+        "FROM set_log AS sl "
+        "JOIN training_session AS ts ON ts.id = sl.session_id "
+        "JOIN program_slot AS ps ON ps.id = sl.slot_id "
+        "JOIN exercise AS e ON e.id = ps.exercise_id "
+        "JOIN strength_state AS ss ON ss.slot_id = sl.slot_id "
+        "JOIN progression_event AS pe "
+        "ON pe.session_id = sl.session_id AND pe.slot_id = sl.slot_id "
+        "WHERE ts.program_week = ? AND ts.finalized_at IS NULL "
+        "AND sl.drives_progression = 1 AND sl.warmup = 0 "
+        "ORDER BY ts.day, sl.slot_id",
+        (program_week,),
+    ).fetchall()
+
+
+def save_training_state(conn: sqlite3.Connection, slot_id: int, *, mode: str,
+                        tm, weight, target, streak: int, est1rm) -> None:
+    cursor = conn.execute(
+        "UPDATE strength_state SET mode = ?, tm = ?, weight = ?, target = ?, "
+        "streak = ?, est1rm = ? WHERE slot_id = ?",
+        (mode, tm, weight, target, streak, est1rm, slot_id),
+    )
+    if cursor.rowcount != 1:
+        raise sqlite3.IntegrityError("missing strength state")
+
+
+def finalize_training_sessions(conn: sqlite3.Connection, *, program_week: int,
+                               finalized_at: str) -> None:
+    conn.execute(
+        "UPDATE training_session SET finalized_at = ? "
+        "WHERE program_week = ? AND finalized_at IS NULL",
+        (finalized_at, program_week),
+    )
+
+
 # ---------- schedule (Task 5) ----------
 def load_schedule(conn: sqlite3.Connection):
     """Return the schedule as a list of ScheduleRow (the dataclass the engine wants).

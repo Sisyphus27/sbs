@@ -1,10 +1,12 @@
 """CLI adapter for the v1 SQLite draft-set command."""
 
 import argparse
-from datetime import date
+from datetime import date, datetime, timezone
 
+from . import repo
+from .backup import snapshot
 from .db import connect
-from .services.training import TrainingInputError, save_draft_set
+from .services.training import TrainingInputError, finalize_week, save_draft_set
 
 
 def _iso_date(raw: str) -> str:
@@ -43,6 +45,25 @@ def cmd_save_set(args) -> None:
     )
 
 
+def cmd_finalize_week(args) -> None:
+    conn = connect(args.db)
+    try:
+        if repo.get_settings(conn)["week"] != args.expected_week:
+            raise SystemExit("stale week")
+        snapshot(
+            args.db,
+            dest_dir=args.backup_dir,
+            week=args.expected_week,
+            ts=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S"),
+        )
+        new_week = finalize_week(conn, expected_week=args.expected_week)
+    except TrainingInputError as error:
+        raise SystemExit(str(error)) from error
+    finally:
+        conn.close()
+    print(f"finalized week {args.expected_week} to week {new_week}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m webapp.training_cli")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -79,6 +100,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=argparse.SUPPRESS,
     )
     save_set_parser.set_defaults(func=cmd_save_set)
+
+    finalize_parser = subparsers.add_parser("finalize-week")
+    finalize_parser.add_argument("--db", required=True)
+    finalize_parser.add_argument("--backup-dir", required=True)
+    finalize_parser.add_argument("--expected-week", required=True, type=int)
+    finalize_parser.set_defaults(func=cmd_finalize_week)
     return parser
 
 

@@ -2,10 +2,12 @@
 
 import math
 import sqlite3
+from datetime import datetime, timezone
 
+from sbs_cli.data.schema import Lift, LiftState, Profile, ScheduleRow, SetEntry
 from sbs_cli.engine.modes import get_mode
 from sbs_cli.engine.onerm import estimate_1rm
-from sbs_cli.engine.progression import lookup_schedule
+from sbs_cli.engine.progression import lookup_schedule, schedule_week
 
 from .. import repo
 from .rows import lift_from_row, profile_from_rows, state_from_rows
@@ -238,3 +240,169 @@ def save_draft_set(conn: sqlite3.Connection, *, expected_week: int, slot_id: int
     except Exception:
         conn.rollback()
         raise
+
+
+class _DriverHistory(list):
+    """Present the projected driver load to unchanged Mode handlers."""
+
+    def __init__(self, entries, actual_added_weight):
+        super().__init__(entries)
+        self._actual_added_weight = actual_added_weight
+
+    def append(self, entry):
+        if self._actual_added_weight is not None:
+            super().append(
+                SetEntry(
+                    week=entry.week,
+                    weight=self._actual_added_weight,
+                    reps=entry.reps,
+                )
+            )
+
+
+def _progression_models(row, expected_week: int, canonical_e1rm,
+                        projection_available: bool):
+    mode = row["mode"]
+    if mode is None:
+        raise TrainingInputError("progression driver snapshot is unconfirmed")
+    if row["current_slot_mode"] != mode or row["current_state_mode"] != mode:
+        raise TrainingInputError("training mode changed after draft save")
+    required = {
+        "sbs": ("state_tm", "rounding", "planned_intensity", "planned_reps",
+                "planned_repout"),
+        "linear_t2": ("state_weight", "state_target", "state_streak", "increment",
+                      "t2_reset_pct", "t2_fail"),
+        "linear_t3": ("state_weight", "increment", "t3_target"),
+        "none": ("state_weight",),
+    }
+    if mode not in required or any(row[name] is None for name in required[mode]):
+        raise TrainingInputError("progression driver snapshot is incomplete")
+
+    bodyweight_pct = row["bodyweight_pct"]
+    if bodyweight_pct is None:
+        bodyweight_pct = 0.0 if row["load_model"] == "barbell" else 1.0
+    session_bodyweight = row["bodyweight_kg"] or 0.0
+    prior_e1rm = row["state_est1rm"]
+    history = []
+    if prior_e1rm is not None and (
+        canonical_e1rm is None or prior_e1rm > canonical_e1rm
+    ):
+        history.append(
+            SetEntry(
+                week=max(expected_week - 1, 1),
+                weight=prior_e1rm - session_bodyweight * bodyweight_pct,
+                reps=1,
+            )
+        )
+
+    schedule = []
+    if mode == "sbs":
+        schedule = [
+            ScheduleRow(
+                kind=row["lift_kind"],
+                week=schedule_week(expected_week),
+                intensity=row["planned_intensity"],
+                reps=row["planned_reps"],
+                repout=row["planned_repout"],
+            )
+        ]
+    profile = Profile(
+        rounding=row["rounding"] or 2.5,
+        incr=row["increment"] or 2.5,
+        t2_reset_pct=row["t2_reset_pct"] or 0.75,
+        t2_fail=row["t2_fail"] or 3,
+        t3_target=row["t3_target"] or 15,
+        bodyweight=session_bodyweight,
+        schedule=schedule,
+    )
+    lift = Lift(
+        name=row["name"],
+        day=row["day"],
+        load_model=row["load_model"],
+        mode=mode,
+        sets=row["planned_sets"] or 1,
+        reps=row["planned_reps"] or 0,
+        repout=row["planned_repout"] or 0,
+        start=row["actual_added_weight"],
+        lift_kind=row["lift_kind"],
+        incr=row["increment"],
+        bodyweight_pct=bodyweight_pct,
+    )
+    state = LiftState(
+        name=row["name"],
+        mode=mode,
+        tm=row["state_tm"],
+        weight=row["state_weight"],
+        target=row["state_target"],
+        streak=row["state_streak"] or 0,
+        est1rm=prior_e1rm,
+        history=_DriverHistory(
+            history,
+            row["actual_added_weight"] if projection_available else None,
+        ),
+    )
+    return profile, lift, state, prior_e1rm
+
+
+def finalize_week(conn: sqlite3.Connection, *, expected_week: int) -> int:
+    """Atomically progress explicit drivers, finalize sessions, and advance week."""
+    timestamp = datetime.now(timezone.utc).isoformat()
+    try:
+        with conn:
+            if not repo.lock_week_if_current(conn, expected_week):
+                raise StaleTrainingWeekError("stale week")
+            for row in repo.list_progression_drivers(
+                conn, program_week=expected_week
+            ):
+                if row["actual_added_weight"] is None or not math.isfinite(
+                    row["actual_added_weight"]
+                ):
+                    raise TrainingInputError(
+                        "progression driver actual weight is unconfirmed"
+                    )
+                working_weight = actual_working_weight(
+                    load_model=row["load_model"],
+                    actual_added_weight=row["actual_added_weight"],
+                    session_bodyweight=row["bodyweight_kg"],
+                    bodyweight_pct=row["bodyweight_pct"],
+                )
+                canonical_e1rm, _ = _e1rm_values(
+                    working_weight, row["reps"], True
+                )
+                models = _progression_models(
+                    row,
+                    expected_week,
+                    canonical_e1rm,
+                    projection_available=working_weight is not None,
+                )
+                profile, lift, state, prior_e1rm = models
+                get_mode(state.mode).advance(
+                    profile, lift, state, row["reps"], expected_week
+                )
+                state.est1rm = (
+                    prior_e1rm
+                    if canonical_e1rm is None
+                    else max(
+                        value for value in (prior_e1rm, canonical_e1rm)
+                        if value is not None
+                    )
+                )
+                repo.save_training_state(
+                    conn,
+                    row["slot_id"],
+                    mode=state.mode,
+                    tm=state.tm,
+                    weight=state.weight,
+                    target=state.target,
+                    streak=state.streak,
+                    est1rm=state.est1rm,
+                )
+            repo.finalize_training_sessions(
+                conn, program_week=expected_week, finalized_at=timestamp
+            )
+            if not repo.increment_week_if_current(conn, expected_week):
+                raise StaleTrainingWeekError("stale week")
+    except Exception:
+        conn.rollback()
+        raise
+    return expected_week + 1

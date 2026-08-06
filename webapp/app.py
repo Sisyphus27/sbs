@@ -4,7 +4,7 @@ import webbrowser
 from threading import Timer
 from flask import Flask
 from .db import close_db, connect, DEFAULT_DB_PATH
-from .migration import migrate_v0_to_v1
+from .migration import migrate_to_v2
 
 
 def create_app(db_path: str | None = None, backup_dir: str | None = None,
@@ -20,7 +20,7 @@ def create_app(db_path: str | None = None, backup_dir: str | None = None,
     # ADR 0009: bootstrap schema once at startup (out of the per-request get_db()).
     _bootstrap = connect(app.config["DB_PATH"])
     try:
-        migrate_v0_to_v1(
+        migrate_to_v2(
             _bootstrap,
             db_path=app.config["DB_PATH"],
             backup_dir=app.config["BACKUP_DIR"],

@@ -157,9 +157,20 @@ def _snapshot_week(conn: sqlite3.Connection) -> int:
     return row[0]
 
 
-def _create_fresh_v1(conn: sqlite3.Connection) -> None:
+def _add_e1rm_qualified_column(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        "ALTER TABLE set_log ADD COLUMN e1rm_qualified "
+        "INTEGER NOT NULL DEFAULT 0 CHECK (e1rm_qualified IN (0, 1))"
+    )
+
+
+def _create_fresh(conn: sqlite3.Connection, *, version: int) -> None:
+    if version not in (1, 2):
+        raise ValueError("fresh schema version must be 1 or 2")
     conn.executescript(f"BEGIN IMMEDIATE;\n{_BASE_SCHEMA}\n{_V1_SCHEMA}")
     try:
+        if version == 2:
+            _add_e1rm_qualified_column(conn)
         conn.execute(
             "INSERT INTO settings "
             "(id, week, days_per_week, rounding, incr, t2_reset_pct, t2_fail, "
@@ -176,11 +187,19 @@ def _create_fresh_v1(conn: sqlite3.Connection) -> None:
                 for row in DEFAULT_SCHEDULE
             ],
         )
-        conn.execute("PRAGMA user_version = 1")
+        conn.execute(f"PRAGMA user_version = {version}")
         conn.commit()
     except Exception:
         conn.rollback()
         raise
+
+
+def _create_fresh_v1(conn: sqlite3.Connection) -> None:
+    _create_fresh(conn, version=1)
+
+
+def _create_fresh_v2(conn: sqlite3.Connection) -> None:
+    _create_fresh(conn, version=2)
 
 
 def _insert_legacy_lifts(conn: sqlite3.Connection) -> tuple[dict[int, int], int]:
@@ -457,3 +476,45 @@ def migrate_v0_to_v1(
         week_logs,
         incomplete,
     )
+
+
+def _upgrade_v1_to_v2(conn: sqlite3.Connection) -> None:
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        _add_e1rm_qualified_column(conn)
+        conn.execute(
+            "UPDATE strength_state SET est1rm = NULL WHERE mode = 'sbs'"
+        )
+        conn.execute("PRAGMA user_version = 2")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+
+
+def migrate_to_v2(
+    conn: sqlite3.Connection, *, db_path: str, backup_dir: str
+) -> None:
+    """Bring an empty, v0, or v1 database to the concrete v2 schema."""
+    version = conn.execute("PRAGMA user_version").fetchone()[0]
+    if version == 2:
+        return
+    if not _table_names(conn):
+        _create_fresh_v2(conn)
+        logger.info("initialized fresh database at schema v2")
+        return
+    if version == 0:
+        migrate_v0_to_v1(conn, db_path=db_path, backup_dir=backup_dir)
+    elif version == 1:
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+        snapshot(
+            db_path,
+            dest_dir=backup_dir,
+            week=_snapshot_week(conn),
+            ts=timestamp,
+        )
+    else:
+        raise sqlite3.DatabaseError(f"unsupported schema version: {version}")
+
+    _upgrade_v1_to_v2(conn)
+    logger.info("migrated v1 to v2")

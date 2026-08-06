@@ -47,36 +47,41 @@ def _e1rm_values(weight, reps: int, canonical_eligible: bool):
     return canonical, display
 
 
+def _project_training_fact(row, *, canonical_eligible: bool) -> dict:
+    weight = actual_working_weight(
+        load_model=row["load_model"],
+        actual_added_weight=row["actual_added_weight"],
+        session_bodyweight=row["bodyweight_kg"],
+        bodyweight_pct=row["bodyweight_pct"],
+    )
+    canonical, display = _e1rm_values(
+        weight, row["reps"], canonical_eligible
+    )
+    item = dict(row)
+    item.update(
+        actual_working_weight=weight,
+        canonical_e1rm=canonical,
+        display_e1rm=display,
+    )
+    return item
+
+
 def training_history(conn: sqlite3.Connection) -> list[dict]:
     """Return stable per-set projections and recorded work-set volume."""
     projected = []
     volumes = {}
     unavailable = set()
     for row in repo.list_training_facts(conn):
-        weight = actual_working_weight(
-            load_model=row["load_model"],
-            actual_added_weight=row["actual_added_weight"],
-            session_bodyweight=row["bodyweight_kg"],
-            bodyweight_pct=row["bodyweight_pct"],
-        )
-        canonical, display = _e1rm_values(
-            weight,
-            row["reps"],
-            bool(row["drives_progression"] and not row["warmup"]),
+        item = _project_training_fact(
+            row, canonical_eligible=bool(row["e1rm_qualified"])
         )
         key = (row["session_id"], row["slot_id"])
         volumes.setdefault(key, 0.0)
         if not row["warmup"]:
-            if weight is None:
+            if item["actual_working_weight"] is None:
                 unavailable.add(key)
             else:
-                volumes[key] += weight * row["reps"]
-        item = dict(row)
-        item.update(
-            actual_working_weight=weight,
-            canonical_e1rm=canonical,
-            display_e1rm=display,
-        )
+                volumes[key] += item["actual_working_weight"] * row["reps"]
         projected.append((key, item))
     return [
         {**item, "recorded_volume": None if key in unavailable else volumes[key]}
@@ -154,24 +159,26 @@ def training_plan(conn: sqlite3.Connection) -> dict:
         planned = _prescription_snapshot(
             conn, slot, state, settings, expected_week
         )
-        slots.append(
-            {
-                "slot_id": slot["id"],
-                "name": slot["name"],
-                "load_model": slot["load_model"],
-                "day": slot["day"],
-                "planned_sets": planned["planned_sets"],
-                "planned_reps": planned["planned_reps"],
-                "planned_added_weight": planned["planned_added_weight"],
-                "planned_working_weight": planned["planned_working_weight"],
-            }
-        )
+        item = {
+            "slot_id": slot["id"],
+            "name": slot["name"],
+            "load_model": slot["load_model"],
+            "day": slot["day"],
+            "planned_sets": planned["planned_sets"],
+            "planned_reps": planned["planned_reps"],
+            "planned_added_weight": planned["planned_added_weight"],
+            "planned_working_weight": planned["planned_working_weight"],
+        }
+        if slot["mode"] == "sbs":
+            item["historical_peak_e1rm"] = state["est1rm"]
+        slots.append(item)
     return {"expected_week": expected_week, "slots": slots}
 
 
 def save_draft_set(conn: sqlite3.Connection, *, expected_week: int, slot_id: int,
                    set_number: int, actual_added_weight: float, reps: int,
                    warmup: bool = False, drives_progression: bool = False,
+                   e1rm_qualified: bool = False,
                    training_date=UNCHANGED, bodyweight_kg=UNCHANGED) -> None:
     """Save one stable draft set; this command owns the transaction."""
     validate_draft_input(
@@ -236,6 +243,7 @@ def save_draft_set(conn: sqlite3.Connection, *, expected_week: int, slot_id: int
                 reps=reps,
                 warmup=warmup,
                 drives_progression=drives_progression,
+                e1rm_qualified=e1rm_qualified,
             )
     except Exception:
         conn.rollback()
@@ -344,6 +352,27 @@ def _progression_models(row, expected_week: int, canonical_e1rm,
     return profile, lift, state, prior_e1rm
 
 
+def _sbs_observation_peaks(conn: sqlite3.Connection, expected_week: int) -> dict:
+    peaks = {}
+    for row in repo.list_training_facts(conn):
+        if (
+            row["program_week"] != expected_week
+            or row["finalized_at"] is not None
+            or row["mode"] != "sbs"
+            or not row["e1rm_qualified"]
+        ):
+            continue
+        projected = _project_training_fact(
+            row, canonical_eligible=True
+        )
+        canonical_e1rm = projected["canonical_e1rm"]
+        if canonical_e1rm is not None:
+            peaks[row["slot_id"]] = max(
+                peaks.get(row["slot_id"], canonical_e1rm), canonical_e1rm
+            )
+    return peaks
+
+
 def finalize_week(conn: sqlite3.Connection, *, expected_week: int) -> int:
     """Atomically progress explicit drivers, finalize sessions, and advance week."""
     timestamp = datetime.now(timezone.utc).isoformat()
@@ -351,6 +380,7 @@ def finalize_week(conn: sqlite3.Connection, *, expected_week: int) -> int:
         with conn:
             if not repo.lock_week_if_current(conn, expected_week):
                 raise StaleTrainingWeekError("stale week")
+            sbs_observation_peaks = _sbs_observation_peaks(conn, expected_week)
             for row in repo.list_progression_drivers(
                 conn, program_week=expected_week
             ):
@@ -360,33 +390,32 @@ def finalize_week(conn: sqlite3.Connection, *, expected_week: int) -> int:
                     raise TrainingInputError(
                         "progression driver actual weight is unconfirmed"
                     )
-                working_weight = actual_working_weight(
-                    load_model=row["load_model"],
-                    actual_added_weight=row["actual_added_weight"],
-                    session_bodyweight=row["bodyweight_kg"],
-                    bodyweight_pct=row["bodyweight_pct"],
+                is_sbs = row["mode"] == "sbs"
+                projected_driver = _project_training_fact(
+                    row,
+                    canonical_eligible=(
+                        bool(row["e1rm_qualified"]) if is_sbs else True
+                    ),
                 )
-                canonical_e1rm, _ = _e1rm_values(
-                    working_weight, row["reps"], True
-                )
+                working_weight = projected_driver["actual_working_weight"]
+                canonical_e1rm = projected_driver["canonical_e1rm"]
                 models = _progression_models(
                     row,
                     expected_week,
-                    canonical_e1rm,
-                    projection_available=working_weight is not None,
+                    None if is_sbs else canonical_e1rm,
+                    projection_available=working_weight is not None and not is_sbs,
                 )
                 profile, lift, state, prior_e1rm = models
                 get_mode(state.mode).advance(
                     profile, lift, state, row["reps"], expected_week
                 )
-                state.est1rm = (
-                    prior_e1rm
-                    if canonical_e1rm is None
-                    else max(
-                        value for value in (prior_e1rm, canonical_e1rm)
+                aggregate_e1rm = None if is_sbs else canonical_e1rm
+                state.est1rm = prior_e1rm
+                if aggregate_e1rm is not None:
+                    state.est1rm = max(
+                        value for value in (prior_e1rm, aggregate_e1rm)
                         if value is not None
                     )
-                )
                 repo.save_training_state(
                     conn,
                     row["slot_id"],
@@ -397,6 +426,8 @@ def finalize_week(conn: sqlite3.Connection, *, expected_week: int) -> int:
                     streak=state.streak,
                     est1rm=state.est1rm,
                 )
+            for slot_id, peak_e1rm in sbs_observation_peaks.items():
+                repo.save_sbs_historical_peak(conn, slot_id, peak_e1rm)
             repo.finalize_training_sessions(
                 conn, program_week=expected_week, finalized_at=timestamp
             )

@@ -66,7 +66,8 @@ def _optional_date(name):
         raise TrainingInputError(f"bad {name}") from error
 
 
-def _save(*, warmup: bool, drives_progression: bool):
+def _save(*, warmup: bool, drives_progression: bool,
+          e1rm_qualified: bool = False):
     try:
         save_draft_set(
             get_db(),
@@ -77,6 +78,7 @@ def _save(*, warmup: bool, drives_progression: bool):
             reps=_integer("reps"),
             warmup=warmup,
             drives_progression=drives_progression,
+            e1rm_qualified=e1rm_qualified,
             training_date=_optional_date("training_date"),
             bodyweight_kg=_optional_number("bodyweight_kg"),
         )
@@ -97,9 +99,18 @@ def save_full_set():
     try:
         warmup = _boolean("warmup")
         drives_progression = _boolean("drives_progression")
+        e1rm_qualified = (
+            _boolean("e1rm_qualified")
+            if "e1rm_qualified" in request.form
+            else False
+        )
     except TrainingInputError as error:
         return (str(error), 400)
-    return _save(warmup=warmup, drives_progression=drives_progression)
+    return _save(
+        warmup=warmup,
+        drives_progression=drives_progression,
+        e1rm_qualified=e1rm_qualified,
+    )
 
 
 @bp.get("/history")

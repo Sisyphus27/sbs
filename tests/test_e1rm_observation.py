@@ -220,3 +220,126 @@ def test_sbs_qualified_observations_survive_v2_upgrade_and_keep_historical_peak(
         assert after_second_week.execute(
             "SELECT tm, est1rm FROM strength_state WHERE slot_id = ?", (slot_id,)
         ).fetchone() == pytest.approx((101.0, 150.0))
+
+
+def test_loadable_t2_keeps_one_peak_through_the_complete_reset_cycle(tmp_path):
+    db_path = tmp_path / "t2-reset-cycle.db"
+    backup_dir = tmp_path / "backups"
+    app = create_app(
+        db_path=str(db_path),
+        backup_dir=str(backup_dir),
+        test_config={"TESTING": True},
+    )
+    with sqlite3.connect(db_path) as conn:
+        conn.execute("UPDATE settings SET incr = 2.5, t2_fail = 1 WHERE id = 1")
+        slot_id = insert_v1_slot(
+            conn,
+            name="Row",
+            mode="linear_t3",
+            day=1,
+            sort_order=0,
+            sets=3,
+            start_weight=105.0,
+            increment=7.0,
+            weight=105.0,
+            est1rm=250.0,
+        )
+        conn.commit()
+
+    with app.test_client() as client:
+        switched = client.post(
+            f"/lifts/{slot_id}/mode",
+            data={"mode": "linear_t2", "weight": "105"},
+        )
+
+    assert switched.status_code == 302
+    with sqlite3.connect(db_path) as conn:
+        assert conn.execute(
+            "SELECT mode, weight, target, streak, est1rm FROM strength_state "
+            "WHERE slot_id = ?",
+            (slot_id,),
+        ).fetchone() == ("linear_t2", 105.0, 8, 0, None)
+
+    for week, driver_reps, expected_state in (
+        (1, 7, (105.0, 6, 1, 200.0)),
+        (2, 5, (105.0, 4, 2, 200.0)),
+        (3, 3, (98.0, 8, 0, None)),
+    ):
+        with app.test_client() as client:
+            if week == 1:
+                assert client.post(
+                    "/training/sets/full",
+                    data={
+                        "expected_week": "1",
+                        "slot_id": str(slot_id),
+                        "set_number": "1",
+                        "actual_added_weight": "200",
+                        "reps": "1",
+                        "warmup": "0",
+                        "drives_progression": "0",
+                        "e1rm_qualified": "1",
+                    },
+                ).status_code == 200
+            assert client.post(
+                "/training/sets/full",
+                data={
+                    "expected_week": str(week),
+                    "slot_id": str(slot_id),
+                    "set_number": "3",
+                    "actual_added_weight": "60",
+                    "reps": str(driver_reps),
+                    "warmup": "0",
+                    "drives_progression": "1",
+                    "e1rm_qualified": "1",
+                },
+            ).status_code == 200
+            finalized = client.post(
+                "/training/finalize", data={"expected_week": str(week)}
+            )
+
+        assert finalized.status_code == 200
+        with sqlite3.connect(db_path) as conn:
+            assert conn.execute(
+                "SELECT weight, target, streak, est1rm FROM strength_state "
+                "WHERE slot_id = ?",
+                (slot_id,),
+            ).fetchone() == pytest.approx(expected_state)
+
+    with app.test_client() as client:
+        assert client.post(
+            "/training/sets/full",
+            data={
+                "expected_week": "4",
+                "slot_id": str(slot_id),
+                "set_number": "1",
+                "actual_added_weight": "80",
+                "reps": "1",
+                "warmup": "0",
+                "drives_progression": "0",
+                "e1rm_qualified": "1",
+            },
+        ).status_code == 200
+        assert client.post(
+            "/training/sets/full",
+            data={
+                "expected_week": "4",
+                "slot_id": str(slot_id),
+                "set_number": "3",
+                "actual_added_weight": "60",
+                "reps": "8",
+                "warmup": "0",
+                "drives_progression": "1",
+                "e1rm_qualified": "0",
+            },
+        ).status_code == 200
+        finalized = client.post(
+            "/training/finalize", data={"expected_week": "4"}
+        )
+
+    assert finalized.status_code == 200
+    with sqlite3.connect(db_path) as conn:
+        assert conn.execute(
+            "SELECT weight, target, streak, est1rm FROM strength_state "
+            "WHERE slot_id = ?",
+            (slot_id,),
+        ).fetchone() == pytest.approx((105.0, 8, 0, 80.0))

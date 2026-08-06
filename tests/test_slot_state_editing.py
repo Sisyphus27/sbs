@@ -108,7 +108,7 @@ def test_mode_apply_updates_only_the_slot_and_its_unique_state(tmp_path):
             "SELECT mode, tm, weight, target, streak, est1rm, reseeded_cycle "
             "FROM strength_state WHERE slot_id = ?",
             (slot_id,),
-        ).fetchone() == ("linear_t2", None, 82.5, 8, 0, 150.0, 1)
+        ).fetchone() == ("linear_t2", None, 82.5, 8, 0, None, 1)
         other_after = (
             conn.execute(
                 "SELECT mode, sets, start_weight FROM program_slot WHERE id = ?",

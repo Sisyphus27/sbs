@@ -151,13 +151,16 @@ def test_bodyweight_history_uses_saved_session_and_snapshot_after_restart(tmp_pa
             },
         )
         work = client.post(
-            "/training/sets/quick",
+            "/training/sets/full",
             data={
                 "expected_week": "1",
                 "slot_id": str(slot_id),
                 "set_number": "3",
                 "actual_added_weight": "10",
                 "reps": "8",
+                "warmup": "0",
+                "drives_progression": "1",
+                "e1rm_qualified": "1",
             },
         )
     assert warmup.status_code == 200
@@ -198,6 +201,7 @@ def test_bodyweight_history_uses_saved_session_and_snapshot_after_restart(tmp_pa
                 "reps": "8",
                 "warmup": "0",
                 "drives_progression": "1",
+                "e1rm_qualified": "1",
                 "training_date": "2026-08-06",
                 "bodyweight_kg": "82",
             },

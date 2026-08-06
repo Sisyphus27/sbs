@@ -10,10 +10,9 @@
 {% endif %}
 <p class="meta">练完填每个动作的<b>末组次数</b>(填完自动保存,关掉也不丢)。全部练完点 <b>提交并算下周</b>。</p>
 <p><a class="btn" href="{{ url_for('plan.export_week') }}" download>📱 导出本周计划(手机看)</a></p>
-{# data-disable-submit: guard against double-click double-advancing the week (ADR 0010).
-   Non-idempotent POST + no button disable => two clicks = two week jumps. JS is guaranteed
-   on (page already depends on htmx for autosave), so client-side disable is sufficient. #}
+  {# Client-side disable gives immediate feedback; expected_week is the server guard (ADR 0010). #}
 <form method="post" action="{{ url_for('plan.submit') }}" data-disable-submit>
+  <input type="hidden" name="expected_week" value="{{ week }}">
   <button type="submit" class="btn-primary" style="margin-bottom:16px">提交并算下周</button>
   {% for day, items in by_day %}
   <div class="card">
@@ -33,6 +32,7 @@
         </div>
         <label>末组: <input type="number" name="log_{{ it.id }}" value="{{ it.logged }}"
                hx-post="{{ url_for('plan.save_log', lid=it.id) }}" hx-trigger="change"
+               hx-include="[name='expected_week']"
                hx-target="next .save-ok" hx-swap="innerHTML">
           <span class="save-ok num">{% if it.live %}{% with live = it.live %}{% include '_live_fragment.html' %}{% endwith %}{% endif %}</span></label>
       </div>

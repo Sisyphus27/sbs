@@ -54,7 +54,7 @@ def test_recompute_on_start_change_uses_per_lift_incr(tmp_path):
                            sets=3, max=None, intensity=None, reps=None, repout=None,
                            start=40.0, incr=5.0)
     # 一次命中 -> history；advance 用 eff_incr=5 -> 40+5=45
-    advance.advance_week(conn, {lid: 16})
+    advance.advance_week(conn, {lid: 16}, expected_week=1)
     repo.set_week(conn, 1)
     # 编辑 start=20 -> 重放：20 + 5（per-lift incr）= 25
     ls = recompute_service.recompute_on_start_change(conn, lid, 20.0)

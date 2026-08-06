@@ -1,4 +1,5 @@
 import sqlite3
+import pytest
 from webapp.db import init_schema
 from webapp import db
 
@@ -74,6 +75,25 @@ def test_history_lift_id_index_exists(tmp_path):
     conn.close()
 
 
+def test_history_rejects_a_second_fact_for_the_same_lift_and_program_week(tmp_path):
+    conn = db.connect(str(tmp_path / "t.db"))
+    db.init_schema(conn)
+    lift_id = conn.execute(
+        "INSERT INTO lifts (name, day) VALUES ('Squat', 1)"
+    ).lastrowid
+    conn.execute(
+        "INSERT INTO history (lift_id, week, weight, reps, ts) VALUES (?, 1, 100, 10, 'first')",
+        (lift_id,),
+    )
+
+    with pytest.raises(sqlite3.IntegrityError):
+        conn.execute(
+            "INSERT INTO history (lift_id, week, weight, reps, ts) VALUES (?, 1, 105, 11, 'second')",
+            (lift_id,),
+        )
+    conn.close()
+
+
 def test_connect_sets_wal_and_synchronous_normal(tmp_path):
     """ADR 0009 #2: connect() enables WAL (persistent) + synchronous=NORMAL (per-conn)."""
     path = str(tmp_path / "t.db")
@@ -90,7 +110,7 @@ def test_connect_sets_wal_and_synchronous_normal(tmp_path):
 
 
 def test_create_app_initializes_schema(tmp_path):
-    """ADR 0009 #3: create_app() runs init_schema once so get_db() need not."""
+    """create_app() migrates to v1 once so get_db() need not bootstrap."""
     from webapp.app import create_app
     db_path = str(tmp_path / "app.db")
     app = create_app(db_path=db_path, backup_dir=str(tmp_path / "bk"),
@@ -99,7 +119,12 @@ def test_create_app_initializes_schema(tmp_path):
     conn = db.connect(db_path)
     tables = {r[0] for r in conn.execute(
         "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
-    assert {"settings", "lifts", "history", "sbs_schedule"} <= tables
+    assert {
+        "settings", "sbs_schedule", "exercise", "program_slot",
+        "strength_state", "training_session", "set_log", "progression_event",
+    } <= tables
+    assert {"lifts", "lift_state", "history", "week_log"}.isdisjoint(tables)
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 1
     conn.close()
 
 

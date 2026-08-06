@@ -35,6 +35,15 @@ separately as a bug. The fix is **client-side button disable** (the page already
 htmx, so JS is guaranteed on); a server-side nonce guard was rejected as YAGNI for a
 single-user local tool whose only threat vector is a same-page double-click.
 
+### Correctness amendment
+
+[正确性：周推进非原子 + 服务端无幂等（在 ADR 0009 之上收尾）](https://github.com/Sisyphus27/sbs/issues/29)
+later established that the client guard does not cover stale tabs, retries, or concurrent
+requests. The rendered absolute program week is therefore also submitted as `expected_week`:
+the server conditionally claims that week before either autosaving or advancing and rejects a
+stale request with HTTP 409. This supersedes only the server-guard rejection above; the UX
+deferrals in this ADR are unchanged.
+
 ## Triggers that send us back here
 
 Reopen UX polish only when one of these becomes true (measured/specific, not hunch):
@@ -64,7 +73,8 @@ Dark mode specifically becomes cheap the moment it's wanted: a single `@media
 ## Consequences
 
 - No CSS or template changes for UX polish. `app.css` and `week_export.html` stay as-is.
-- `plan.submit`'s double-click is fixed independently (client-side disable) under its bug issue.
+- `plan.submit` keeps the client-side disable for immediate feedback; `expected_week` is the
+  server-side correctness boundary for both autosave and advance.
 - The trigger list above is the contract: future UX work must cite a real beneficiary or named
   friction, not a checklist.
 - If usage stays personal/single-user (the stated redesign goal, ADR 0006), none of these triggers

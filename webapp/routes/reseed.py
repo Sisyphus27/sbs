@@ -2,10 +2,14 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from ..db import get_db
 from .. import repo
-from ..services.reseed import due_lifts
-from sbs_cli.engine.progression import cycle_number
+from ..services.reseed import due_lifts, reseed_cycle
 
 bp = Blueprint("reseed", __name__)
+
+
+def _current_reseed_cycle(conn):
+    week = repo.get_settings(conn)["week"]
+    return reseed_cycle(week)
 
 
 @bp.route("/reseed")
@@ -24,8 +28,16 @@ def apply(lid):
     except ValueError:
         flash("max 必须是数字", "error")
         return redirect(url_for("reseed.view"))
-    cyc = cycle_number(repo.get_settings(conn)["week"])
-    repo.set_reseed(conn, lid, new_max=new_max, cycle=cyc)
+    cyc = _current_reseed_cycle(conn)
+    if cyc is None:
+        flash("当前不在周期重测点", "error")
+        return redirect(url_for("reseed.view"))
+    try:
+        with conn:
+            repo.set_training_reseed(conn, lid, new_max=new_max, cycle=cyc)
+    except ValueError:
+        flash("只有 SBS 槽位可以重测 TM", "error")
+        return redirect(url_for("reseed.view"))
     flash("已重测并重置 TM")
     return redirect(url_for("reseed.view"))
 
@@ -33,7 +45,15 @@ def apply(lid):
 @bp.route("/reseed/<int:lid>/skip", methods=["POST"])
 def skip(lid):
     conn = get_db()
-    cyc = cycle_number(repo.get_settings(conn)["week"])
-    repo.set_reseed(conn, lid, cycle=cyc)
+    cyc = _current_reseed_cycle(conn)
+    if cyc is None:
+        flash("当前不在周期重测点", "error")
+        return redirect(url_for("reseed.view"))
+    try:
+        with conn:
+            repo.set_training_reseed(conn, lid, cycle=cyc)
+    except ValueError:
+        flash("只有 SBS 槽位可以重测 TM", "error")
+        return redirect(url_for("reseed.view"))
     flash("已跳过 (TM 保持当前值)")
     return redirect(url_for("reseed.view"))

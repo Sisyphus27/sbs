@@ -3,7 +3,8 @@ import os
 import webbrowser
 from threading import Timer
 from flask import Flask
-from .db import close_db, connect, init_schema, DEFAULT_DB_PATH
+from .db import close_db, connect, DEFAULT_DB_PATH
+from .migration import migrate_v0_to_v1
 
 
 def create_app(db_path: str | None = None, backup_dir: str | None = None,
@@ -19,7 +20,11 @@ def create_app(db_path: str | None = None, backup_dir: str | None = None,
     # ADR 0009: bootstrap schema once at startup (out of the per-request get_db()).
     _bootstrap = connect(app.config["DB_PATH"])
     try:
-        init_schema(_bootstrap)
+        migrate_v0_to_v1(
+            _bootstrap,
+            db_path=app.config["DB_PATH"],
+            backup_dir=app.config["BACKUP_DIR"],
+        )
     finally:
         _bootstrap.close()
 
@@ -33,6 +38,8 @@ def create_app(db_path: str | None = None, backup_dir: str | None = None,
     app.register_blueprint(schedule_bp)
     from .routes.reseed import bp as reseed_bp
     app.register_blueprint(reseed_bp)
+    from .routes.training import bp as training_bp
+    app.register_blueprint(training_bp)
 
     from .services.reseed import due_lifts
     from sbs_cli.data.schema import LEGAL_COMBOS, LOAD_MODELS, MODES

@@ -2,13 +2,16 @@
 
 from datetime import date
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 
+from .. import repo
+from ..backup import snapshot
 from ..db import get_db
 from ..services.training import (
     StaleTrainingWeekError,
     TrainingInputError,
     UNCHANGED,
+    finalize_week,
     save_draft_set,
     training_history,
     training_plan,
@@ -107,3 +110,31 @@ def history():
 @bp.get("/plan")
 def plan():
     return jsonify(training_plan(get_db()))
+
+
+@bp.post("/finalize")
+def finalize():
+    try:
+        expected_week = _integer("expected_week")
+    except TrainingInputError as error:
+        return (str(error), 400)
+    conn = get_db()
+    if repo.get_settings(conn)["week"] != expected_week:
+        return ("stale week", 409)
+
+    from datetime import datetime, timezone
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    snapshot(
+        current_app.config["DB_PATH"],
+        dest_dir=current_app.config["BACKUP_DIR"],
+        week=expected_week,
+        ts=timestamp,
+    )
+    try:
+        new_week = finalize_week(conn, expected_week=expected_week)
+    except StaleTrainingWeekError:
+        return ("stale week", 409)
+    except TrainingInputError as error:
+        return (str(error), 400)
+    return jsonify(new_week=new_week)

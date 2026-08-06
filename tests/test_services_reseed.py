@@ -6,13 +6,15 @@ service home adds a direct seam to assert the cycle-boundary predicate."""
 from sbs_cli.engine.progression import cycle_number
 from webapp import repo
 from webapp.services.reseed import due_lifts
+from tests.v1_helpers import mirror_legacy_lift
 
 
 def _sbs(db_conn, name="Squat", sort_order=0):
-    return repo.create_lift(db_conn, name=name, load_model="barbell", mode="sbs",
-                            day=1, sort_order=sort_order, sets=5, max=100.0,
-                            intensity=None, reps=None, repout=None, start=None,
-                            lift_kind="main")
+    lid = repo.create_lift(db_conn, name=name, load_model="barbell", mode="sbs",
+                           day=1, sort_order=sort_order, sets=5, max=100.0,
+                           intensity=None, reps=None, repout=None, start=None,
+                           lift_kind="main")
+    return mirror_legacy_lift(db_conn, lid)
 
 
 def test_due_lifts_empty_before_cycle_boundary(db_conn):
@@ -40,9 +42,12 @@ def test_due_lifts_skips_non_sbs(db_conn):
     """Only sbs lifts reseed; linear modes are never listed."""
     repo.set_week(db_conn, 22)
     _sbs(db_conn)
-    repo.create_lift(db_conn, name="Curl", load_model="barbell", mode="linear_t3",
-                     day=1, sort_order=1, sets=3, max=None, intensity=None,
-                     reps=None, repout=None, start=40.0)
+    curl_id = repo.create_lift(
+        db_conn, name="Curl", load_model="barbell", mode="linear_t3",
+        day=1, sort_order=1, sets=3, max=None, intensity=None,
+        reps=None, repout=None, start=40.0,
+    )
+    mirror_legacy_lift(db_conn, curl_id)
     due, _ = due_lifts(db_conn)
     assert len(due) == 1                       # only the sbs lift
     assert due[0][0]["name"] == "Squat"
@@ -52,7 +57,8 @@ def test_due_lifts_skips_already_reseeded(db_conn):
     """A lift whose reseeded_cycle has caught up to the current cycle is not due."""
     repo.set_week(db_conn, 22)
     lid = _sbs(db_conn)
-    repo.set_reseed(db_conn, lid, cycle=2)      # stamped to cycle 2 already
+    repo.set_training_reseed(db_conn, lid, cycle=2)
+    db_conn.commit()
     due, cyc = due_lifts(db_conn)
     assert cyc == 2
     assert due == []                            # reseeded_cycle 2 is not < 2

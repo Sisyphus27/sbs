@@ -34,7 +34,7 @@ def _parse_incr(raw: str):
 @bp.route("/lifts")
 def view():
     conn = get_db()
-    lifts = repo.list_lifts(conn)
+    lifts = repo.list_training_slots(conn)
     settings = repo.get_settings(conn)
     return render_template("lifts.html", lifts=lifts, settings=settings)
 
@@ -42,13 +42,15 @@ def view():
 @bp.route("/lifts/<int:lid>/row")
 def row(lid):
     conn = get_db()
-    return render_template("_lift_row.html", lift=repo.get_lift(conn, lid))
+    return render_template("_lift_row.html", lift=repo.get_training_slot(conn, lid))
 
 
 @bp.route("/lifts/<int:lid>/edit")
 def row_edit(lid):
     conn = get_db()
-    return render_template("_lift_edit.html", lift=repo.get_lift(conn, lid))
+    return render_template(
+        "_lift_edit.html", lift=repo.get_training_slot(conn, lid)
+    )
 
 
 @bp.route("/lifts/new", methods=["POST"])
@@ -99,43 +101,33 @@ def new():
 @bp.route("/lifts/<int:lid>/edit", methods=["POST"])
 def edit(lid):
     conn = get_db()
+    current = repo.get_training_slot(conn, lid)
+    if current is None:
+        return ("not found", 404)
     # load_model 不可切（ADR 0005）— 不收 load_model 字段。
-    # 字段 schema 单源在 _forms.LIFT_FIELD_CASTS（new/edit 共用）。
+    # mode 只能走下方独立 preview/apply 路径，普通编辑不解析该字段。
     fields, bad = present_fields(LIFT_FIELD_CASTS)
     if bad is not None:
         flash(f"非法值: {bad}", "error")
-        return render_template("_lift_edit.html", lift=repo.get_lift(conn, lid),
+        return render_template("_lift_edit.html", lift=current,
                                error=f"非法值: {bad}"), 400
-    # mode 改动需校验 is_legal_combo（取当前 load_model）
-    if "mode" in fields:
-        cur = repo.get_lift(conn, lid)
-        from sbs_cli.data.schema import is_legal_combo
-        if not is_legal_combo(cur["load_model"], fields["mode"]):
-            flash("load_model 与 mode 组合非法", "error")
-            return render_template("_lift_edit.html", lift=cur, error="load_model 与 mode 组合非法"), 400
     # incr：表单出现即处理。空串 -> NULL（清除覆盖回全局）；非空 -> 必须 >0 数字（D7）。
-    # sbs/none 强制 NULL（与 new() 一致，ADR 0005）— 有效 mode = 新 mode ?? 当前 mode。
+    # sbs/none 强制 NULL（与 new() 一致，ADR 0005）。
     # 校验在 update 之前，非法时保留原值并返回 400。
     if "incr" in request.form:
-        eff_mode = fields.get("mode", repo.get_lift(conn, lid)["mode"])
-        if eff_mode in ("sbs", "none"):
+        if current["mode"] in ("sbs", "none"):
             fields["incr"] = None
         else:
             incr, err = _parse_incr(request.form["incr"])
             if err is not None:
                 flash(err, "error")
-                return render_template("_lift_edit.html", lift=repo.get_lift(conn, lid),
-                                       error=err), 400
-            fields["incr"] = incr  # None 表示清除（update_lift 经 _LIFT_COLS 支持 incr=None）
-    repo.update_lift(conn, lid, **fields)
-    lift = repo.get_lift(conn, lid)
-    # start is the progression basis for linear_t2/t3: replay from the new start
-    # over history to resync the working weight. Idempotent (no-op if start
-    # unchanged). sbs/none have no start-based progression -> skipped.
-    if lift["mode"] in ("linear_t2", "linear_t3") and "start" in fields:
-        from ..services import recompute as recompute_service
-        recompute_service.recompute_on_start_change(conn, lid, lift["start"])
-    conn.commit()   # ADR 0009 batch 2: recompute writes via repo no longer self-commit
+                return render_template(
+                    "_lift_edit.html", lift=current, error=err
+                ), 400
+            fields["incr"] = incr  # None 表示清除并继承全局步进。
+    with conn:
+        repo.update_training_slot(conn, lid, **fields)
+    lift = repo.get_training_slot(conn, lid)
     return render_template("_lift_row.html", lift=lift)
 
 
@@ -154,11 +146,13 @@ def mode_preview(lid):
     conn = get_db()
     new_mode = request.args.get("mode", "sbs")
     try:
-        preview = mode_service.derive_state(conn, lid, new_mode, repo.get_settings(conn))
+        preview = mode_service.derive_slot_state(
+            conn, lid, new_mode, repo.get_settings(conn)
+        )
     except ValueError as e:
         flash(str(e), "error")
         return redirect(url_for("lifts.view"))
-    lift = repo.get_lift(conn, lid)
+    lift = repo.get_training_slot(conn, lid)
     return render_template("mode_preview.html", lift=lift, preview=preview)
 
 
@@ -167,7 +161,9 @@ def mode_apply(lid):
     conn = get_db()
     new_mode = request.form.get("mode", "sbs")
     try:
-        preview = mode_service.derive_state(conn, lid, new_mode, repo.get_settings(conn))
+        preview = mode_service.derive_slot_state(
+            conn, lid, new_mode, repo.get_settings(conn)
+        )
     except ValueError as e:
         flash(str(e), "error")
         return redirect(url_for("lifts.view"))
@@ -180,6 +176,6 @@ def mode_apply(lid):
     except ValueError:
         flash("重量 / TM 必须是数字", "error")
         return redirect(url_for("lifts.view"))
-    mode_service.apply_switch(conn, lid, preview)
-    conn.commit()   # ADR 0009 batch 2: apply_switch writes via repo no longer self-commit
+    with conn:
+        mode_service.apply_slot_switch(conn, lid, preview)
     return redirect(url_for("lifts.view"))

@@ -27,13 +27,12 @@ def present_fields(casts):
     return fields, None
 
 
-# --- Lift create/edit field schema (ADR 0005) ---
-# Single source: new() and edit() previously each maintained a copy and both
-# had to grow bodyweight_pct / incr / lift_kind in lockstep. load_model is
-# create-only (immutable per ADR 0005); incr is handled separately because
-# sbs/none force it to NULL rather than parsing the form value.
+# --- Ordinary v1 slot-edit field schema (ADR 0005) ---
+# load_model remains immutable and mode changes only through preview/apply.
+# incr is handled separately because sbs/none force it to NULL rather than
+# parsing the form value.
 LIFT_FIELD_CASTS = {
-    "name": str, "mode": str, "day": int, "sets": int,
+    "name": str, "day": int, "sets": int,
     "max": float, "intensity": float, "reps": int, "repout": int,
     "start": float, "lift_kind": str, "bodyweight_pct": float,
 }

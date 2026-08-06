@@ -7,7 +7,12 @@ from datetime import datetime, timezone
 from sbs_cli.data.schema import Lift, LiftState, Profile, ScheduleRow, SetEntry
 from sbs_cli.engine.modes import get_mode
 from sbs_cli.engine.onerm import estimate_1rm
-from sbs_cli.engine.progression import lookup_schedule, schedule_week
+from sbs_cli.engine.progression import (
+    T2State,
+    lookup_schedule,
+    schedule_week,
+    t2_next,
+)
 
 from .. import repo
 from .rows import lift_from_row, profile_from_rows, state_from_rows
@@ -352,15 +357,21 @@ def _progression_models(row, expected_week: int, canonical_e1rm,
     return profile, lift, state, prior_e1rm
 
 
-def _sbs_observation_peaks(conn: sqlite3.Connection, expected_week: int) -> dict:
-    peaks = {}
+def _observation_peaks(conn: sqlite3.Connection, expected_week: int):
+    sbs_peaks = {}
+    t2_peaks = {}
     for row in repo.list_training_facts(conn):
         if (
             row["program_week"] != expected_week
             or row["finalized_at"] is not None
-            or row["mode"] != "sbs"
             or not row["e1rm_qualified"]
         ):
+            continue
+        if row["mode"] == "sbs":
+            peaks = sbs_peaks
+        elif row["mode"] == "linear_t2" and row["load_model"] == "barbell":
+            peaks = t2_peaks
+        else:
             continue
         projected = _project_training_fact(
             row, canonical_eligible=True
@@ -370,7 +381,7 @@ def _sbs_observation_peaks(conn: sqlite3.Connection, expected_week: int) -> dict
             peaks[row["slot_id"]] = max(
                 peaks.get(row["slot_id"], canonical_e1rm), canonical_e1rm
             )
-    return peaks
+    return sbs_peaks, t2_peaks
 
 
 def finalize_week(conn: sqlite3.Connection, *, expected_week: int) -> int:
@@ -380,7 +391,9 @@ def finalize_week(conn: sqlite3.Connection, *, expected_week: int) -> int:
         with conn:
             if not repo.lock_week_if_current(conn, expected_week):
                 raise StaleTrainingWeekError("stale week")
-            sbs_observation_peaks = _sbs_observation_peaks(conn, expected_week)
+            sbs_observation_peaks, t2_observation_peaks = _observation_peaks(
+                conn, expected_week
+            )
             for row in repo.list_progression_drivers(
                 conn, program_week=expected_week
             ):
@@ -391,10 +404,15 @@ def finalize_week(conn: sqlite3.Connection, *, expected_week: int) -> int:
                         "progression driver actual weight is unconfirmed"
                     )
                 is_sbs = row["mode"] == "sbs"
+                is_loadable_t2 = (
+                    row["mode"] == "linear_t2"
+                    and row["load_model"] == "barbell"
+                )
                 projected_driver = _project_training_fact(
                     row,
                     canonical_eligible=(
-                        bool(row["e1rm_qualified"]) if is_sbs else True
+                        bool(row["e1rm_qualified"])
+                        if is_sbs or is_loadable_t2 else True
                     ),
                 )
                 working_weight = projected_driver["actual_working_weight"]
@@ -403,19 +421,53 @@ def finalize_week(conn: sqlite3.Connection, *, expected_week: int) -> int:
                     row,
                     expected_week,
                     None if is_sbs else canonical_e1rm,
-                    projection_available=working_weight is not None and not is_sbs,
+                    projection_available=(
+                        working_weight is not None
+                        and not is_sbs
+                        and not is_loadable_t2
+                    ),
                 )
                 profile, lift, state, prior_e1rm = models
-                get_mode(state.mode).advance(
-                    profile, lift, state, row["reps"], expected_week
-                )
-                aggregate_e1rm = None if is_sbs else canonical_e1rm
-                state.est1rm = prior_e1rm
-                if aggregate_e1rm is not None:
-                    state.est1rm = max(
-                        value for value in (prior_e1rm, aggregate_e1rm)
+                if is_loadable_t2:
+                    current_peak_e1rm = t2_observation_peaks.get(row["slot_id"])
+                    peak_values = tuple(
+                        value for value in (prior_e1rm, current_peak_e1rm)
                         if value is not None
                     )
+                    cycle_peak_e1rm = max(peak_values) if peak_values else None
+                    effective_step = (
+                        lift.incr if lift.incr is not None else profile.incr
+                    )
+                    next_state = t2_next(
+                        T2State(
+                            state.target,
+                            {8: 0, 6: 1, 4: 2}[state.target],
+                            state.weight,
+                        ),
+                        row["reps"],
+                        cycle_peak_e1rm,
+                        fail=3,
+                        incr=effective_step,
+                        reset_pct=profile.t2_reset_pct,
+                        quantum=effective_step,
+                    )
+                    state.target = next_state.target
+                    state.streak = next_state.streak
+                    state.weight = next_state.weight
+                    state.est1rm = cycle_peak_e1rm
+                    if row["state_target"] == 4 and row["reps"] < 4:
+                        state.est1rm = None
+                else:
+                    get_mode(state.mode).advance(
+                        profile, lift, state, row["reps"], expected_week
+                    )
+                    aggregate_e1rm = None if is_sbs else canonical_e1rm
+                    state.est1rm = prior_e1rm
+                    if aggregate_e1rm is not None:
+                        state.est1rm = max(
+                            value for value in (prior_e1rm, aggregate_e1rm)
+                            if value is not None
+                        )
                 repo.save_training_state(
                     conn,
                     row["slot_id"],

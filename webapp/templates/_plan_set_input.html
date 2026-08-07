@@ -1,0 +1,9 @@
+<input type="number" name="set_{{ it.id }}_{{ entry.number }}"
+       value="{{ entry.reps if entry.reps is not none else '' }}"
+       min="0"
+       hx-post="{{ url_for('plan.save_log', lid=it.id, set_number=entry.number) }}"
+       hx-trigger="change"
+       hx-include="[name='expected_week'], [name='actual_added_weight_{{ it.id }}']"
+       hx-target="#save-{{ it.id }}-{{ entry.number }}" hx-swap="outerHTML"
+       hx-sync="closest tr:queue all">
+<span id="save-{{ it.id }}-{{ entry.number }}" class="save-ok num">{% if entry.reps is not none %}{{ '已保存' if entry.confirmed else '待确认' }}{% endif %}</span>

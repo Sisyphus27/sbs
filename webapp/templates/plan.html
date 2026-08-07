@@ -1,28 +1,40 @@
 {% extends "base.html" %}
-{% block title %}Week {{ week }} 计划{% endblock %}
+{% block title %}Week {{ week }} 账本{% endblock %}
 {% block content %}
-<h1>Week {{ week }} 计划</h1>
+<h1>Week {{ week }} 账本</h1>
 {% if due_reseeds %}
 <div class="flash">
   新周期开始 — 待重测: {{ due_reseeds | join(", ") }}
   <a href="{{ url_for('reseed.view') }}">去重测</a>
 </div>
 {% endif %}
-<p class="meta">逐组填写实际次数（填完自动保存，关掉也不丢）。全部练完点 <b>提交并算下周</b>。</p>
+<p class="meta">以整个 Program week 为工作单元；跨 Day 待处理 Lift 始终保留。</p>
 <p><a class="btn" href="{{ url_for('plan.export_week') }}" download>📱 导出本周计划(手机看)</a></p>
   {# Client-side disable gives immediate feedback; expected_week is the server guard (ADR 0010). #}
-<form method="post" action="{{ url_for('plan.submit') }}" data-disable-submit
-      hx-sync="this:queue all">
+<form method="post" action="{{ url_for('plan.submit') }}" data-disable-submit>
   <input type="hidden" name="expected_week" value="{{ week }}">
   <button type="submit" class="btn-primary" style="margin-bottom:16px">提交并算下周</button>
-  {% for day, items in by_day %}
-  <div class="card">
-    <h2 style="margin-top:0">Day {{ day }}</h2>
-    {% for it in items %}
-      {% include '_plan_lift_row.html' %}
-    {% endfor %}
+  <div class="week-ledger-wrap">
+    <table class="week-ledger">
+      <thead>
+        <tr>
+          <th>状态</th>
+          <th>Day</th>
+          <th>Lift / 处方</th>
+          <th>Actual Added weight</th>
+          <th>末组次数</th>
+          <th>前面各组</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for day, items in by_day %}
+          {% for it in items %}
+            {% include '_plan_lift_row.html' %}
+          {% endfor %}
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
-  {% endfor %}
   <button type="submit" class="btn-primary">提交并算下周</button>
 </form>
 <script>

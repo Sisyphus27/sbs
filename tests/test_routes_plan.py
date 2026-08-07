@@ -9,17 +9,27 @@ from webapp import backup, repo
 from webapp.services.training import training_history
 
 
-def _set_data(slot_id, set_number, reps, *, week=1):
-    return {
+def _set_data(slot_id, set_number, reps, *, week=1, actual_added_weight=None):
+    data = {
         "expected_week": str(week),
         f"set_{slot_id}_{set_number}": str(reps),
     }
+    if actual_added_weight is not None:
+        data[f"actual_added_weight_{slot_id}"] = str(actual_added_weight)
+    return data
 
 
-def _save_set(client, slot_id, set_number, reps, *, week=1):
+def _save_set(client, slot_id, set_number, reps, *, week=1,
+              actual_added_weight=None):
     return client.post(
         f"/log/save?lid={slot_id}&set_number={set_number}",
-        data=_set_data(slot_id, set_number, reps, week=week),
+        data=_set_data(
+            slot_id,
+            set_number,
+            reps,
+            week=week,
+            actual_added_weight=actual_added_weight,
+        ),
     )
 
 
@@ -31,6 +41,172 @@ def test_plan_view_empty(client):
     rv = client.get("/")
     assert rv.status_code == 200
     assert b"Week" in rv.data
+
+
+def test_homepage_renders_week_ledger_in_day_and_plan_order(client, make_lift):
+    day_two = make_lift(name="Day two row", day=2, sort_order=0, start=30.0)
+    day_one_second = make_lift(
+        name="Day one second", day=1, sort_order=2, start=35.0
+    )
+    day_one_first = make_lift(
+        name="Day one first", day=1, sort_order=1, start=40.0
+    )
+
+    html = client.get("/").get_data(as_text=True)
+
+    assert 'class="week-ledger"' in html
+    assert html.count('class="week-ledger-row is-unresolved"') == 3
+    assert html.index("Day one first") < html.index("Day one second")
+    assert html.index("Day one second") < html.index("Day two row")
+    assert f'id="ledger-row-{day_one_first}"' in html
+    assert f'id="ledger-row-{day_one_second}"' in html
+    assert f'id="ledger-row-{day_two}"' in html
+    assert "variant=" not in html and "flow=" not in html
+
+
+def test_week_ledger_defaults_to_weight_and_driver_then_discloses_earlier_sets(
+        client, make_lift):
+    lid = make_lift(name="Curl", sets=4, start=30.0)
+
+    html = client.get("/").get_data(as_text=True)
+    row = html[html.index(f'id="ledger-row-{lid}"'):]
+    row = row[:row.index("</tr>")]
+    disclosure_marker = f'<details id="earlier-sets-{lid}"'
+    default_controls, marker, earlier_sets = row.partition(disclosure_marker)
+
+    assert marker
+    assert f'name="actual_added_weight_{lid}"' in default_controls
+    assert f'name="set_{lid}_4"' in default_controls
+    assert "补录前 3 组" in earlier_sets
+    assert all(
+        f'name="set_{lid}_{set_number}"' in earlier_sets
+        for set_number in (1, 2, 3)
+    )
+    assert f'name="set_{lid}_4"' not in earlier_sets
+
+
+def test_week_ledger_saves_weight_and_reps_for_driver_and_earlier_sets(
+        client, make_lift, db_conn):
+    lid = make_lift(name="Curl", mode="linear_t3", sets=3, start=30.0)
+
+    earlier = _save_set(
+        client, lid, 1, 8, actual_added_weight=32.5
+    )
+    driver = _save_set(
+        client, lid, 3, 0, actual_added_weight=35.0
+    )
+
+    assert earlier.status_code == 200
+    assert driver.status_code == 200
+    assert [
+        (
+            row["set_number"],
+            row["actual_added_weight"],
+            row["reps"],
+            row["drives_progression"],
+        )
+        for row in _slot_facts(db_conn, lid)
+    ] == [
+        (1, 32.5, 8, 0),
+        (3, 35.0, 0, 1),
+    ]
+
+
+def test_week_ledger_preserves_load_model_weight_semantics(
+        client, make_lift, db_conn):
+    repo.update_settings(db_conn, bodyweight=75.0)
+    weighted = make_lift(
+        name="Weighted chin-up",
+        load_model="bodyweight",
+        mode="linear_t2",
+        start=0.0,
+        bodyweight_pct=1.0,
+    )
+    pure = make_lift(
+        name="Push-up",
+        load_model="pure_bodyweight",
+        mode="none",
+        start=0.0,
+        bodyweight_pct=1.0,
+    )
+
+    html = client.get("/").get_data(as_text=True)
+    weighted_row = html[html.index(f'id="ledger-row-{weighted}"'):]
+    weighted_row = weighted_row[:weighted_row.index("</tr>")]
+    pure_row = html[html.index(f'id="ledger-row-{pure}"'):]
+    pure_row = pure_row[:pure_row.index("</tr>")]
+
+    assert f'name="actual_added_weight_{weighted}"' in weighted_row
+    assert "Planned Working 75.0 kg" in weighted_row
+    assert (
+        f'type="hidden" name="actual_added_weight_{pure}" value="0"'
+        in pure_row
+    )
+    assert "Actual Added 0 kg" in pure_row
+    assert "Planned Working 75.0 kg" in pure_row
+
+    weighted_response = _save_set(
+        client, weighted, 3, 8, actual_added_weight=10.0
+    )
+    weighted_fragment = weighted_response.get_data(as_text=True)
+    weighted_page = client.get("/").get_data(as_text=True)
+    weighted_row = weighted_page[
+        weighted_page.index(f'id="ledger-row-{weighted}"'):
+    ]
+    weighted_row = weighted_row[:weighted_row.index("</tr>")]
+
+    assert weighted_response.status_code == 200
+    assert f'id="working-weight-{weighted}"' in weighted_fragment
+    assert 'hx-swap-oob="outerHTML"' in weighted_fragment
+    assert "Actual Working 不可用" in weighted_fragment
+    assert "Actual Working 不可用" in weighted_row
+
+    recorded = client.post(
+        "/training/sets/full",
+        data={
+            "expected_week": "1",
+            "slot_id": str(weighted),
+            "set_number": "3",
+            "actual_added_weight": "10",
+            "reps": "8",
+            "warmup": "0",
+            "drives_progression": "1",
+            "e1rm_qualified": "0",
+            "bodyweight_kg": "80",
+        },
+    )
+    recorded_page = client.get("/").get_data(as_text=True)
+    recorded_row = recorded_page[
+        recorded_page.index(f'id="ledger-row-{weighted}"'):
+    ]
+    recorded_row = recorded_row[:recorded_row.index("</tr>")]
+
+    assert recorded.status_code == 200
+    assert "Actual Working 90.0 kg" in recorded_row
+
+    response = _save_set(
+        client, pure, 3, 8, actual_added_weight=2.5
+    )
+    assert response.status_code == 400
+    assert _slot_facts(db_conn, pure) == []
+
+
+def test_week_ledger_renders_zero_reps_as_a_logged_failure(client, make_lift):
+    lid = make_lift(name="Curl", sets=3, start=30.0)
+
+    response = _save_set(
+        client, lid, 3, 0, actual_added_weight=32.5
+    )
+    fragment = response.get_data(as_text=True)
+    page = client.get("/").get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert f'id="ledger-status-{lid}"' in fragment
+    assert 'hx-swap-oob="outerHTML"' in fragment
+    assert "已补录 · 0 次失败" in fragment
+    assert f'id="ledger-row-{lid}"' in page
+    assert 'class="week-ledger-row is-logged is-zero"' in page
+    assert "已补录 · 0 次失败" in page
 
 
 def test_plan_renders_duplicate_names_with_distinct_state(client, make_lift):
@@ -172,7 +348,7 @@ def test_plan_form_carries_expected_program_week(client):
 def test_autosave_includes_expected_program_week(client, make_lift):
     make_lift(name="Curl", start=30.0)
     html = client.get("/").get_data(as_text=True)
-    assert 'hx-include="[name=\'expected_week\']"' in html
+    assert 'hx-include="[name=\'expected_week\'],' in html
 
 
 def test_export_week_standalone_with_progress(client, make_lift, db_conn):
@@ -252,12 +428,18 @@ def test_plan_keeps_queued_autosave_sources_stable_while_refreshing_comparison(
 
     html = client.get("/").get_data(as_text=True)
 
-    assert 'hx-sync="this:queue all"' in html
-    assert html.count('hx-target="next .save-ok"') == 3
+    assert html.count('hx-sync="closest tr:queue all"') == 4
+    assert 'hx-sync="this:queue all"' not in html
+    assert html.count(f'hx-target="#save-{lid}-3"') == 2
+    assert html.count(f'hx-target="#save-{lid}-1"') == 1
+    assert html.count(f'hx-target="#save-{lid}-2"') == 1
     assert 'hx-target="closest .lift-row"' not in html
 
     fragment = _save_set(client, lid, 1, 15).get_data(as_text=True)
-    assert 'hx-swap-oob="outerHTML"' in fragment
+    assert fragment.count('hx-swap-oob="outerHTML"') == 2
+    assert f'id="save-{lid}-1"' in fragment
+    assert f'id="ledger-status-{lid}"' in fragment
+    assert "<input" not in fragment and "<tr" not in fragment
     assert f'id="comparison-{lid}"' in fragment
 
 
@@ -310,8 +492,12 @@ def test_plan_rep_edit_preserves_existing_actual_weight_and_set_roles(
         )
         assert response.status_code == 200
 
-    assert _save_set(client, lid, 1, 9).status_code == 200
-    assert _save_set(client, lid, 2, 7).status_code == 200
+    assert _save_set(
+        client, lid, 1, 9, actual_added_weight=30.0
+    ).status_code == 200
+    assert _save_set(
+        client, lid, 2, 7, actual_added_weight=30.0
+    ).status_code == 200
     facts = [
         row for row in client.get("/training/history").get_json()
         if row["slot_id"] == lid

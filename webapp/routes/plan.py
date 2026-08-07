@@ -119,6 +119,12 @@ def _v1_plan_by_day(conn):
                 SimpleNamespace(
                     number=set_number,
                     reps=None if fact is None else fact["reps"],
+                    actual_added_weight=(
+                        None if fact is None else fact["actual_added_weight"]
+                    ),
+                    actual_working_weight=(
+                        None if fact is None else fact["actual_working_weight"]
+                    ),
                     is_last=set_number == slot["planned_sets"],
                     confirmed=(
                         fact is not None
@@ -127,13 +133,31 @@ def _v1_plan_by_day(conn):
                     ),
                 )
             )
+        driver = set_entries[-1]
+        actual_added_weight = (
+            driver.actual_added_weight
+            if driver.actual_added_weight is not None
+            else slot["planned_added_weight"]
+        )
+        if slot["load_model"] == "pure_bodyweight":
+            actual_added_weight = 0
+        if driver.reps is None:
+            working_weight_kind = "Planned"
+            current_working_weight = slot["planned_working_weight"]
+        else:
+            working_weight_kind = "Actual"
+            current_working_weight = driver.actual_working_weight
         item = SimpleNamespace(
             id=slot["slot_id"],
             name=slot["name"],
             mode=slot["mode"],
+            load_model=slot["load_model"],
             day=slot["day"],
             weight=slot["planned_added_weight"],
             working_weight=slot["planned_working_weight"],
+            actual_added_weight=actual_added_weight,
+            current_working_weight=current_working_weight,
+            working_weight_kind=working_weight_kind,
             is_bodyweight=slot["load_model"] in ("bodyweight", "pure_bodyweight"),
             reps=slot["planned_reps"],
             sets=slot["planned_sets"],
@@ -144,6 +168,9 @@ def _v1_plan_by_day(conn):
             comparison=comparisons.get(slot["slot_id"]),
             is_logged=any(
                 entry.is_last and entry.reps is not None for entry in set_entries
+            ),
+            is_zero=any(
+                entry.is_last and entry.reps == 0 for entry in set_entries
             ),
         )
         rows_by_day.setdefault(item.day, []).append(item)
@@ -192,6 +219,23 @@ def save_log():
     fact = _v1_current_facts(
         training_history(conn), expected_week
     ).get((lid, set_number))
+    fields = _draft_set_fields(fact, slot, set_number)
+    actual_added_weight = request.form.get(
+        f"actual_added_weight_{lid}", request.form.get("actual_added_weight")
+    )
+    if (
+        actual_added_weight is not None
+        and (fact is None or set_number == slot["planned_sets"])
+    ):
+        try:
+            fields["actual_added_weight"] = float(actual_added_weight)
+        except (TypeError, ValueError):
+            return ("bad actual added weight", 400)
+        if (
+            slot["load_model"] == "pure_bodyweight"
+            and fields["actual_added_weight"] != 0
+        ):
+            return ("pure bodyweight added weight must be zero", 400)
     try:
         save_draft_set(
             conn,
@@ -199,7 +243,7 @@ def save_log():
             slot_id=lid,
             set_number=set_number,
             reps=reps,
-            **_draft_set_fields(fact, slot, set_number),
+            **fields,
         )
     except StaleTrainingWeekError:
         return ("stale week", 409)
@@ -209,7 +253,9 @@ def save_log():
     item = next(
         item for _day, items in by_day for item in items if item.id == lid
     )
-    return render_template("_plan_save_result.html", it=item)
+    return render_template(
+        "_plan_save_result.html", it=item, set_number=set_number
+    )
 
 
 @bp.route("/log", methods=["POST"])

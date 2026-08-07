@@ -1,7 +1,10 @@
-<div class="field-row lift-row" style="justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)">
-  <div>
+<tr id="ledger-row-{{ it.id }}"
+    class="week-ledger-row {{ 'is-logged' if it.is_logged else 'is-unresolved' }}{{ ' is-zero' if it.is_zero else '' }}">
+  <td>{% include '_plan_lift_status.html' %}</td>
+  <td class="num">Day {{ it.day }}</td>
+  <td>
     <strong>{{ it.name }}</strong>
-    <span class="meta num">{{ it.mode }} |
+    <span class="ledger-plan meta num">{{ it.mode }} |
       {%- if it.is_bodyweight %} +{{ it.weight }} ({{ it.working_weight }}){% else %} {{ it.weight }}{% endif %} kg
       {% if it.mode=='sbs' %} x {{ it.reps }} x {{ it.sets }} | rep-out {{ it.repout }}
       {% elif it.mode=='linear_t2' %} x {{ it.target }} x {{ it.sets }} | streak {{ it.streak }}
@@ -9,19 +12,46 @@
       {% else %} x {{ it.target }} x {{ it.sets }}
       {% endif %}
     </span>
-  </div>
-  <div>
-    {% for entry in it.set_entries %}
-    <label style="margin-left:8px">{{ '末组' if entry.is_last else '第 ' ~ entry.number ~ ' 组' }}:
-      <input type="number" name="set_{{ it.id }}_{{ entry.number }}"
-             value="{{ entry.reps if entry.reps is not none else '' }}"
-             min="0"
-             hx-post="{{ url_for('plan.save_log', lid=it.id, set_number=entry.number) }}"
-             hx-trigger="change" hx-include="[name='expected_week']"
-             hx-target="next .save-ok" hx-swap="outerHTML">
-      <span class="save-ok num">{% if entry.reps is not none %}{{ '已保存' if entry.confirmed else '待确认' }}{% endif %}</span>
+  </td>
+  {% set driver = it.set_entries[-1] %}
+  <td>
+    {% if it.load_model == 'pure_bodyweight' %}
+      <span class="ledger-fixed-weight num">Actual Added 0 kg</span>
+      <input type="hidden" name="actual_added_weight_{{ it.id }}" value="0">
+    {% else %}
+    <label class="ledger-control">
+      <span class="ledger-control-label">kg</span>
+      <input type="number" name="actual_added_weight_{{ it.id }}"
+             value="{{ it.actual_added_weight }}"
+             min="0" step="0.5"
+             hx-post="{{ url_for('plan.save_log', lid=it.id, set_number=driver.number) }}"
+             hx-trigger="change"
+             hx-include="[name='expected_week'], [name='set_{{ it.id }}_{{ driver.number }}']"
+             hx-target="#save-{{ it.id }}-{{ driver.number }}" hx-swap="outerHTML"
+             hx-sync="closest tr:queue all">
     </label>
-    {% endfor %}
+    {% endif %}
+    {% include '_plan_working_weight.html' %}
+  </td>
+  <td>
+    <label class="ledger-control">
+      {% set entry = driver %}
+      {% include '_plan_set_input.html' %}
+    </label>
     {% include '_plan_comparison.html' %}
-  </div>
-</div>
+  </td>
+  <td>
+    {% if it.sets > 1 %}
+    <details id="earlier-sets-{{ it.id }}" class="ledger-earlier-sets">
+      <summary>补录前 {{ it.sets - 1 }} 组</summary>
+      <div class="ledger-earlier-grid">
+        {% for entry in it.set_entries if not entry.is_last %}
+        <label class="ledger-control">第 {{ entry.number }} 组
+          {% include '_plan_set_input.html' %}
+        </label>
+        {% endfor %}
+      </div>
+    </details>
+    {% endif %}
+  </td>
+</tr>

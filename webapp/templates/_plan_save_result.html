@@ -1,3 +1,7 @@
-<span class="save-ok num">已保存</span>
+<span id="save-{{ it.id }}-{{ set_number }}" class="save-ok num">已保存</span>
+{% set status_oob = true %}
+{% include '_plan_lift_status.html' %}
+{% set working_oob = true %}
+{% include '_plan_working_weight.html' %}
 {% set comparison_oob = true %}
 {% include '_plan_comparison.html' %}

@@ -12,19 +12,19 @@
     <div class="brand">SBS</div>
     <div class="group">
       <div class="group-name">训练</div>
-      <a href="{{ url_for('plan.view') }}" class="{{ 'active' if request.blueprint=='plan' }}">本周计划</a>
-      <a href="{{ url_for('schedule.view') }}" class="{{ 'active' if request.blueprint=='schedule' }}">进度表</a>
+      <a href="{{ url_for('plan.view') }}" class="{{ 'active' if request.blueprint=='plan' }}">Week Workspace</a>
+      <a href="{{ url_for('schedule.view') }}" class="{{ 'active' if request.blueprint=='schedule' }}">21 周 Schedule</a>
     </div>
     <div class="group">
       <div class="group-name">动作</div>
-      <a href="{{ url_for('lifts.view') }}" class="{{ 'active' if request.blueprint=='lifts' }}">动作</a>
-      <a href="{{ url_for('reseed.view') }}" class="{{ 'active' if request.blueprint=='reseed' }}">重测
+      <a href="{{ url_for('lifts.view') }}" class="{{ 'active' if request.blueprint=='lifts' }}">Lift 管理</a>
+      <a href="{{ url_for('reseed.view') }}" class="{{ 'active' if request.blueprint=='reseed' }}">Reseed
         {%- if reseed_count %}<span class="badge">{{ reseed_count }}</span>{% endif -%}
       </a>
     </div>
     <div class="group">
       <div class="group-name">配置</div>
-      <a href="{{ url_for('settings.view') }}" class="{{ 'active' if request.blueprint=='settings' }}">全局参数</a>
+      <a href="{{ url_for('settings.view') }}" class="{{ 'active' if request.blueprint=='settings' }}">Settings</a>
     </div>
   </nav>
   <div class="main">

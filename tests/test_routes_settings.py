@@ -5,8 +5,8 @@ def test_settings_view(client):
     rv = client.get("/settings")
     text = rv.data.decode("utf-8")
     assert rv.status_code == 200
-    assert "取整粒度" in text            # rounding field, Chinese label
-    assert "全局参数" in text            # page title still present
+    assert "Rounding quantum" in text
+    assert "Settings" in text
 
 
 def test_settings_update(client, app):

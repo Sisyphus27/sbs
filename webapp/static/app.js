@@ -2,8 +2,31 @@
   var el = document.getElementById('legal-map');
   var lm = document.getElementById('new-load-model');
   var mode = document.getElementById('new-mode');
+  var startLabel = document.querySelector('[data-new-start-label]');
   if (!el || !lm || !mode) return;
   var LEGAL = JSON.parse(el.textContent);
+
+  function setFields(selector, enabled) {
+    document.querySelectorAll(selector).forEach(function (field) {
+      field.hidden = !enabled;
+      field.querySelectorAll('input, select').forEach(function (control) {
+        control.disabled = !enabled;
+      });
+    });
+  }
+
+  function syncFields() {
+    var isLinear = mode.value === 'linear_t2' || mode.value === 'linear_t3';
+    setFields('[data-sbs-field]', mode.value === 'sbs');
+    setFields('[data-linear-field]', isLinear);
+    setFields('[data-bodyweight-field]', lm.value !== 'barbell');
+    if (startLabel) {
+      startLabel.textContent = lm.value === 'barbell'
+        ? startLabel.dataset.workingLabel
+        : startLabel.dataset.addedLabel;
+    }
+  }
+
   function sync() {
     var allowed = LEGAL[lm.value] || [];
     mode.innerHTML = '';
@@ -12,8 +35,10 @@
       o.value = m; o.textContent = m;
       mode.appendChild(o);
     });
+    syncFields();
   }
   lm.addEventListener('change', sync);
+  mode.addEventListener('change', syncFields);
   sync();
 })();
 

@@ -5,16 +5,18 @@
       <strong>{{ lift.name }}</strong>
       <span class="tag {{ 'tag-accent' if lift.mode=='sbs' }}">{{ lift.mode }}</span>
       <span class="tag-muted tag">{{ lift.load_model }}</span>
-      <span class="meta num">day {{ lift.day }} · {{ lift.sets }} 组
-        {%- if lift.mode=='sbs' %} · max {{ lift.max }}{% if lift.lift_kind %} · {{ lift.lift_kind }}{% endif %}
-        {%- elif lift.mode in ('linear_t2','linear_t3') %} · start {{ lift.start }} · incr {{ lift.incr if lift.incr is not none else '全局' }}
+      <span class="meta num">Day {{ lift.day }} · {{ lift.sets }} Sets
+        {%- if lift.mode=='sbs' %} · Training Max seed {{ lift.max }}{% if lift.lift_kind %} · {{ lift.lift_kind }}{% endif %}
+        {%- elif lift.mode in ('linear_t2','linear_t3') %}
+          · 起始 {{ 'Working Weight' if lift.load_model == 'barbell' else 'Added weight' }} {{ lift.start }}
+          · Progression step {{ lift.incr if lift.incr is not none else '全局' }}
         {%- endif -%}
       </span>
     </div>
     <div class="row-actions">
       <button type="button" class="btn-ghost"
               hx-get="{{ url_for('lifts.row_edit', lid=lift.id) }}"
-              hx-target="#lift-{{ lift.id }}" hx-swap="outerHTML">编辑</button>
+              hx-target="#lift-{{ lift.id }}" hx-swap="outerHTML">编辑 Lift</button>
     </div>
   </div>
 </div>

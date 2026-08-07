@@ -25,9 +25,9 @@ def _parse_incr(raw: str):
     try:
         v = float(raw)
     except ValueError:
-        return None, "incr 必须是数字"
+        return None, "Progression step 必须是数字"
     if v <= 0:
-        return None, "incr 必须大于 0"
+        return None, "Progression step 必须大于 0"
     return v, None
 
 
@@ -61,13 +61,13 @@ def new():
     mode = request.form.get("mode", "")
     from sbs_cli.data.schema import is_legal_combo, LOAD_MODELS
     if load_model not in LOAD_MODELS:
-        flash("load_model 非法", "error")
+        flash("Load Model 非法", "error")
         return render_template("_lift_row.html", lift=None, error="bad load_model"), 400
     if not is_legal_combo(load_model, mode):
-        flash("load_model 与 mode 组合非法", "error")
+        flash("Load Model 与 Progression Mode 组合非法", "error")
         return render_template("_lift_row.html", lift=None, error="bad combo"), 400
     if not name:
-        flash("动作名不能为空", "error")
+        flash("Lift 名称不能为空", "error")
         return render_template("_lift_row.html", lift=None, error="name required"), 400
     # incr 仅 linear_t2/t3 生效；sbs/none 强制 None（ADR 0005）。
     # 空=None=继承全局；>0 数值；≤0/非数字 拒绝（D7）。
@@ -92,7 +92,7 @@ def new():
             lift_kind=_f("lift_kind") if mode == "sbs" else None, incr=incr,
             bodyweight_pct=pct)
     except Exception as e:
-        flash(f"创建失败: {e}", "error")
+        flash(f"创建 Lift 失败: {e}", "error")
         return render_template("_lift_row.html", lift=None, error=str(e)), 400
     lift = repo.get_lift(conn, lid)
     return render_template("_lift_row.html", lift=lift)
@@ -174,7 +174,7 @@ def mode_apply(lid):
         if "tm" in request.form and request.form["tm"].strip():
             preview["tm"] = float(request.form["tm"])
     except ValueError:
-        flash("重量 / TM 必须是数字", "error")
+        flash("Working Weight / Added weight / Training Max 必须是数字", "error")
         return redirect(url_for("lifts.view"))
     with conn:
         mode_service.apply_slot_switch(conn, lid, preview)

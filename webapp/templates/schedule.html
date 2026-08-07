@@ -1,13 +1,20 @@
 {% extends "base.html" %}
-{% block title %}21 周进度表{% endblock %}
+{% block title %}21 周 Schedule{% endblock %}
 {% block content %}
-<h1>21 周进度表</h1>
-<form action="{{ url_for('schedule.save') }}" method="post">
+<div class="secondary-page">
+<header class="secondary-page-header">
+  <div>
+    <h1>21 周 Schedule</h1>
+    <p class="meta">分别维护 main 与 aux 的固定 Schedule。</p>
+  </div>
+</header>
+<form id="schedule-form" action="{{ url_for('schedule.save') }}" method="post">
+  <div class="schedule-grid">
   {% for kind in kinds %}
   <div class="card">
     <h2 style="margin-top:0">{{ kind | capitalize }}</h2>
     <table class="table num">
-      <tr><th>周</th><th>强度</th><th>次数</th><th>repout</th></tr>
+      <tr><th>Schedule week</th><th>Intensity</th><th>Reps</th><th>Rep-out</th></tr>
       {% for w in weeks %}
       {% set r = by_kind[kind][w] %}
       <tr>
@@ -21,10 +28,14 @@
     </table>
   </div>
   {% endfor %}
-  <button type="submit" class="btn-primary">保存</button>
+  </div>
 </form>
-<form action="{{ url_for('schedule.reset') }}" method="post" style="margin-top:12px"
-      onsubmit="return confirm('恢复默认进度表? 当前自定义将丢失')">
-  <button type="submit" class="btn-danger">恢复默认进度表</button>
-</form>
+<div class="secondary-actions">
+  <button type="submit" form="schedule-form" class="btn-primary">保存 Schedule</button>
+  <form action="{{ url_for('schedule.reset') }}" method="post"
+        onsubmit="return confirm('恢复默认 Schedule? 当前自定义将丢失')">
+    <button type="submit" class="btn-danger">恢复默认 Schedule</button>
+  </form>
+</div>
+</div>
 {% endblock %}

@@ -1,49 +1,58 @@
 {% extends "base.html" %}
-{% block title %}动作管理{% endblock %}
+{% block title %}Lift 管理{% endblock %}
 {% block content %}
-<h1>动作管理</h1>
+<div class="secondary-page">
+<header class="secondary-page-header">
+  <div>
+    <h1>Lift 管理</h1>
+    <p class="meta">管理 Lift、Progression Mode 与各自的起始负重。</p>
+  </div>
+</header>
 
 <div class="card">
-  <h2 style="margin-top:0">新增动作</h2>
+  <h2 style="margin-top:0">新增 Lift</h2>
   <form hx-post="{{ url_for('lifts.new') }}" hx-target="#lift-list" hx-swap="beforeend">
     <div class="field-row">
-      <div class="field"><label>动作名</label><input name="name" placeholder="动作名"></div>
-      <div class="field"><label>载荷模型</label>
+      <div class="field"><label>Lift 名称</label><input name="name" placeholder="Lift 名称"></div>
+      <div class="field"><label>Load Model</label>
         <select name="load_model" id="new-load-model">
           <option value="barbell">barbell</option>
           <option value="bodyweight">bodyweight</option>
           <option value="pure_bodyweight">pure_bodyweight</option>
         </select></div>
-      <div class="field"><label>Mode</label>
+      <div class="field"><label>Progression Mode</label>
         <select name="mode" id="new-mode"></select></div>
-      <div class="field"><label>类型</label>
+      <div class="field" data-sbs-field><label>Kind</label>
         <select name="lift_kind"><option value="main">main</option><option value="aux">aux</option></select></div>
     </div>
     <div class="field-row">
       <div class="field"><label>Day</label><input name="day" type="number" value="1"></div>
-      <div class="field"><label>组数</label><input name="sets" type="number" value="3"></div>
-      <div class="field"><label>Max <span class="sub">(sbs)</span></label>
-        <input name="max" type="number" step="0.5" placeholder="max"></div>
-      <div class="field"><label>Start <span class="sub">(t2/t3)</span></label>
-        <input name="start" type="number" step="0.5" placeholder="start"></div>
-      <div class="field"><label>步进 <span class="sub">(t2/t3, 空=全局)</span></label>
-        <input name="incr" type="number" step="0.5" placeholder="incr"></div>
-      <div class="field"><label>体重比例 <span class="sub">(负重)</span></label>
-        <input name="bodyweight_pct" type="number" step="0.01" min="0" max="1" placeholder="bw%"></div>
+      <div class="field"><label>Sets</label><input name="sets" type="number" value="3"></div>
+      <div class="field" data-sbs-field><label>Training Max seed <span class="sub">(sbs)</span></label>
+        <input name="max" type="number" step="0.5" placeholder="Training Max seed"></div>
+      <div class="field" data-linear-field hidden><label data-new-start-label
+          data-working-label="起始 Working Weight"
+          data-added-label="起始 Added weight">起始 Working Weight</label>
+        <input name="start" type="number" step="0.5" placeholder="weight" disabled></div>
+      <div class="field" data-linear-field hidden><label>Progression step <span class="sub">(T2/T3, 空=全局)</span></label>
+        <input name="incr" type="number" step="0.5" placeholder="step" disabled></div>
+      <div class="field" data-bodyweight-field hidden><label>Bodyweight percentage</label>
+        <input name="bodyweight_pct" type="number" step="0.01" min="0" max="1" placeholder="bodyweight %" disabled></div>
     </div>
-    <button type="submit" class="btn-primary" style="margin-top:8px">添加</button>
+    <button type="submit" class="btn-primary" style="margin-top:8px">新增 Lift</button>
   </form>
 </div>
 
 <script id="legal-map" type="application/json">{{ legal_map | tojson }}</script>
 <script src="{{ url_for('static', filename='app.js') }}"></script>
 
-<h2>现有动作</h2>
+<h2>现有 Lift</h2>
 <div id="lift-list">
   {% for lift in lifts %}
     {% include "_lift_row.html" %}
   {% else %}
-    <p class="meta">暂无动作， 上方新增。</p>
+    <p class="meta">暂无 Lift，请在上方新增。</p>
   {% endfor %}
+</div>
 </div>
 {% endblock %}

@@ -3,5 +3,7 @@
 {% include '_plan_lift_status.html' %}
 {% set working_oob = true %}
 {% include '_plan_working_weight.html' %}
-{% set comparison_oob = true %}
-{% include '_plan_comparison.html' %}
+{% if preview %}
+  {% set inspector_oob = true %}
+  {% include '_focus_inspector.html' %}
+{% endif %}

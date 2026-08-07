@@ -10,6 +10,8 @@
 {% endif %}
 <p class="meta">以整个 Program week 为工作单元；跨 Day 待处理 Lift 始终保留。</p>
 <p><a class="btn" href="{{ url_for('plan.export_week') }}" download>📱 导出本周计划(手机看)</a></p>
+<div class="week-workspace">
+<div class="week-ledger-panel">
   {# Client-side disable gives immediate feedback; expected_week is the server guard (ADR 0010). #}
 <form method="post" action="{{ url_for('plan.submit') }}" data-disable-submit>
   <input type="hidden" name="expected_week" value="{{ week }}">
@@ -37,6 +39,15 @@
   </div>
   <button type="submit" class="btn-primary">提交并算下周</button>
 </form>
+</div>
+<aside class="focus-column">
+  <section id="focus-inspector" class="focus-inspector">
+    <span class="meta">聚焦检查器</span>
+    <h2>选择一个 Lift</h2>
+    <p class="meta">选择或有效补录后，这里显示准确的下一周 Progression 与本次表现。</p>
+  </section>
+</aside>
+</div>
 <script>
   (function(){
     var form = document.querySelector('form[data-disable-submit]');

@@ -293,14 +293,19 @@ def test_homepage_finalize_confirms_migrated_current_week_sets(tmp_path):
 
     with app.test_client() as client:
         slot_id = client.get("/training/plan").get_json()["slots"][0]["slot_id"]
+        for set_number, reps in ((3, 0), (1, 15), (2, 15)):
+            saved = client.post(
+                f"/log/save?lid={slot_id}&set_number={set_number}",
+                data={
+                    "expected_week": "1",
+                    f"actual_added_weight_{slot_id}": "30",
+                    f"set_{slot_id}_{set_number}": str(reps),
+                },
+            )
+            assert saved.status_code == 200
         finalized = client.post(
             "/log",
-            data={
-                "expected_week": "1",
-                f"set_{slot_id}_1": "15",
-                f"set_{slot_id}_2": "15",
-                f"set_{slot_id}_3": "0",
-            },
+            data={"expected_week": "1"},
             follow_redirects=True,
         )
         history = client.get("/training/history").get_json()

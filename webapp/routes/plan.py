@@ -18,10 +18,12 @@ from ..services.training import (
     TrainingInputError,
     finalize_week,
     preview_progression,
+    review_week_settlement,
     save_draft_set,
     training_history,
     training_plan,
 )
+from ._forms import skipped_slot_ids
 
 
 bp = Blueprint("plan", __name__)
@@ -158,24 +160,33 @@ def _v1_plan_by_day(conn):
                     confirmed=(
                         fact is not None
                         and fact["actual_added_weight"] is not None
-                        and fact["mode"] is not None
+                        and fact["mode"] == slot["mode"]
+                    ),
+                    warmup=bool(fact["warmup"]) if fact is not None else False,
+                    drives_progression=(
+                        bool(fact["drives_progression"])
+                        if fact is not None else False
                     ),
                 )
             )
-        driver = set_entries[-1]
+        final_entry = set_entries[-1]
+        progression_driver = next((
+            entry for entry in set_entries
+            if entry.confirmed and not entry.warmup and entry.drives_progression
+        ), None)
         actual_added_weight = (
-            driver.actual_added_weight
-            if driver.actual_added_weight is not None
+            final_entry.actual_added_weight
+            if final_entry.actual_added_weight is not None
             else slot["planned_added_weight"]
         )
         if slot["load_model"] == "pure_bodyweight":
             actual_added_weight = 0
-        if driver.reps is None:
+        if final_entry.reps is None:
             working_weight_kind = "Planned"
             current_working_weight = slot["planned_working_weight"]
         else:
             working_weight_kind = "Actual"
-            current_working_weight = driver.actual_working_weight
+            current_working_weight = final_entry.actual_working_weight
         item = SimpleNamespace(
             id=slot["slot_id"],
             name=slot["name"],
@@ -194,11 +205,10 @@ def _v1_plan_by_day(conn):
             target=slot["planned_target"],
             streak=slot["state_streak"],
             set_entries=set_entries,
-            is_logged=any(
-                entry.is_last and entry.reps is not None for entry in set_entries
-            ),
-            is_zero=any(
-                entry.is_last and entry.reps == 0 for entry in set_entries
+            is_logged=progression_driver is not None,
+            is_zero=(
+                progression_driver is not None
+                and progression_driver.reps == 0
             ),
         )
         rows_by_day.setdefault(item.day, []).append(item)
@@ -212,9 +222,13 @@ def view():
     from ..services.reseed import due_lifts
     conn = get_db()
     week, by_day = _v1_plan_by_day(conn)
+    items = [item for _day, day_items in by_day for item in day_items]
+    handled_count = sum(item.is_logged for item in items)
     due, _cyc = due_lifts(conn)
     return render_template("plan.html", week=week, by_day=by_day,
-                           due_reseeds=[r["name"] for r, _st in due])
+                           due_reseeds=[r["name"] for r, _st in due],
+                           handled_count=handled_count,
+                           total_count=len(items))
 
 
 @bp.route("/log/save", methods=["POST"])
@@ -386,65 +400,67 @@ def submit():
         expected_week = int(request.form["expected_week"])
     except (KeyError, TypeError, ValueError):
         return ("bad expected week", 400)
+    try:
+        skipped_ids = skipped_slot_ids()
+    except TrainingInputError as error:
+        return (str(error), 400)
     plan = training_plan(conn)
     if plan["expected_week"] != expected_week:
         return ("stale week", 409)
-    facts = _v1_current_facts(training_history(conn), expected_week)
-    pending = []
-    for slot in plan["slots"]:
-        for set_number in range(1, slot["planned_sets"] + 1):
-            raw = request.form.get(f"set_{slot['slot_id']}_{set_number}")
-            if raw is None or not raw.strip():
-                continue
-            try:
-                reps = int(raw)
-            except ValueError:
-                return ("bad reps", 400)
-            fact = facts.get((slot["slot_id"], set_number))
-            confirmed = (
-                fact is not None
-                and fact["actual_added_weight"] is not None
-                and fact["mode"] is not None
-            )
-            if fact is None or fact["reps"] != reps or not confirmed:
-                pending.append(
-                    (
-                        slot["slot_id"],
-                        set_number,
-                        reps,
-                        _draft_set_fields(fact, slot, set_number),
-                    )
-                )
     try:
-        for slot_id, set_number, reps, fields in pending:
-            save_draft_set(
-                conn,
-                expected_week=expected_week,
-                slot_id=slot_id,
-                set_number=set_number,
-                reps=reps,
-                **fields,
-            )
+        review_week_settlement(
+            conn,
+            expected_week=expected_week,
+            skipped_slot_ids=skipped_ids,
+        )
     except StaleTrainingWeekError:
         return ("stale week", 409)
     except TrainingInputError as error:
         return (str(error), 400)
     from ..backup import snapshot
     from datetime import datetime, timezone
-    snapshot(
-        current_app.config["DB_PATH"],
-        dest_dir=current_app.config["BACKUP_DIR"],
-        week=expected_week,
-        ts=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S"),
-    )
+    def snapshot_before_advance():
+        snapshot(
+            current_app.config["DB_PATH"],
+            dest_dir=current_app.config["BACKUP_DIR"],
+            week=expected_week,
+            ts=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S"),
+        )
+
     try:
-        new_week = finalize_week(conn, expected_week=expected_week)
+        new_week = finalize_week(
+            conn,
+            expected_week=expected_week,
+            skipped_slot_ids=skipped_ids,
+            before_advance=snapshot_before_advance,
+        )
     except StaleTrainingWeekError:
         return ("stale week", 409)
     except TrainingInputError as error:
         return (str(error), 400)
     flash(f"已推进到 week {new_week}")
     return redirect(url_for("plan.view"))
+
+
+@bp.route("/log/review", methods=["POST"])
+def review_settlement():
+    conn = get_db()
+    try:
+        expected_week = int(request.form["expected_week"])
+    except (KeyError, TypeError, ValueError):
+        return ("bad expected week", 400)
+    try:
+        skipped_ids = skipped_slot_ids()
+        review = review_week_settlement(
+            conn,
+            expected_week=expected_week,
+            skipped_slot_ids=skipped_ids,
+        )
+    except StaleTrainingWeekError:
+        return ("stale week", 409)
+    except TrainingInputError as error:
+        return (str(error), 400)
+    return render_template("settlement_review.html", review=review)
 
 
 @bp.route("/export/week.html")

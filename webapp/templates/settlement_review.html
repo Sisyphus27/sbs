@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Week {{ review.expected_week }} 最终复核{% endblock %}
+{% block content %}
+<h1>Week {{ review.expected_week }} 最终复核</h1>
+<p class="meta">本次确认将原子应用 Progression、finalize sessions，并推进 Program week。</p>
+<div class="settlement-counts">
+  <strong>已补录 {{ review.logged_count }}</strong>
+  <strong>本周跳过 {{ review.skipped_count }}</strong>
+  <strong>0 次失败 {{ review.failed_zero_count }}</strong>
+</div>
+<table class="table settlement-review-table">
+  <thead><tr><th>Lift</th><th>处理结果</th><th>预计 Progression</th></tr></thead>
+  <tbody>
+  {% for item in review.rows %}
+    <tr>
+      <td><strong>{{ item.name }}</strong></td>
+      <td>
+        {% if item.status == 'skipped' %}本周跳过
+        {% elif item.failed_zero %}已补录 · 失败 Training Fact
+        {% else %}已补录{% endif %}
+      </td>
+      <td>
+        {% if item.status == 'skipped' %}
+          不生成 Training Fact；Progression 不变
+        {% elif item.preview.mode == 'sbs' %}
+          Training Max {{ item.preview.before.tm }} → {{ item.preview.after.tm }}；下一周 Working Weight {{ item.preview.next_plan.planned_working_weight }} kg
+        {% elif item.preview.mode == 'linear_t2' %}
+          {% if item.preview.next_plan.load_model == 'bodyweight' %}Added weight{% else %}Working Weight{% endif %} {{ item.preview.before.weight }} → {{ item.preview.after.weight }} kg；目标 {{ item.preview.before.target }} → {{ item.preview.after.target }}；streak {{ item.preview.before.streak }} → {{ item.preview.after.streak }}；下一周 Working Weight {{ item.preview.next_plan.planned_working_weight }} kg
+        {% elif item.preview.mode == 'linear_t3' %}
+          {% if item.preview.next_plan.load_model == 'bodyweight' %}Added weight{% else %}Working Weight{% endif %} {{ item.preview.before.weight }} → {{ item.preview.after.weight }} kg；下一周 Working Weight {{ item.preview.next_plan.planned_working_weight }} kg · 目标 {{ item.preview.next_plan.planned_target }} 次
+        {% else %}
+          record-only：无自动 Progression
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<form method="post" action="{{ url_for('plan.submit') }}" data-disable-submit>
+  <input type="hidden" name="expected_week" value="{{ review.expected_week }}">
+  {% for slot_id in review.skipped_slot_ids %}
+  <input type="hidden" name="skipped_slot_ids" value="{{ slot_id }}">
+  {% endfor %}
+  <button type="button" onclick="history.back()">返回补录</button>
+  <button type="submit" class="btn-primary">确认并进入 Week {{ review.new_week }}</button>
+</form>
+{% endblock %}

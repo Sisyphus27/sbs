@@ -215,7 +215,7 @@ def test_week_workspace_has_one_input_free_inspector_refreshed_by_driver_save(
 
     page = client.get("/").get_data(as_text=True)
     assert page.count('id="focus-inspector"') == 1
-    assert page.count('hx-target="#focus-inspector"') == 2
+    assert page.count('hx-target="#focus-inspector"') == 4
     inspector = page.split('id="focus-inspector"', 1)[1].split(
         "</section>", 1
     )[0]

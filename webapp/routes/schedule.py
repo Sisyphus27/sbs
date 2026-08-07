@@ -49,14 +49,18 @@ def save():
                 reps = int(f.get("reps", ex["reps"] if ex else 0))
                 repout = int(f.get("repout", ex["repout"] if ex else 0))
             except ValueError:
-                flash(f"非法值: {kind} week {week}", "error")
+                flash(f"非法值: {kind} Schedule week {week}", "error")
                 return ("bad value", 400)
             if not (0 < intensity < 1) or reps <= 0 or repout <= 0:
-                flash(f"范围错误: {kind} week {week} (强度须 0~1, 次数/repout 须 >0)", "error")
+                flash(
+                    f"范围错误: {kind} Schedule week {week} "
+                    "(Intensity 须 0~1, Reps/Rep-out 须 >0)",
+                    "error",
+                )
                 return ("out of range", 400)
             new_rows.append((kind, week, intensity, reps, repout))
     repo.replace_schedule(conn, new_rows)
-    flash("进度表已更新")
+    flash("Schedule 已更新")
     return redirect(url_for("schedule.view"))
 
 
@@ -64,5 +68,5 @@ def save():
 def reset():
     conn = get_db()
     repo.reset_schedule(conn)
-    flash("进度表已恢复默认")
+    flash("Schedule 已恢复默认")
     return redirect(url_for("schedule.view"))

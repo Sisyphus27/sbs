@@ -26,7 +26,7 @@ def update():
         flash(f"非法值: {bad}", "error")
         return redirect(url_for("settings.view"))
     repo.update_settings(conn, **fields)
-    flash("参数已更新")
+    flash("Settings 已更新")
     return redirect(url_for("settings.view"))
 
 

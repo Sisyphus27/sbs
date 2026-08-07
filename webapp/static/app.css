@@ -113,6 +113,23 @@ body{display:flex;min-height:100vh}
 .settlement-counts{display:flex;gap:16px;flex-wrap:wrap;margin:16px 0}
 .settlement-review-table{margin-bottom:16px}
 
+/* Issue #63 secondary pages: one compact visual grammar, no workspace state. */
+.secondary-page{max-width:980px}
+.secondary-page-header{display:flex;align-items:flex-end;justify-content:space-between;
+  gap:12px;margin-bottom:12px}
+.secondary-page-header h1{margin:0}
+.secondary-page-header .meta{margin:2px 0 0}
+.secondary-page .card{padding:12px;margin-bottom:12px}
+.secondary-page .card h2{font-size:1.05em;margin:0 0 10px;padding-bottom:4px}
+.secondary-page .field-row{gap:12px}
+.secondary-page .field{margin-bottom:8px}
+.secondary-page .table th,.secondary-page .table td{padding:4px 6px}
+.secondary-page .table input{padding:4px 6px}
+.secondary-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+.secondary-actions form{margin:0}
+.schedule-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.schedule-grid .card{margin:0}
+
 @media (max-width:900px){
   body{flex-direction:column}
   .sidebar{width:100%;flex:none;height:auto;border-right:none;border-bottom:1px solid var(--line);

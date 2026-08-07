@@ -1,24 +1,28 @@
 {% extends "base.html" %}
-{% block title %}换 mode{% endblock %}
+{% block title %}切换 Progression Mode{% endblock %}
 {% block content %}
-<h1>{{ lift.name }} → {{ preview.mode }}</h1>
+<div class="secondary-page">
+<header class="secondary-page-header">
+  <h1>{{ lift.name }} · Progression Mode → {{ preview.mode }}</h1>
+</header>
 <div class="card">
-  <p class="meta">历史保留, est1rm 从历史重算。下面是新 mode 的起点状态, 可改后确认:</p>
+  <p class="meta">Training Fact 历史保留，est1RM 从历史重算。确认新的 Progression Mode 起点：</p>
   <form method="post" action="{{ url_for('lifts.mode_apply', lid=lift.id) }}">
     <input type="hidden" name="mode" value="{{ preview.mode }}">
     <div class="field"><label>est1RM (从历史)</label>
       <div class="num">{{ "%.2f"|format(preview.est1rm) if preview.est1rm is not none else '—' }}</div></div>
     {% if preview.mode == 'sbs' %}
-    <div class="field"><label>新 TM</label>
+    <div class="field"><label>新 Training Max</label>
       <input name="tm" type="number" step="0.5" value="{{ preview.tm }}"></div>
     {% else %}
-    <div class="field"><label>新重量</label>
+    <div class="field"><label>新 {{ 'Working Weight' if lift.load_model == 'barbell' else 'Added weight' }}</label>
       <input name="weight" type="number" step="0.5" value="{{ preview.weight }}"></div>
     {% endif %}
     <div class="field-row" style="margin-top:12px">
-      <button type="submit" class="btn-primary">确认切换</button>
+      <button type="submit" class="btn-primary">确认切换 Progression Mode</button>
       <a class="btn-ghost" href="{{ url_for('lifts.view') }}">取消</a>
     </div>
   </form>
+</div>
 </div>
 {% endblock %}

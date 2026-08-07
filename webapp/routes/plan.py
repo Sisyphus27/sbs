@@ -57,6 +57,11 @@ def _draft_set_fields(fact, slot, set_number):
             if fact is not None
             else set_number == slot["planned_sets"]
         ),
+        "e1rm_qualified": (
+            bool(fact["e1rm_qualified"])
+            if fact is not None
+            else False
+        ),
     }
 
 

@@ -1,4 +1,4 @@
-"""CLI adapter for the v1 SQLite draft-set command."""
+"""CLI adapter for the SQLite draft-set command."""
 
 import argparse
 from datetime import date, datetime, timezone
@@ -33,6 +33,7 @@ def cmd_save_set(args) -> None:
             reps=args.reps,
             warmup=args.warmup,
             drives_progression=args.drives_progression,
+            e1rm_qualified=args.e1rm_qualified,
             **metadata,
         )
     except TrainingInputError as error:
@@ -76,6 +77,7 @@ def build_parser() -> argparse.ArgumentParser:
     save_set_parser.add_argument("--reps", required=True, type=int)
     save_set_parser.add_argument("--warmup", action="store_true")
     save_set_parser.add_argument("--drives-progression", action="store_true")
+    save_set_parser.add_argument("--e1rm-qualified", action="store_true")
 
     training_date = save_set_parser.add_mutually_exclusive_group()
     training_date.add_argument(

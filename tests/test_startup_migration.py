@@ -17,7 +17,7 @@ TRAINING_TABLES = {
 }
 
 
-def test_fresh_database_starts_at_v1_with_six_training_tables(tmp_path):
+def test_fresh_database_starts_at_v2_with_six_training_tables(tmp_path):
     db_path = tmp_path / "fresh.db"
 
     create_app(
@@ -38,6 +38,9 @@ def test_fresh_database_starts_at_v1_with_six_training_tables(tmp_path):
 
         settings_count = conn.execute("SELECT COUNT(*) FROM settings").fetchone()[0]
         schedule_count = conn.execute("SELECT COUNT(*) FROM sbs_schedule").fetchone()[0]
+        set_log_columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(set_log)")
+        }
         exercise_id = conn.execute(
             "INSERT INTO exercise (name, load_model) VALUES ('Squat', 'barbell')"
         ).lastrowid
@@ -77,7 +80,8 @@ def test_fresh_database_starts_at_v1_with_six_training_tables(tmp_path):
             conn.commit()
         conn.rollback()
 
-    assert user_version == 1
+    assert user_version == 2
+    assert "e1rm_qualified" in set_log_columns
     assert TRAINING_TABLES <= tables
     assert {"settings", "sbs_schedule"} <= tables
     assert {"lifts", "lift_state", "history", "week_log"}.isdisjoint(tables)
@@ -146,7 +150,7 @@ def test_production_v0_uses_owner_confirmed_legacy_set_backfill(
 
     with sqlite3.connect(db_path) as migrated:
         migrated.row_factory = sqlite3.Row
-        assert migrated.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert migrated.execute("PRAGMA user_version").fetchone()[0] == 2
         tables = {
             row[0]
             for row in migrated.execute(
@@ -171,15 +175,15 @@ def test_production_v0_uses_owner_confirmed_legacy_set_backfill(
 
         completed = migrated.execute(
             "SELECT sl.set_number, sl.actual_added_weight, sl.reps, "
-            "sl.drives_progression "
+            "sl.drives_progression, sl.e1rm_qualified "
             "FROM training_session AS ts "
             "JOIN set_log AS sl ON sl.session_id = ts.id "
             "WHERE ts.program_week = 2 ORDER BY sl.set_number"
         ).fetchall()
         assert [tuple(row) for row in completed] == [
-            (1, 10.0, 8, 0),
-            (2, 10.0, 8, 0),
-            (3, 10.0, 0, 1),
+            (1, 10.0, 8, 0, 0),
+            (2, 10.0, 8, 0, 0),
+            (3, 10.0, 0, 1, 0),
         ]
 
         completed_session = migrated.execute(
@@ -202,17 +206,17 @@ def test_production_v0_uses_owner_confirmed_legacy_set_backfill(
 
         draft = migrated.execute(
             "SELECT sl.set_number, sl.actual_added_weight, sl.reps, "
-            "sl.drives_progression "
+            "sl.drives_progression, sl.e1rm_qualified "
             "FROM training_session AS ts "
             "JOIN set_log AS sl ON sl.session_id = ts.id "
             "WHERE ts.program_week = 3 ORDER BY sl.set_number"
         ).fetchall()
         assert [tuple(row) for row in draft] == [
-            (1, None, 3, 0),
-            (2, None, 3, 0),
-            (3, None, 3, 0),
-            (4, None, 3, 0),
-            (5, None, 12, 1),
+            (1, None, 3, 0, 0),
+            (2, None, 3, 0, 0),
+            (3, None, 3, 0, 0),
+            (4, None, 3, 0, 0),
+            (5, None, 12, 1, 0),
         ]
 
 
@@ -400,8 +404,8 @@ def test_nonpositive_legacy_planned_reps_roll_back_migration(tmp_path, mode):
         ).fetchone()[0] == 0
 
 
-def test_v1_startup_is_a_no_op(tmp_path):
-    db_path = tmp_path / "already-v1.db"
+def test_v2_startup_is_a_no_op(tmp_path):
+    db_path = tmp_path / "already-v2.db"
     backup_dir = tmp_path / "backups"
     config = {"TESTING": True}
     create_app(
@@ -426,7 +430,7 @@ def test_v1_startup_is_a_no_op(tmp_path):
     )
 
     with sqlite3.connect(db_path) as conn:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 1
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 2
         assert conn.execute("SELECT name FROM exercise").fetchall() == [("User row",)]
         assert conn.execute(
             "SELECT type, name, sql FROM sqlite_master "

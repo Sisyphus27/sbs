@@ -354,16 +354,18 @@ def clear_progression_driver(conn: sqlite3.Connection, *, session_id: int,
 
 def upsert_training_set(conn: sqlite3.Connection, *, session_id: int, slot_id: int,
                         set_number: int, actual_added_weight: float, reps: int,
-                        warmup: bool, drives_progression: bool) -> None:
+                        warmup: bool, drives_progression: bool,
+                        e1rm_qualified: bool) -> None:
     conn.execute(
         "INSERT INTO set_log "
         "(session_id, slot_id, set_number, actual_added_weight, reps, warmup, "
-        "drives_progression) VALUES (?, ?, ?, ?, ?, ?, ?) "
+        "drives_progression, e1rm_qualified) VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
         "ON CONFLICT(session_id, slot_id, set_number) DO UPDATE SET "
         "actual_added_weight=excluded.actual_added_weight, reps=excluded.reps, "
-        "warmup=excluded.warmup, drives_progression=excluded.drives_progression",
+        "warmup=excluded.warmup, drives_progression=excluded.drives_progression, "
+        "e1rm_qualified=excluded.e1rm_qualified",
         (session_id, slot_id, set_number, actual_added_weight, reps,
-         int(warmup), int(drives_progression)),
+         int(warmup), int(drives_progression), int(e1rm_qualified)),
     )
 
 
@@ -372,7 +374,8 @@ def list_training_facts(conn: sqlite3.Connection):
         "SELECT ts.id AS session_id, ts.program_week, ts.day, ts.training_date, "
         "ts.bodyweight_kg, ts.finalized_at, sl.slot_id, e.name AS exercise_name, "
         "e.load_model, sl.set_number, sl.actual_added_weight, sl.reps, sl.warmup, "
-        "sl.drives_progression, pe.mode, pe.planned_sets, pe.planned_reps, "
+        "sl.drives_progression, sl.e1rm_qualified, pe.mode, pe.planned_sets, "
+        "pe.planned_reps, "
         "pe.planned_repout, pe.planned_target, pe.planned_intensity, "
         "pe.planned_added_weight, pe.planned_working_weight, pe.bodyweight_pct "
         "FROM set_log AS sl "
@@ -389,7 +392,8 @@ def list_progression_drivers(conn: sqlite3.Connection, *, program_week: int):
     """Return the one explicit progression set for each current-week session-slot."""
     return conn.execute(
         "SELECT ts.id AS session_id, ts.program_week, ts.day, ts.bodyweight_kg, "
-        "sl.slot_id, sl.actual_added_weight, sl.reps, e.name, e.load_model, "
+        "sl.slot_id, sl.actual_added_weight, sl.reps, sl.e1rm_qualified, "
+        "e.name, e.load_model, "
         "ps.lift_kind, ps.mode AS current_slot_mode, "
         "ss.mode AS current_state_mode, pe.mode, pe.planned_sets, pe.planned_reps, "
         "pe.planned_repout, pe.planned_target, pe.planned_intensity, "
@@ -419,6 +423,18 @@ def save_training_state(conn: sqlite3.Connection, slot_id: int, *, mode: str,
     )
     if cursor.rowcount != 1:
         raise sqlite3.IntegrityError("missing strength state")
+
+
+def save_sbs_historical_peak(conn: sqlite3.Connection, slot_id: int,
+                             peak_e1rm: float) -> None:
+    cursor = conn.execute(
+        "UPDATE strength_state SET est1rm = "
+        "CASE WHEN est1rm IS NULL OR est1rm < ? THEN ? ELSE est1rm END "
+        "WHERE slot_id = ? AND mode = 'sbs'",
+        (peak_e1rm, peak_e1rm, slot_id),
+    )
+    if cursor.rowcount != 1:
+        raise sqlite3.IntegrityError("missing SBS strength state")
 
 
 def finalize_training_sessions(conn: sqlite3.Connection, *, program_week: int,

@@ -378,7 +378,7 @@ def test_rough_driver_progresses_mode_without_updating_canonical_e1rm(tmp_path):
     assert state == (32.5, None)
 
 
-def test_t2_reset_uses_saved_state_baseline_and_actual_driver_e1rm(tmp_path):
+def test_t2_reset_uses_saved_state_baseline_and_clears_cycle_peak(tmp_path):
     db_path = tmp_path / "t2-reset.db"
     app = create_app(
         db_path=str(db_path),
@@ -420,7 +420,7 @@ def test_t2_reset_uses_saved_state_baseline_and_actual_driver_e1rm(tmp_path):
             "SELECT weight, target, streak, est1rm FROM strength_state WHERE slot_id = ?",
             (slot_id,),
         ).fetchone()
-    assert state == (97.5, 8, 0, 200.0)
+    assert state == (97.5, 8, 0, None)
 
 
 def test_finalize_rejects_a_mode_changed_after_the_snapshot(tmp_path):

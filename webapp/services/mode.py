@@ -50,7 +50,14 @@ def derive_slot_state(conn: sqlite3.Connection, slot_id: int, new_mode: str,
     current_state = repo.get_training_state(conn, slot_id)
     if slot is None or current_state is None:
         raise ValueError("unknown training slot")
-    return _derive_start(slot, new_mode, settings, current_state["est1rm"])
+    state = _derive_start(slot, new_mode, settings, current_state["est1rm"])
+    if (
+        current_state["mode"] != "linear_t2"
+        and new_mode == "linear_t2"
+        and slot["load_model"] == "barbell"
+    ):
+        state["est1rm"] = None
+    return state
 
 
 def apply_switch(conn: sqlite3.Connection, lift_id: int, state: dict) -> None:

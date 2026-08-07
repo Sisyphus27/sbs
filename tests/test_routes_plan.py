@@ -291,9 +291,9 @@ def test_save_log_response_confirms_the_v1_set_fact(client, make_lift, db_conn):
 def test_plan_rep_edit_preserves_existing_actual_weight_and_set_roles(
         client, make_lift):
     lid = make_lift(name="Curl", mode="linear_t3", sets=3, start=30.0)
-    for set_number, weight, reps, warmup, driver in (
-        (1, 32.5, 8, 1, 0),
-        (2, 35.0, 6, 0, 1),
+    for set_number, weight, reps, warmup, driver, qualified in (
+        (1, 32.5, 8, 1, 0, 0),
+        (2, 35.0, 6, 0, 1, 1),
     ):
         response = client.post(
             "/training/sets/full",
@@ -305,6 +305,7 @@ def test_plan_rep_edit_preserves_existing_actual_weight_and_set_roles(
                 "reps": str(reps),
                 "warmup": str(warmup),
                 "drives_progression": str(driver),
+                "e1rm_qualified": str(qualified),
             },
         )
         assert response.status_code == 200
@@ -323,20 +324,21 @@ def test_plan_rep_edit_preserves_existing_actual_weight_and_set_roles(
             row["reps"],
             row["warmup"],
             row["drives_progression"],
+            row["e1rm_qualified"],
         )
         for row in facts
     ] == [
-        (1, 32.5, 9, 1, 0),
-        (2, 35.0, 7, 0, 1),
+        (1, 32.5, 9, 1, 0, 0),
+        (2, 35.0, 7, 0, 1, 1),
     ]
 
 
 def test_plan_submit_preserves_existing_actual_weight_and_set_roles(
         client, make_lift):
     lid = make_lift(name="Curl", mode="linear_t3", sets=3, start=30.0)
-    for set_number, weight, reps, warmup, driver in (
-        (1, 32.5, 8, 1, 0),
-        (2, 35.0, 6, 0, 1),
+    for set_number, weight, reps, warmup, driver, qualified in (
+        (1, 32.5, 8, 1, 0, 0),
+        (2, 35.0, 6, 0, 1, 1),
     ):
         response = client.post(
             "/training/sets/full",
@@ -348,6 +350,7 @@ def test_plan_submit_preserves_existing_actual_weight_and_set_roles(
                 "reps": str(reps),
                 "warmup": str(warmup),
                 "drives_progression": str(driver),
+                "e1rm_qualified": str(qualified),
             },
         )
         assert response.status_code == 200
@@ -373,11 +376,12 @@ def test_plan_submit_preserves_existing_actual_weight_and_set_roles(
             row["reps"],
             row["warmup"],
             row["drives_progression"],
+            row["e1rm_qualified"],
         )
         for row in facts
     ] == [
-        (1, 32.5, 9, 1, 0),
-        (2, 35.0, 7, 0, 1),
+        (1, 32.5, 9, 1, 0, 0),
+        (2, 35.0, 7, 0, 1, 1),
     ]
 
 

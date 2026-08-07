@@ -159,11 +159,16 @@ def training_plan(conn: sqlite3.Connection) -> dict:
                 "slot_id": slot["id"],
                 "name": slot["name"],
                 "load_model": slot["load_model"],
+                "mode": slot["mode"],
                 "day": slot["day"],
                 "planned_sets": planned["planned_sets"],
                 "planned_reps": planned["planned_reps"],
+                "planned_repout": planned["planned_repout"],
+                "planned_target": planned["planned_target"],
                 "planned_added_weight": planned["planned_added_weight"],
                 "planned_working_weight": planned["planned_working_weight"],
+                "state_streak": planned["state_streak"],
+                "state_est1rm": planned["state_est1rm"],
             }
         )
     return {"expected_week": expected_week, "slots": slots}

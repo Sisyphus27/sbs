@@ -63,10 +63,9 @@ component back in at the computation seam (ADR 0004).
 _Avoid_: load, total weight
 
 **Bodyweight**:
-The lifter's measured body mass (kg) — a single global value (`settings.bodyweight` /
-`Profile.bodyweight`), held static across history. Combined with a lift's bodyweight_pct to form
-the bodyweight component of its working weight. Stored added weights are stable against
-bodyweight drift by design (ADR 0004).
+The lifter's measured body mass (kg). The current profile value plans today's bodyweight load;
+each recorded session may store its own bodyweight for historical projection. Historical
+working weight never falls back to the current profile when the session value is missing.
 _Avoid_: body mass, user weight
 
 **Bodyweight percentage (bodyweight_pct)**:
@@ -88,19 +87,18 @@ week's TM delta is measured (`delta = actual_reps − repout`).
 _Avoid_: AMRAP target
 
 **est1RM**:
-Estimated one-rep max — the mean of the Epley, Brzycki, and Wathan formulas over the best
-historical set. Used to seed T2 resets (`reset_pct × est1RM`) and displayed for trend tracking.
-Full-precision in storage; displayed to 2 decimals.
+Estimated one-rep max — the mean of the Epley, Brzycki, and Wathan formulas. A recorded set from
+1–20 reps may produce a display est1RM; the plan view compares the explicit progression-driver
+set with the same Lift's previous program week. Only a non-warmup progression-driver set of at
+most 10 reps is eligible for canonical est1RM and progression state. Full-precision in storage;
+displayed to 2 decimals.
 _Avoid_: 1RM (that denotes an actual, measured max — a different concept)
 
 **Training volume (tonnage)**:
-The total load lifted by one lift in one week: working weight × total reps across all sets,
-in kg. Computed as `weight × ((sets−1) × plannedReps + lastSetReps)` — every set but the last
-is taken at its planned rep count (sbs: the scheduled reps; t2: target; t3: t3_target), and the
-last set uses the reps actually logged for that week (the 末组 entry, whatever was filled in).
-A per-lift, per-week quantity; the plan view shows each lift's tonnage against the previous
-program week (WoW Δ%). An indicator of training load, not of progress — volume rises and falls
-deliberately across a cycle (e.g. deload weeks).
+The sum of actual working weight × reps across one Lift's recorded non-warmup work sets in one
+program week. Missing sets are not inferred from the prescription. The plan view compares each
+Lift's recorded volume with the previous program week (WoW Δ%). It is an indicator of training
+load, not progress — volume rises and falls deliberately across a cycle (e.g. deload weeks).
 _Avoid_: load (the weight on the bar for a single set), intensity
 
 **Progression Mode (mode)**:

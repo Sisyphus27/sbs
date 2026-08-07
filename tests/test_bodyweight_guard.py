@@ -1,10 +1,7 @@
-"""Behavior guards (ADR 0004): bodyweight lifts must never compute est1RM/tonnage
-from raw added weight. If a future change reintroduces a raw-weight path, the
-fixture (bw 75, added 0) yields 0 and these fail."""
+"""Behavior guards for remaining legacy-engine bodyweight state paths."""
 import sqlite3
 from webapp.db import init_schema
-from webapp.repo import (create_lift, update_settings, save_lift_state,
-                         append_history, get_lift_state)
+from webapp.repo import create_lift, update_settings, append_history
 from sbs_cli.engine.onerm import estimate_1rm
 
 
@@ -13,31 +10,6 @@ def _seed_bodyweight_db():
     init_schema(conn)
     update_settings(conn, bodyweight=75.0)
     return conn
-
-
-def test_guard_preview_est1rm_is_bodyweight_driven():
-    from webapp.services.preview import live_preview
-    conn = _seed_bodyweight_db()
-    lid = create_lift(conn, name="Chin-ups", load_model="bodyweight", mode="linear_t2",
-                      day=2, sort_order=1, sets=3,
-                      max=None, intensity=None, reps=None, repout=None, start=0.0,
-                      bodyweight_pct=1.0)
-    assert live_preview(conn, lid, 5)["est1rm"] == estimate_1rm(75.0, 5)
-    conn.close()
-
-
-def test_guard_volume_tonnage_is_bodyweight_driven():
-    from webapp.services.volume import lift_week_volume
-    conn = _seed_bodyweight_db()
-    lid = create_lift(conn, name="Dips", load_model="bodyweight", mode="linear_t3",
-                      day=4, sort_order=1, sets=3,
-                      max=None, intensity=None, reps=None, repout=None, start=0.0,
-                      bodyweight_pct=1.0)
-    save_lift_state(conn, lid, mode="linear_t3", tm=None, weight=0.0, target=None,
-                    streak=0, est1rm=None)
-    append_history(conn, lid, week=1, weight=0.0, reps=12)
-    assert lift_week_volume(conn, lid, 1, is_current=False) == 75.0 * (2 * 15 + 12)
-    conn.close()
 
 
 def test_guard_advance_progression_none_keeps_added_zero():

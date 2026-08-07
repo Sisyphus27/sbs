@@ -41,6 +41,8 @@ def best_1rm(history: List, bodyweight: float = 0.0,
     best = None
     best_e = -1.0
     for h in history:
+        if h.reps < 1:
+            continue
         w = working_weight(h.weight, bodyweight, bodyweight_pct)
         e = estimate_1rm(w, h.reps)
         if e > best_e:

@@ -1,0 +1,27 @@
+<div class="field-row lift-row" style="justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)">
+  <div>
+    <strong>{{ it.name }}</strong>
+    <span class="meta num">{{ it.mode }} |
+      {%- if it.is_bodyweight %} +{{ it.weight }} ({{ it.working_weight }}){% else %} {{ it.weight }}{% endif %} kg
+      {% if it.mode=='sbs' %} x {{ it.reps }} x {{ it.sets }} | rep-out {{ it.repout }}
+      {% elif it.mode=='linear_t2' %} x {{ it.target }} x {{ it.sets }} | streak {{ it.streak }}
+      {% elif it.mode=='none' %} | {{ it.sets }} 组
+      {% else %} x {{ it.target }} x {{ it.sets }}
+      {% endif %}
+    </span>
+  </div>
+  <div>
+    {% for entry in it.set_entries %}
+    <label style="margin-left:8px">{{ '末组' if entry.is_last else '第 ' ~ entry.number ~ ' 组' }}:
+      <input type="number" name="set_{{ it.id }}_{{ entry.number }}"
+             value="{{ entry.reps if entry.reps is not none else '' }}"
+             min="0"
+             hx-post="{{ url_for('plan.save_log', lid=it.id, set_number=entry.number) }}"
+             hx-trigger="change" hx-include="[name='expected_week']"
+             hx-target="next .save-ok" hx-swap="outerHTML">
+      <span class="save-ok num">{% if entry.reps is not none %}{{ '已保存' if entry.confirmed else '待确认' }}{% endif %}</span>
+    </label>
+    {% endfor %}
+    {% include '_plan_comparison.html' %}
+  </div>
+</div>

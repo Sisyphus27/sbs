@@ -67,7 +67,7 @@ body{display:flex;min-height:100vh}
 .main{flex:1;min-width:0;padding:24px 32px}
 .content{max-width:1100px}
 
-/* live preview under log input (classes emitted by _live_fragment.html partial) */
+/* save state and week-over-week comparison under set inputs */
 .save-ok{color:var(--muted);font-size:.85em;margin-left:6px}
 .save-ok .up{color:var(--up);font-weight:bold}
 .save-ok .down{color:var(--down);font-weight:bold}

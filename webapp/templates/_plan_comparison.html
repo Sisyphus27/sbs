@@ -1,0 +1,15 @@
+<span id="comparison-{{ it.id }}" class="save-ok num"
+      {% if comparison_oob %}hx-swap-oob="outerHTML"{% endif %}>
+  {% if it.comparison %}
+    {% if it.comparison.volume %}
+      容量 {{ "%.0f"|format(it.comparison.volume.value) }}kg
+      {% if it.comparison.volume.is_first %}<span class="first">首次</span>
+      {% else %}<span class="{{ 'up' if it.comparison.volume.delta >= 0 else 'down' }}">{{ '↗+' if it.comparison.volume.delta >= 0 else '↘' }}{{ "%.0f"|format(it.comparison.volume.delta) }}%</span>{% endif %}
+    {% endif %}
+    {% if it.comparison.e1rm %}
+      est 1RM {{ "%.2f"|format(it.comparison.e1rm.value) }}kg
+      {% if it.comparison.e1rm.is_first %}<span class="first">首次</span>
+      {% else %}<span class="{{ 'up' if it.comparison.e1rm.delta >= 0 else 'down' }}">{{ '↗+' if it.comparison.e1rm.delta >= 0 else '↘' }}{{ "%.2f"|format(it.comparison.e1rm.delta) }}kg</span>{% endif %}
+    {% endif %}
+  {% endif %}
+</span>

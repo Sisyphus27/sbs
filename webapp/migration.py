@@ -88,7 +88,7 @@ CREATE TABLE set_log (
     slot_id             INTEGER NOT NULL REFERENCES program_slot(id) ON DELETE RESTRICT,
     set_number          INTEGER NOT NULL CHECK (set_number > 0),
     actual_added_weight REAL,
-    reps                INTEGER NOT NULL CHECK (reps > 0),
+    reps                INTEGER NOT NULL CHECK (reps >= 0),
     warmup              INTEGER NOT NULL DEFAULT 0 CHECK (warmup IN (0, 1)),
     drives_progression  INTEGER NOT NULL DEFAULT 0
         CHECK (drives_progression IN (0, 1)),
@@ -191,6 +191,16 @@ def _insert_legacy_lifts(conn: sqlite3.Connection) -> tuple[dict[int, int], int]
         for row in conn.execute("SELECT * FROM lift_state ORDER BY lift_id")
     }
     for lift in conn.execute("SELECT * FROM lifts ORDER BY id"):
+        if lift["mode"] == "sbs":
+            reps = lift["reps"]
+            repout = lift["repout"]
+            intensity = lift["intensity"]
+        else:
+            # v0 stored zeroes in SBS-only prescription columns for modes where
+            # those fields do not apply. v1 represents "not applicable" as NULL.
+            reps = None
+            repout = None
+            intensity = None
         exercise_id = conn.execute(
             "INSERT INTO exercise (name, load_model) VALUES (?, ?)",
             (lift["name"], lift["load_model"]),
@@ -207,9 +217,9 @@ def _insert_legacy_lifts(conn: sqlite3.Connection) -> tuple[dict[int, int], int]
                 lift["mode"],
                 lift["lift_kind"],
                 lift["sets"],
-                lift["reps"],
-                lift["repout"],
-                lift["intensity"],
+                reps,
+                repout,
+                intensity,
                 lift["max"],
                 lift["start"],
                 lift["incr"],
@@ -301,6 +311,110 @@ def _insert_empty_prescription(
     )
 
 
+def _legacy_planned_reps(
+    conn: sqlite3.Connection, *, lift_id: int, program_week: int
+) -> int | None:
+    lift = conn.execute("SELECT * FROM lifts WHERE id = ?", (lift_id,)).fetchone()
+    mode = lift["mode"]
+    if mode == "sbs":
+        schedule_week = ((program_week - 1) % 21) + 1
+        row = conn.execute(
+            "SELECT reps FROM sbs_schedule WHERE kind = ? AND week = ?",
+            (lift["lift_kind"], schedule_week),
+        ).fetchone()
+        if row is None:
+            raise sqlite3.DatabaseError(
+                f"missing legacy schedule row for lift={lift_id} week={program_week}"
+            )
+        planned_reps = row["reps"]
+        if planned_reps <= 0:
+            raise sqlite3.DatabaseError(
+                "legacy planned reps must be positive "
+                f"for lift={lift_id} week={program_week}"
+            )
+        return planned_reps
+    if mode == "linear_t3":
+        planned_reps = conn.execute(
+            "SELECT t3_target FROM settings WHERE id = 1"
+        ).fetchone()["t3_target"]
+        if planned_reps <= 0:
+            raise sqlite3.DatabaseError(
+                "legacy planned reps must be positive "
+                f"for lift={lift_id} week={program_week}"
+            )
+        return planned_reps
+    if mode == "linear_t2":
+        target = 8
+        streak = 0
+        fail = conn.execute(
+            "SELECT t2_fail FROM settings WHERE id = 1"
+        ).fetchone()["t2_fail"]
+        for history in conn.execute(
+            "SELECT reps FROM history "
+            "WHERE lift_id = ? AND week < ? AND reps >= 0 ORDER BY week, id",
+            (lift_id, program_week),
+        ):
+            actual = history["reps"]
+            if lift["bodyweight_pct"] > 0:
+                target = max(4, min(10, actual))
+                streak = 0
+            elif actual >= target:
+                streak = 0
+            else:
+                streak += 1
+                if streak >= fail:
+                    target = 8
+                    streak = 0
+                else:
+                    target = {8: 6, 6: 4, 4: 4}.get(target, 6)
+        return target
+    prior = conn.execute(
+        "SELECT reps FROM history "
+        "WHERE lift_id = ? AND week < ? AND reps >= 0 ORDER BY week DESC, id DESC "
+        "LIMIT 1",
+        (lift_id, program_week),
+    ).fetchone()
+    return prior["reps"] if prior is not None else None
+
+
+def _insert_legacy_sets(
+    conn: sqlite3.Connection,
+    *,
+    session_id: int,
+    slot_id: int,
+    sets: int,
+    planned_reps: int | None,
+    last_set_reps: int,
+    actual_added_weight,
+) -> None:
+    """Backfill prior sets from the applicable v0 prescription.
+
+    The owner-confirmed rule treats the stored legacy result as the final set,
+    fills earlier sets with the reps prescribed for that historical week, and
+    keeps only the final set as the progression driver. If the record-only
+    mode has no prior reps to act as its plan, only the stored final set is
+    materialized.
+    """
+    conn.executemany(
+        "INSERT INTO set_log "
+        "(session_id, slot_id, set_number, actual_added_weight, reps, "
+        "warmup, drives_progression) VALUES (?, ?, ?, ?, ?, 0, ?)",
+        [
+            (
+                session_id,
+                slot_id,
+                set_number,
+                actual_added_weight,
+                last_set_reps if set_number == sets else planned_reps,
+                int(set_number == sets),
+            )
+            for set_number in (
+                range(1, sets + 1) if planned_reps is not None else (sets,)
+            )
+        ],
+    )
+
+
 def _insert_legacy_history(
     conn: sqlite3.Connection, slot_ids: dict[int, int]
 ) -> tuple[int, int]:
@@ -310,6 +424,10 @@ def _insert_legacy_history(
         row["id"]: row["day"]
         for row in conn.execute("SELECT id, day FROM program_slot")
     }
+    slot_sets = {
+        row["id"]: row["sets"]
+        for row in conn.execute("SELECT id, sets FROM program_slot")
+    }
     for history in conn.execute("SELECT * FROM history ORDER BY id"):
         slot_id = slot_ids.get(history["lift_id"])
         training_date = _parse_training_date(history["ts"])
@@ -317,7 +435,7 @@ def _insert_legacy_history(
         valid = (
             slot_id is not None
             and history["week"] > 0
-            and history["reps"] > 0
+            and history["reps"] >= 0
             and actual_added_weight is not None
             and math.isfinite(actual_added_weight)
             and training_date is not None
@@ -335,11 +453,18 @@ def _insert_legacy_history(
         _insert_empty_prescription(
             conn, session_id=session["id"], slot_id=slot_id
         )
-        conn.execute(
-            "INSERT INTO set_log "
-            "(session_id, slot_id, set_number, actual_added_weight, reps, "
-            "warmup, drives_progression) VALUES (?, ?, 1, ?, ?, 0, 1)",
-            (session["id"], slot_id, actual_added_weight, history["reps"]),
+        _insert_legacy_sets(
+            conn,
+            session_id=session["id"],
+            slot_id=slot_id,
+            sets=slot_sets[slot_id],
+            planned_reps=_legacy_planned_reps(
+                conn,
+                lift_id=history["lift_id"],
+                program_week=history["week"],
+            ),
+            last_set_reps=history["reps"],
+            actual_added_weight=actual_added_weight,
         )
         migrated += 1
         # v0 has no session bodyweight or historical prescription percentage.
@@ -356,9 +481,13 @@ def _insert_legacy_week_logs(
         row["id"]: row["day"]
         for row in conn.execute("SELECT id, day FROM program_slot")
     }
+    slot_sets = {
+        row["id"]: row["sets"]
+        for row in conn.execute("SELECT id, sets FROM program_slot")
+    }
     for week_log in conn.execute("SELECT * FROM week_log ORDER BY week, lift_id"):
         slot_id = slot_ids.get(week_log["lift_id"])
-        if slot_id is None or week_log["week"] <= 0 or week_log["reps"] <= 0:
+        if slot_id is None or week_log["week"] <= 0 or week_log["reps"] < 0:
             incomplete += 1
             continue
         session = _get_or_create_session(
@@ -374,11 +503,18 @@ def _insert_legacy_week_logs(
         _insert_empty_prescription(
             conn, session_id=session["id"], slot_id=slot_id
         )
-        conn.execute(
-            "INSERT INTO set_log "
-            "(session_id, slot_id, set_number, actual_added_weight, reps, "
-            "warmup, drives_progression) VALUES (?, ?, 1, NULL, ?, 0, 1)",
-            (session["id"], slot_id, week_log["reps"]),
+        _insert_legacy_sets(
+            conn,
+            session_id=session["id"],
+            slot_id=slot_id,
+            sets=slot_sets[slot_id],
+            planned_reps=_legacy_planned_reps(
+                conn,
+                lift_id=week_log["lift_id"],
+                program_week=week_log["week"],
+            ),
+            last_set_reps=week_log["reps"],
+            actual_added_weight=None,
         )
         migrated += 1
         # week_log proves reps only; actual weight and prescription are unknown.

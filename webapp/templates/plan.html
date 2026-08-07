@@ -8,34 +8,18 @@
   <a href="{{ url_for('reseed.view') }}">去重测</a>
 </div>
 {% endif %}
-<p class="meta">练完填每个动作的<b>末组次数</b>(填完自动保存,关掉也不丢)。全部练完点 <b>提交并算下周</b>。</p>
+<p class="meta">逐组填写实际次数（填完自动保存，关掉也不丢）。全部练完点 <b>提交并算下周</b>。</p>
 <p><a class="btn" href="{{ url_for('plan.export_week') }}" download>📱 导出本周计划(手机看)</a></p>
   {# Client-side disable gives immediate feedback; expected_week is the server guard (ADR 0010). #}
-<form method="post" action="{{ url_for('plan.submit') }}" data-disable-submit>
+<form method="post" action="{{ url_for('plan.submit') }}" data-disable-submit
+      hx-sync="this:queue all">
   <input type="hidden" name="expected_week" value="{{ week }}">
   <button type="submit" class="btn-primary" style="margin-bottom:16px">提交并算下周</button>
   {% for day, items in by_day %}
   <div class="card">
     <h2 style="margin-top:0">Day {{ day }}</h2>
     {% for it in items %}
-      <div class="field-row" style="justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)">
-        <div>
-          <strong>{{ it.name }}</strong>
-          <span class="meta num">{{ it.mode }} |
-            {%- if it.is_bodyweight %} +{{ it.weight }} ({{ it.working_weight }}){% else %} {{ it.weight }}{% endif %} kg
-            {% if it.mode=='sbs' %} x {{ it.reps }} x {{ it.sets }} | rep-out {{ it.repout }}
-            {% elif it.mode=='linear_t2' %} x {{ it.target }} x {{ it.sets }} | streak {{ it.streak }}
-            {% else %} x {{ it.target }} x {{ it.sets }}
-            {% endif %}
-            | est 1RM {{ "%.2f"|format(it.est1rm) if it.est1rm is not none else '—' }}
-          </span>
-        </div>
-        <label>末组: <input type="number" name="log_{{ it.id }}" value="{{ it.logged }}"
-               hx-post="{{ url_for('plan.save_log', lid=it.id) }}" hx-trigger="change"
-               hx-include="[name='expected_week']"
-               hx-target="next .save-ok" hx-swap="innerHTML">
-          <span class="save-ok num">{% if it.live %}{% with live = it.live %}{% include '_live_fragment.html' %}{% endwith %}{% endif %}</span></label>
-      </div>
+      {% include '_plan_lift_row.html' %}
     {% endfor %}
   </div>
   {% endfor %}

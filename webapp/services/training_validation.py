@@ -13,8 +13,10 @@ def validate_draft_input(*, expected_week: int, slot_id: int, set_number: int,
                          actual_added_weight: float, reps: int,
                          bodyweight_kg, warmup: bool,
                          drives_progression: bool) -> None:
-    if expected_week < 1 or slot_id < 1 or set_number < 1 or reps < 1:
-        raise TrainingInputError("week, slot, set number, and reps must be positive")
+    if expected_week < 1 or slot_id < 1 or set_number < 1 or reps < 0:
+        raise TrainingInputError(
+            "week, slot, and set number must be positive; reps must be nonnegative"
+        )
     if not math.isfinite(actual_added_weight) or actual_added_weight < 0:
         raise TrainingInputError("actual added weight must be nonnegative and finite")
     if bodyweight_kg is not None:

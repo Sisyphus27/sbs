@@ -85,7 +85,7 @@ def test_fresh_database_starts_at_v1_with_six_training_tables(tmp_path):
     assert schedule_count == 42
 
 
-def test_production_v0_is_snapshotted_and_migrated_without_inventing_facts(
+def test_production_v0_uses_owner_confirmed_legacy_set_backfill(
     tmp_path, caplog
 ):
     db_path = tmp_path / "production-v0.db"
@@ -102,8 +102,9 @@ def test_production_v0_is_snapshotted_and_migrated_without_inventing_facts(
     ).lastrowid
     pullup_id = conn.execute(
         "INSERT INTO lifts "
-        "(name, load_model, mode, day, sort_order, sets, start, incr, bodyweight_pct) "
-        "VALUES ('Pull-up', 'bodyweight', 'linear_t2', 1, 1, 3, 10, 1, 1)"
+        "(name, load_model, mode, day, sort_order, sets, intensity, reps, repout, "
+        "start, incr, bodyweight_pct) "
+        "VALUES ('Pull-up', 'bodyweight', 'linear_t2', 1, 1, 3, 0, 0, 0, 10, 1, 1)"
     ).lastrowid
     conn.execute(
         "INSERT INTO lift_state (lift_id, mode, tm, streak, reseeded_cycle) "
@@ -118,7 +119,7 @@ def test_production_v0_is_snapshotted_and_migrated_without_inventing_facts(
     )
     conn.execute(
         "INSERT INTO history (lift_id, week, weight, reps, ts) "
-        "VALUES (?, 2, 10, 7, '2026-07-08T09:30:00+00:00')",
+        "VALUES (?, 2, 10, 0, '2026-07-08T09:30:00+00:00')",
         (pullup_id,),
     )
     conn.execute(
@@ -160,47 +161,243 @@ def test_production_v0_is_snapshotted_and_migrated_without_inventing_facts(
         assert migrated.execute("SELECT COUNT(*) FROM program_slot").fetchone()[0] == 2
         assert migrated.execute("SELECT COUNT(*) FROM strength_state").fetchone()[0] == 2
 
+        pullup_slot = migrated.execute(
+            "SELECT ps.reps, ps.repout, ps.intensity "
+            "FROM program_slot AS ps "
+            "JOIN exercise AS e ON e.id = ps.exercise_id "
+            "WHERE e.name = 'Pull-up'"
+        ).fetchone()
+        assert tuple(pullup_slot) == (None, None, None)
+
         completed = migrated.execute(
-            "SELECT ts.program_week, ts.day, ts.training_date, ts.bodyweight_kg, "
-            "ts.finalized_at, sl.actual_added_weight, sl.reps, "
-            "sl.drives_progression, pe.mode, pe.bodyweight_pct, "
-            "pe.planned_working_weight "
+            "SELECT sl.set_number, sl.actual_added_weight, sl.reps, "
+            "sl.drives_progression "
             "FROM training_session AS ts "
             "JOIN set_log AS sl ON sl.session_id = ts.id "
-            "JOIN progression_event AS pe "
-            "ON pe.session_id = ts.id AND pe.slot_id = sl.slot_id "
+            "WHERE ts.program_week = 2 ORDER BY sl.set_number"
+        ).fetchall()
+        assert [tuple(row) for row in completed] == [
+            (1, 10.0, 8, 0),
+            (2, 10.0, 8, 0),
+            (3, 10.0, 0, 1),
+        ]
+
+        completed_session = migrated.execute(
+            "SELECT ts.program_week, ts.day, ts.training_date, ts.bodyweight_kg, "
+            "ts.finalized_at, pe.mode, pe.bodyweight_pct, pe.planned_working_weight "
+            "FROM training_session AS ts "
+            "JOIN progression_event AS pe ON pe.session_id = ts.id "
             "WHERE ts.program_week = 2"
         ).fetchone()
-        assert dict(completed) == {
+        assert dict(completed_session) == {
             "program_week": 2,
             "day": 1,
             "training_date": "2026-07-08",
             "bodyweight_kg": None,
             "finalized_at": "2026-07-08T09:30:00+00:00",
-            "actual_added_weight": 10.0,
-            "reps": 7,
-            "drives_progression": 1,
             "mode": None,
             "bodyweight_pct": None,
             "planned_working_weight": None,
         }
 
         draft = migrated.execute(
-            "SELECT ts.program_week, ts.day, ts.training_date, ts.finalized_at, "
-            "sl.actual_added_weight, sl.reps, sl.drives_progression "
+            "SELECT sl.set_number, sl.actual_added_weight, sl.reps, "
+            "sl.drives_progression "
             "FROM training_session AS ts "
             "JOIN set_log AS sl ON sl.session_id = ts.id "
-            "WHERE ts.program_week = 3"
-        ).fetchone()
-        assert dict(draft) == {
-            "program_week": 3,
-            "day": 1,
-            "training_date": None,
-            "finalized_at": None,
-            "actual_added_weight": None,
-            "reps": 12,
-            "drives_progression": 1,
-        }
+            "WHERE ts.program_week = 3 ORDER BY sl.set_number"
+        ).fetchall()
+        assert [tuple(row) for row in draft] == [
+            (1, None, 3, 0),
+            (2, None, 3, 0),
+            (3, None, 3, 0),
+            (4, None, 3, 0),
+            (5, None, 12, 1),
+        ]
+
+
+def test_migrated_v0_homepage_renders_the_v1_per_set_plan(tmp_path):
+    db_path = tmp_path / "homepage-v0.db"
+    conn = db.connect(str(db_path))
+    db.init_schema(conn)
+    lift_id = conn.execute(
+        "INSERT INTO lifts "
+        "(name, load_model, mode, day, sort_order, sets, start, incr, "
+        "bodyweight_pct) "
+        "VALUES ('Curl', 'barbell', 'linear_t3', 1, 0, 3, 30, 2.5, 0)"
+    ).lastrowid
+    conn.execute(
+        "INSERT INTO lift_state "
+        "(lift_id, mode, weight, streak, reseeded_cycle) "
+        "VALUES (?, 'linear_t3', 30, 0, 0)",
+        (lift_id,),
+    )
+    conn.execute(
+        "INSERT INTO lifts "
+        "(name, load_model, mode, day, sort_order, sets, bodyweight_pct) "
+        "VALUES ('Chin-up', 'pure_bodyweight', 'none', 1, 1, 3, 1)"
+    )
+    conn.commit()
+    conn.close()
+
+    app = create_app(
+        db_path=str(db_path),
+        backup_dir=str(tmp_path / "backups"),
+        test_config={"TESTING": True},
+    )
+
+    with app.test_client() as client:
+        response = client.get("/")
+
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert "Curl" in html
+    assert "第 1 组" in html
+    assert "第 2 组" in html
+    assert "末组" in html
+    assert "None" not in html
+
+
+def test_homepage_finalize_confirms_migrated_current_week_sets(tmp_path):
+    db_path = tmp_path / "current-week-v0.db"
+    conn = db.connect(str(db_path))
+    db.init_schema(conn)
+    lift_id = conn.execute(
+        "INSERT INTO lifts "
+        "(name, load_model, mode, day, sort_order, sets, start, incr, "
+        "bodyweight_pct) "
+        "VALUES ('Curl', 'barbell', 'linear_t3', 1, 0, 3, 30, 2.5, 0)"
+    ).lastrowid
+    conn.execute(
+        "INSERT INTO lift_state "
+        "(lift_id, mode, weight, streak, reseeded_cycle) "
+        "VALUES (?, 'linear_t3', 30, 0, 0)",
+        (lift_id,),
+    )
+    conn.execute(
+        "INSERT INTO week_log (lift_id, week, reps) VALUES (?, 1, 0)",
+        (lift_id,),
+    )
+    conn.commit()
+    conn.close()
+
+    app = create_app(
+        db_path=str(db_path),
+        backup_dir=str(tmp_path / "backups"),
+        test_config={"TESTING": True},
+    )
+
+    with app.test_client() as client:
+        slot_id = client.get("/training/plan").get_json()["slots"][0]["slot_id"]
+        finalized = client.post(
+            "/log",
+            data={
+                "expected_week": "1",
+                f"set_{slot_id}_1": "15",
+                f"set_{slot_id}_2": "15",
+                f"set_{slot_id}_3": "0",
+            },
+            follow_redirects=True,
+        )
+        history = client.get("/training/history").get_json()
+
+    assert finalized.status_code == 200
+    assert "Week 2" in finalized.get_data(as_text=True)
+    assert [
+        (row["set_number"], row["actual_added_weight"], row["reps"])
+        for row in history
+    ] == [(1, 30.0, 15), (2, 30.0, 15), (3, 30.0, 0)]
+
+
+def test_none_mode_backfills_only_after_a_prior_rep_value_exists(tmp_path):
+    db_path = tmp_path / "none-mode-v0.db"
+    conn = db.connect(str(db_path))
+    db.init_schema(conn)
+    lift_id = conn.execute(
+        "INSERT INTO lifts "
+        "(name, load_model, mode, day, sort_order, sets, start, bodyweight_pct) "
+        "VALUES ('Record only', 'pure_bodyweight', 'none', 1, 0, 3, 0, 1)"
+    ).lastrowid
+    conn.executemany(
+        "INSERT INTO history (lift_id, week, weight, reps, ts) "
+        "VALUES (?, ?, 0, ?, ?)",
+        [
+            (lift_id, 1, 0, "2026-07-01T09:30:00+00:00"),
+            (lift_id, 2, 1, "2026-07-08T09:30:00+00:00"),
+        ],
+    )
+    conn.commit()
+    conn.close()
+
+    create_app(
+        db_path=str(db_path),
+        backup_dir=str(tmp_path / "backups"),
+        test_config={"TESTING": True},
+    )
+
+    with sqlite3.connect(db_path) as migrated:
+        rows = migrated.execute(
+            "SELECT ts.program_week, sl.set_number, sl.reps, sl.drives_progression "
+            "FROM training_session AS ts "
+            "JOIN set_log AS sl ON sl.session_id = ts.id "
+            "ORDER BY ts.program_week, sl.set_number"
+        ).fetchall()
+    assert rows == [
+        (1, 3, 0, 1),
+        (2, 1, 0, 0),
+        (2, 2, 0, 0),
+        (2, 3, 1, 1),
+    ]
+
+
+@pytest.mark.parametrize("mode", ["sbs", "linear_t3"])
+def test_nonpositive_legacy_planned_reps_roll_back_migration(tmp_path, mode):
+    db_path = tmp_path / f"invalid-{mode}-planned-reps.db"
+    backup_dir = tmp_path / "backups"
+    conn = db.connect(str(db_path))
+    db.init_schema(conn)
+    if mode == "sbs":
+        conn.execute(
+            "UPDATE sbs_schedule SET reps = 0 WHERE kind = 'main' AND week = 1"
+        )
+        lift_id = conn.execute(
+            "INSERT INTO lifts "
+            "(name, load_model, mode, day, sort_order, sets, max, intensity, "
+            "reps, repout, lift_kind, incr, bodyweight_pct) "
+            "VALUES ('Invalid SBS plan', 'barbell', 'sbs', 1, 0, 5, 100, .7, "
+            "5, 10, 'main', 2.5, 0)"
+        ).lastrowid
+    else:
+        conn.execute("UPDATE settings SET t3_target = 0 WHERE id = 1")
+        lift_id = conn.execute(
+            "INSERT INTO lifts "
+            "(name, load_model, mode, day, sort_order, sets, start, incr, "
+            "bodyweight_pct) "
+            "VALUES ('Invalid T3 plan', 'barbell', 'linear_t3', 1, 0, 3, "
+            "20, 2.5, 0)"
+        ).lastrowid
+    conn.execute(
+        "INSERT INTO history (lift_id, week, weight, reps, ts) "
+        "VALUES (?, 1, 20, 0, '2026-07-01T09:30:00+00:00')",
+        (lift_id,),
+    )
+    conn.commit()
+    conn.close()
+
+    with pytest.raises(sqlite3.DatabaseError, match="planned reps must be positive"):
+        create_app(
+            db_path=str(db_path),
+            backup_dir=str(backup_dir),
+            test_config={"TESTING": True},
+        )
+
+    assert len(list(backup_dir.glob("sbs-w1-*.db.bak"))) == 1
+    with sqlite3.connect(db_path) as original:
+        assert original.execute("PRAGMA user_version").fetchone()[0] == 0
+        assert original.execute(
+            "SELECT COUNT(*) FROM sqlite_master "
+            "WHERE type = 'table' AND name = 'exercise'"
+        ).fetchone()[0] == 0
 
 
 def test_v1_startup_is_a_no_op(tmp_path):

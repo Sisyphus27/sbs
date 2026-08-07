@@ -1,1 +1,0 @@
-{% if t %}容量 {{ "%.0f"|format(t.kg) }}kg{% if t.is_first %} <span class="first">首次</span>{% else %} <span class="{{ 'up' if t.pct >= 0 else 'down' }}">{{ '↗' if t.pct >= 0 else '↘' }}{{ '+' if t.pct >= 0 else '' }}{{ "%.0f"|format(t.pct) }}%</span>{% endif %}{% endif %}

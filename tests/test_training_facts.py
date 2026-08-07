@@ -47,12 +47,17 @@ def test_quick_and_full_logging_update_one_stable_set_truth(tmp_path):
             {
                 "day": 1,
                 "load_model": "barbell",
+                "mode": "linear_t3",
                 "name": "Curl",
                 "planned_added_weight": 30.0,
+                "planned_repout": None,
                 "planned_reps": 15,
                 "planned_sets": 3,
+                "planned_target": 15,
                 "planned_working_weight": 30.0,
                 "slot_id": slot_id,
+                "state_est1rm": None,
+                "state_streak": None,
             }
         ],
     }
@@ -120,6 +125,107 @@ def test_quick_and_full_logging_update_one_stable_set_truth(tmp_path):
             "t2_fail": None,
             "t3_target": 15,
         }
+
+
+def test_homepage_saves_each_set_through_v1_training_facts(tmp_path):
+    app, _, slot_id = _app_with_slot(tmp_path)
+
+    with app.test_client() as client:
+        first = client.post(
+            f"/log/save?lid={slot_id}&set_number=1",
+            data={"expected_week": "1", "reps": "15"},
+        )
+        last = client.post(
+            f"/log/save?lid={slot_id}&set_number=3",
+            data={"expected_week": "1", "reps": "0"},
+        )
+        history = client.get("/training/history").get_json()
+
+    assert first.status_code == 200
+    assert last.status_code == 200
+    assert [
+        (row["set_number"], row["actual_added_weight"], row["reps"], row["drives_progression"])
+        for row in history
+    ] == [
+        (1, 30.0, 15, 0),
+        (3, 30.0, 0, 1),
+    ]
+
+
+def test_homepage_finalize_uses_the_v1_atomic_command(tmp_path):
+    app, _, slot_id = _app_with_slot(tmp_path)
+
+    with app.test_client() as client:
+        saved = client.post(
+            f"/log/save?lid={slot_id}&set_number=3",
+            data={"expected_week": "1", "reps": "15"},
+        )
+        finalized = client.post(
+            "/log",
+            data={"expected_week": "1"},
+            follow_redirects=True,
+        )
+        next_plan = client.get("/training/plan").get_json()
+
+    assert saved.status_code == 200
+    assert finalized.status_code == 200
+    assert "Week 2" in finalized.get_data(as_text=True)
+    assert next_plan["expected_week"] == 2
+    assert next_plan["slots"][0]["planned_added_weight"] == 32.5
+
+
+def test_week_export_renders_the_v1_plan(tmp_path):
+    app, _, _ = _app_with_slot(tmp_path)
+
+    with app.test_client() as client:
+        exported = client.get("/export/week.html")
+
+    assert exported.status_code == 200
+    assert exported.headers["Content-Disposition"] == 'attachment; filename="week-1.html"'
+    html = exported.get_data(as_text=True)
+    assert "Curl" in html
+    assert "15 × 3" in html
+
+
+def test_attempted_zero_rep_set_is_saved_as_a_miss(tmp_path):
+    app, _, slot_id = _app_with_slot(tmp_path)
+
+    with app.test_client() as client:
+        attempted = client.post(
+            "/training/sets/quick",
+            data={
+                "expected_week": "1",
+                "slot_id": str(slot_id),
+                "set_number": "3",
+                "actual_added_weight": "30",
+                "reps": "0",
+            },
+        )
+        negative = client.post(
+            "/training/sets/quick",
+            data={
+                "expected_week": "1",
+                "slot_id": str(slot_id),
+                "set_number": "2",
+                "actual_added_weight": "30",
+                "reps": "-1",
+            },
+        )
+        history = client.get("/training/history").get_json()
+        finalized = client.post("/training/finalize", data={"expected_week": "1"})
+        next_plan = client.get("/training/plan").get_json()
+
+    assert attempted.status_code == 200
+    assert negative.status_code == 400
+    assert len(history) == 1
+    assert history[0]["reps"] == 0
+    assert history[0]["canonical_e1rm"] is None
+    assert history[0]["display_e1rm"] is None
+    assert history[0]["recorded_volume"] == 0.0
+    assert finalized.status_code == 200
+    assert finalized.get_json() == {"new_week": 2}
+    assert next_plan["expected_week"] == 2
+    assert next_plan["slots"][0]["planned_added_weight"] == 30.0
 
 
 def test_bodyweight_history_uses_saved_session_and_snapshot_after_restart(tmp_path):

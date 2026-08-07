@@ -1,0 +1,46 @@
+<section id="focus-inspector" class="focus-inspector"
+         {% if inspector_oob %}hx-swap-oob="outerHTML"{% endif %}>
+  <header>
+    <span class="meta">当前 Lift</span>
+    <h2>{{ preview.name }}</h2>
+  </header>
+  <div class="focus-progression">
+    {% if preview.awaiting_input %}
+      <strong>待有效输入</strong>
+      <p>补录 Actual Added weight 与末组次数后显示准确 Progression。</p>
+    {% elif preview.skipped %}
+      <strong>本周跳过</strong>
+      <p>不生成 Training Fact；Progression 不变。</p>
+    {% else %}
+      <strong>Program week {{ preview.next_week }}</strong>
+    {% if preview.mode == 'sbs' %}
+      <p>Training Max {{ preview.before.tm }} → {{ preview.after.tm }}</p>
+      <p>下一周 Working Weight {{ preview.next_plan.planned_working_weight }} kg</p>
+    {% elif preview.mode == 'linear_t2' %}
+      {% if preview.next_plan.load_model == 'bodyweight' %}
+      <p>Added weight {{ preview.before.weight }} → {{ preview.after.weight }} kg</p>
+      {% else %}
+      <p>Working Weight {{ preview.before.weight }} → {{ preview.after.weight }} kg</p>
+      {% endif %}
+      <p>目标 {{ preview.before.target }} → {{ preview.after.target }} · streak {{ preview.before.streak }} → {{ preview.after.streak }}</p>
+      <p>下一周处方 Working Weight {{ preview.next_plan.planned_working_weight }} kg · 目标 {{ preview.next_plan.planned_target }} 次 · streak {{ preview.next_plan.state_streak }}</p>
+    {% elif preview.mode == 'linear_t3' %}
+      {% if preview.next_plan.load_model == 'bodyweight' %}
+      <p>Added weight {{ preview.before.weight }} → {{ preview.after.weight }} kg</p>
+      {% else %}
+      <p>Working Weight {{ preview.before.weight }} → {{ preview.after.weight }} kg</p>
+      {% endif %}
+      <p>下一周处方 Working Weight {{ preview.next_plan.planned_working_weight }} kg · 目标 {{ preview.next_plan.planned_target }} 次</p>
+    {% else %}
+      <p>record-only：无自动 Progression。</p>
+    {% endif %}
+    {% endif %}
+  </div>
+  {% if not preview.skipped and not preview.awaiting_input %}
+  <div class="focus-performance">
+    <h3>本次表现</h3>
+    {% set comparison = preview.comparison %}
+    {% include '_plan_comparison.html' %}
+  </div>
+  {% endif %}
+</section>

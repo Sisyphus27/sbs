@@ -95,6 +95,17 @@ body{display:flex;min-height:100vh}
 .ledger-fixed-weight{white-space:nowrap}
 .ledger-earlier-sets summary{cursor:pointer;white-space:nowrap;color:var(--accent);font-size:.88em}
 .ledger-earlier-grid{display:grid;gap:7px;margin-top:8px}
+.week-workspace{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+.week-ledger-panel{min-width:0}
+.focus-column{min-width:0}
+.focus-inspector{border:1px solid var(--line);border-top:3px solid var(--accent);
+  border-radius:var(--radius);padding:14px;background:#fff;position:sticky;top:24px}
+.focus-inspector h2{border:0;margin:.15em 0 .7em;padding:0}
+.focus-inspector h3{margin-top:1.1em;border-top:1px solid var(--line);padding-top:.8em}
+.focus-inspector p{margin:.45em 0}
+.focus-inspector .up{color:var(--up);font-weight:bold}
+.focus-inspector .down{color:var(--down);font-weight:bold}
+.focus-lift{margin-left:4px;font-size:.82em}
 
 @media (max-width:900px){
   body{flex-direction:column}

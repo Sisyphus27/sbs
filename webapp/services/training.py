@@ -1,7 +1,9 @@
 """Commands and projections for the v1 per-set training facts."""
 
 import math
+import os
 import sqlite3
+import tempfile
 from datetime import datetime, timezone
 
 from sbs_cli.data.schema import Lift, LiftState, Profile, ScheduleRow, SetEntry
@@ -494,3 +496,67 @@ def finalize_week(conn: sqlite3.Connection, *, expected_week: int) -> int:
         conn.rollback()
         raise
     return expected_week + 1
+
+
+def preview_progression(source_conn: sqlite3.Connection, *, expected_week: int,
+                        slot_id: int, set_number: int,
+                        actual_added_weight: float, reps: int,
+                        warmup: bool, drives_progression: bool,
+                        e1rm_qualified: bool = False) -> dict:
+    """Run one candidate set through canonical finalization on a SQLite copy."""
+    if repo.get_settings(source_conn)["week"] != expected_week:
+        raise StaleTrainingWeekError("stale week")
+    slot = repo.get_training_slot(source_conn, slot_id)
+    before = repo.get_training_state(source_conn, slot_id)
+    if slot is None or before is None:
+        raise TrainingInputError("unknown training slot")
+    if set_number < 1 or set_number > slot["sets"]:
+        raise TrainingInputError("preview set is outside the prescription")
+
+    with tempfile.TemporaryDirectory(prefix="sbs-preview-") as temp_dir:
+        preview_path = os.path.join(temp_dir, "preview.db")
+        target = sqlite3.connect(preview_path)
+        try:
+            source_conn.backup(target)
+        finally:
+            target.close()
+
+        from ..db import connect
+
+        preview_conn = connect(preview_path)
+        try:
+            save_draft_set(
+                preview_conn,
+                expected_week=expected_week,
+                slot_id=slot_id,
+                set_number=set_number,
+                actual_added_weight=actual_added_weight,
+                reps=reps,
+                warmup=warmup,
+                drives_progression=drives_progression,
+                e1rm_qualified=e1rm_qualified,
+            )
+            performance_rows = [
+                row for row in training_history(preview_conn)
+                if row["slot_id"] == slot_id
+                and row["program_week"] in (expected_week - 1, expected_week)
+            ]
+            finalize_week(preview_conn, expected_week=expected_week)
+            after = repo.get_training_state(preview_conn, slot_id)
+            next_slot = next(
+                item for item in training_plan(preview_conn)["slots"]
+                if item["slot_id"] == slot_id
+            )
+        finally:
+            preview_conn.close()
+
+    return {
+        "slot_id": slot_id,
+        "name": slot["name"],
+        "mode": slot["mode"],
+        "next_week": expected_week + 1,
+        "before": dict(before),
+        "after": dict(after),
+        "next_plan": next_slot,
+        "performance_rows": performance_rows,
+    }

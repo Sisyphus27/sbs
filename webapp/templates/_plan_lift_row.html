@@ -4,6 +4,11 @@
   <td class="num">Day {{ it.day }}</td>
   <td>
     <strong>{{ it.name }}</strong>
+    <button type="button" class="btn-ghost focus-lift"
+            name="intent" value="focus"
+            hx-post="{{ url_for('plan.preview_log', lid=it.id) }}"
+            hx-include="closest tr, [name='expected_week']"
+            hx-target="#focus-inspector" hx-swap="outerHTML">聚焦</button>
     <span class="ledger-plan meta num">{{ it.mode }} |
       {%- if it.is_bodyweight %} +{{ it.weight }} ({{ it.working_weight }}){% else %} {{ it.weight }}{% endif %} kg
       {% if it.mode=='sbs' %} x {{ it.reps }} x {{ it.sets }} | rep-out {{ it.repout }}
@@ -38,7 +43,6 @@
       {% set entry = driver %}
       {% include '_plan_set_input.html' %}
     </label>
-    {% include '_plan_comparison.html' %}
   </td>
   <td>
     {% if it.sets > 1 %}

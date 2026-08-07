@@ -422,7 +422,7 @@ def test_plan_view_prefills_every_saved_set(client, make_lift):
     assert 'value="18"' in html
 
 
-def test_plan_keeps_queued_autosave_sources_stable_while_refreshing_comparison(
+def test_plan_keeps_queued_autosave_sources_stable_while_refreshing_inspector(
         client, make_lift):
     lid = make_lift(name="Curl", start=30.0)
 
@@ -440,22 +440,31 @@ def test_plan_keeps_queued_autosave_sources_stable_while_refreshing_comparison(
     assert f'id="save-{lid}-1"' in fragment
     assert f'id="ledger-status-{lid}"' in fragment
     assert "<input" not in fragment and "<tr" not in fragment
-    assert f'id="comparison-{lid}"' in fragment
+    assert 'id="focus-inspector"' in fragment
+    assert "Training volume 450 kg" in fragment
+
+    driver_fragment = _save_set(client, lid, 3, 18).get_data(as_text=True)
+    assert driver_fragment.count('hx-swap-oob="outerHTML"') == 2
+    assert 'id="focus-inspector"' in driver_fragment
+    assert "<input" not in driver_fragment and "<tr" not in driver_fragment
 
 
-def test_plan_view_marks_first_recorded_week_without_inventing_a_delta(
+def test_focus_inspector_marks_first_recorded_week_without_inventing_a_delta(
         client, make_lift):
     lid = make_lift(name="Curl", start=30.0)
-    assert _save_set(client, lid, 3, 18).status_code == 200
+    saved = _save_set(client, lid, 3, 18)
+    assert saved.status_code == 200
+    inspector = saved.get_data(as_text=True)
+    assert "Training volume 540 kg" in inspector and inspector.count("首次") == 2
+    assert "↗" not in inspector and "↘" not in inspector
     html = client.get("/").get_data(as_text=True)
-    assert "容量 540kg" in html and html.count("首次") == 2
-    assert "↗" not in html and "↘" not in html
+    assert "Training volume" not in html and "est1RM" not in html
 
 
 def test_plan_view_omits_comparison_until_driver_set_is_logged(client, make_lift):
     make_lift(name="Curl", start=30.0)
     html = client.get("/").get_data(as_text=True)
-    assert "容量" not in html and "est 1RM" not in html
+    assert "Training volume" not in html and "est1RM" not in html
 
 
 def test_save_log_response_confirms_the_v1_set_fact(client, make_lift, db_conn):
@@ -571,7 +580,7 @@ def test_plan_submit_preserves_existing_actual_weight_and_set_roles(
     ]
 
 
-def test_plan_and_autosave_compare_recorded_volume_and_display_e1rm_to_last_week(
+def test_focus_inspector_compares_recorded_volume_and_display_e1rm_to_last_week(
         client, make_lift):
     lid = make_lift(name="Curl", mode="linear_t3", sets=3, start=30.0)
 
@@ -586,19 +595,20 @@ def test_plan_and_autosave_compare_recorded_volume_and_display_e1rm_to_last_week
     partial = _save_set(client, lid, 1, 15, week=3)
     assert partial.status_code == 200
     partial_fragment = partial.get_data(as_text=True)
-    assert "容量 488kg" in partial_fragment and "↘-57%" in partial_fragment
-    assert "est 1RM" not in partial_fragment
+    assert "Training volume 488 kg" in partial_fragment
+    assert "↘-57%" in partial_fragment
+    assert "est1RM" not in partial_fragment
     assert _save_set(client, lid, 2, 15, week=3).status_code == 200
     response = _save_set(client, lid, 3, 10, week=3)
 
     assert response.status_code == 200
     fragment = response.get_data(as_text=True)
-    assert "容量 1300kg" in fragment and "↗+14%" in fragment
-    assert "est 1RM 43.49kg" in fragment and "↗+6.03kg" in fragment
+    assert "Training volume 1300 kg" in fragment and "↗+14%" in fragment
+    assert "est1RM 43.49 kg" in fragment and "↗+6.03 kg" in fragment
 
     page = client.get("/").get_data(as_text=True)
-    assert "容量 1300kg" in page and "↗+14%" in page
-    assert "est 1RM 43.49kg" in page and "↗+6.03kg" in page
+    assert "Training volume" not in page
+    assert "est1RM" not in page
 
 
 def test_save_log_rejects_blank_without_erasing_the_fact(

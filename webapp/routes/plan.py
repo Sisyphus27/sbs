@@ -17,6 +17,7 @@ from ..services.training import (
     StaleTrainingWeekError,
     TrainingInputError,
     finalize_week,
+    preview_progression,
     save_draft_set,
     training_history,
     training_plan,
@@ -77,7 +78,8 @@ def _v1_comparisons(history, expected_week):
         summary["volume"] = row["recorded_volume"]
         if row["drives_progression"] and not row["warmup"]:
             summary["has_driver"] = True
-            summary["e1rm"] = row["display_e1rm"]
+            if row["mode"] is not None:
+                summary["e1rm"] = row["display_e1rm"]
 
     comparisons = {}
     current_slots = {
@@ -101,13 +103,40 @@ def _v1_comparisons(history, expected_week):
     return comparisons
 
 
+def _candidate_preview(conn, *, expected_week, slot_id, set_number,
+                       actual_added_weight, reps, warmup,
+                       drives_progression, e1rm_qualified):
+    try:
+        preview = preview_progression(
+            conn,
+            expected_week=expected_week,
+            slot_id=slot_id,
+            set_number=set_number,
+            actual_added_weight=actual_added_weight,
+            reps=reps,
+            warmup=warmup,
+            drives_progression=drives_progression,
+            e1rm_qualified=e1rm_qualified,
+        )
+    except StaleTrainingWeekError:
+        return None, ("stale week", 409)
+    except TrainingInputError as error:
+        return None, (str(error), 400)
+    except Exception:
+        current_app.logger.exception("progression preview failed")
+        return None, ("preview failed", 500)
+    preview["comparison"] = _v1_comparisons(
+        preview.pop("performance_rows"), expected_week
+    ).get(slot_id)
+    return preview, None
+
+
 def _v1_plan_by_day(conn):
     plan = training_plan(conn)
     expected_week = plan["expected_week"]
     days_per_week = repo.get_settings(conn)["days_per_week"]
     history = training_history(conn)
     facts = _v1_current_facts(history, expected_week)
-    comparisons = _v1_comparisons(history, expected_week)
     rows_by_day = {}
     for slot in plan["slots"]:
         if not 1 <= slot["day"] <= days_per_week:
@@ -165,7 +194,6 @@ def _v1_plan_by_day(conn):
             target=slot["planned_target"],
             streak=slot["state_streak"],
             set_entries=set_entries,
-            comparison=comparisons.get(slot["slot_id"]),
             is_logged=any(
                 entry.is_last and entry.reps is not None for entry in set_entries
             ),
@@ -236,6 +264,19 @@ def save_log():
             and fields["actual_added_weight"] != 0
         ):
             return ("pure bodyweight added weight must be zero", 400)
+    preview, preview_error = _candidate_preview(
+        conn,
+        expected_week=expected_week,
+        slot_id=lid,
+        set_number=set_number,
+        actual_added_weight=fields["actual_added_weight"],
+        reps=reps,
+        warmup=fields["warmup"],
+        drives_progression=fields["drives_progression"],
+        e1rm_qualified=fields["e1rm_qualified"],
+    )
+    if preview_error is not None:
+        return preview_error
     try:
         save_draft_set(
             conn,
@@ -254,8 +295,87 @@ def save_log():
         item for _day, items in by_day for item in items if item.id == lid
     )
     return render_template(
-        "_plan_save_result.html", it=item, set_number=set_number
+        "_plan_save_result.html",
+        it=item,
+        set_number=set_number,
+        preview=preview,
     )
+
+
+@bp.route("/log/preview", methods=["POST"])
+def preview_log():
+    """Preview one candidate driver without writing the source database."""
+    conn = get_db()
+    lid = request.args.get("lid", type=int)
+    if lid is None:
+        return ("bad slot", 400)
+    try:
+        expected_week = int(request.form["expected_week"])
+    except (KeyError, TypeError, ValueError):
+        return ("bad expected week", 400)
+    plan = training_plan(conn)
+    if plan["expected_week"] != expected_week:
+        return ("stale week", 409)
+    slot = next(
+        (item for item in plan["slots"] if item["slot_id"] == lid), None
+    )
+    if slot is None:
+        return ("unknown training slot", 400)
+    if request.form.get("intent") == "skip":
+        return render_template(
+            "_focus_inspector.html",
+            preview={
+                "name": slot["name"],
+                "mode": slot["mode"],
+                "skipped": True,
+                "comparison": None,
+            },
+        )
+    set_number = slot["planned_sets"]
+    reps_input = request.form.get(
+        f"set_{lid}_{set_number}", request.form.get("reps")
+    )
+    weight_input = request.form.get(
+        f"actual_added_weight_{lid}", request.form.get("actual_added_weight")
+    )
+    if request.form.get("intent") == "focus" and (
+        reps_input is None or not reps_input.strip()
+        or weight_input is None or not weight_input.strip()
+    ):
+        return render_template(
+            "_focus_inspector.html",
+            preview={
+                "name": slot["name"],
+                "mode": slot["mode"],
+                "awaiting_input": True,
+                "comparison": None,
+            },
+        )
+    try:
+        reps = int(reps_input)
+        actual_added_weight = float(weight_input)
+    except (TypeError, ValueError):
+        return ("bad preview input", 400)
+    if slot["load_model"] == "pure_bodyweight" and actual_added_weight != 0:
+        return ("pure bodyweight added weight must be zero", 400)
+    fact = _v1_current_facts(
+        training_history(conn), expected_week
+    ).get((lid, set_number))
+    fields = _draft_set_fields(fact, slot, set_number)
+    preview, preview_error = _candidate_preview(
+        conn,
+        expected_week=expected_week,
+        slot_id=lid,
+        set_number=set_number,
+        actual_added_weight=actual_added_weight,
+        reps=reps,
+        warmup=fields["warmup"],
+        drives_progression=fields["drives_progression"],
+        e1rm_qualified=fields["e1rm_qualified"],
+    )
+    if preview_error is not None:
+        return preview_error
+    return render_template("_focus_inspector.html", preview=preview)
 
 
 @bp.route("/log", methods=["POST"])

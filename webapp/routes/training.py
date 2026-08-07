@@ -16,6 +16,7 @@ from ..services.training import (
     training_history,
     training_plan,
 )
+from ._forms import skipped_slot_ids
 
 
 bp = Blueprint("training", __name__, url_prefix="/training")
@@ -127,6 +128,7 @@ def plan():
 def finalize():
     try:
         expected_week = _integer("expected_week")
+        skipped_ids = skipped_slot_ids()
     except TrainingInputError as error:
         return (str(error), 400)
     conn = get_db()
@@ -136,14 +138,21 @@ def finalize():
     from datetime import datetime, timezone
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-    snapshot(
-        current_app.config["DB_PATH"],
-        dest_dir=current_app.config["BACKUP_DIR"],
-        week=expected_week,
-        ts=timestamp,
-    )
+    def snapshot_before_advance():
+        snapshot(
+            current_app.config["DB_PATH"],
+            dest_dir=current_app.config["BACKUP_DIR"],
+            week=expected_week,
+            ts=timestamp,
+        )
+
     try:
-        new_week = finalize_week(conn, expected_week=expected_week)
+        new_week = finalize_week(
+            conn,
+            expected_week=expected_week,
+            skipped_slot_ids=skipped_ids,
+            before_advance=snapshot_before_advance,
+        )
     except StaleTrainingWeekError:
         return ("stale week", 409)
     except TrainingInputError as error:

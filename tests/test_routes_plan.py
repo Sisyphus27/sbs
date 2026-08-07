@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from webapp import backup, repo
+from webapp.routes import plan as plan_routes
 from webapp.services.training import training_history
 
 
@@ -233,7 +234,8 @@ def test_plan_and_export_hide_slots_outside_days_per_week(client, make_lift):
 def test_plan_submit_advances(client, make_lift, db_conn):
     lid = make_lift(name="Squat", mode="sbs", sets=5, max=135.0, intensity=0.7,
                     reps=5, repout=10, start=None, lift_kind="main")
-    rv = client.post("/log", data=_set_data(lid, 5, 13))
+    assert _save_set(client, lid, 5, 13).status_code == 200
+    rv = client.post("/log", data={"expected_week": "1"})
     assert rv.status_code == 302
     assert repo.get_settings(db_conn)["week"] == 2
 
@@ -241,7 +243,8 @@ def test_plan_submit_advances(client, make_lift, db_conn):
 def test_plan_submit_rejects_stale_expected_week(client, make_lift, db_conn):
     lid = make_lift(name="Squat", mode="sbs", sets=5, max=135.0, intensity=0.7,
                     reps=5, repout=10, start=None, lift_kind="main")
-    data = _set_data(lid, 5, 13)
+    assert _save_set(client, lid, 5, 13).status_code == 200
+    data = {"expected_week": "1"}
 
     assert client.post("/log", data=data).status_code == 302
     assert client.post("/log", data=data).status_code == 409
@@ -256,24 +259,48 @@ def test_plan_submit_allows_only_one_concurrent_expected_week(app, make_lift, db
                                                               monkeypatch):
     lid = make_lift(name="Squat", mode="sbs", sets=5, max=135.0, intensity=0.7,
                     reps=5, repout=10, start=None, lift_kind="main")
-    both_checked_week = threading.Barrier(2)
+    with app.test_client() as setup_client:
+        assert _save_set(setup_client, lid, 5, 13).status_code == 200
+    both_reviewed = threading.Barrier(2)
+    real_review = plan_routes.review_week_settlement
 
-    def synchronized_snapshot(*args, **kwargs):
-        both_checked_week.wait(timeout=5)
+    def synchronized_review(*args, **kwargs):
+        result = real_review(*args, **kwargs)
+        both_reviewed.wait(timeout=5)
+        return result
+
+    snapshot_calls = []
+    snapshot_lock = threading.Lock()
+    second_snapshot = threading.Event()
+
+    def recording_snapshot(*args, **kwargs):
+        with sqlite3.connect(app.config["DB_PATH"]) as snapshot_source:
+            snapshot_week = snapshot_source.execute(
+                "SELECT week FROM settings WHERE id = 1"
+            ).fetchone()[0]
+        with snapshot_lock:
+            snapshot_calls.append(snapshot_week)
+            call_number = len(snapshot_calls)
+        if call_number == 1:
+            second_snapshot.wait(timeout=0.2)
+        else:
+            second_snapshot.set()
         return "unused.db.bak"
 
-    monkeypatch.setattr(backup, "snapshot", synchronized_snapshot)
+    monkeypatch.setattr(plan_routes, "review_week_settlement", synchronized_review)
+    monkeypatch.setattr(backup, "snapshot", recording_snapshot)
 
     def submit():
         with app.test_client() as thread_client:
             return thread_client.post(
-                "/log", data=_set_data(lid, 5, 13)
+                "/log", data={"expected_week": "1"}
             ).status_code
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         statuses = list(pool.map(lambda _n: submit(), range(2)))
 
     assert sorted(statuses) == [302, 409]
+    assert snapshot_calls == [1]
     assert repo.get_settings(db_conn)["week"] == 2
     assert len(_slot_facts(db_conn, lid)) == 1
 
@@ -284,9 +311,8 @@ def test_plan_submit_requires_expected_week(client):
 
 def test_plan_submit_snapshot_contains_pre_advance_state(client, app, make_lift):
     lid = make_lift(name="Curl", start=30.0)
-    rv = client.post(
-        "/log", data=_set_data(lid, 3, 18)
-    )
+    assert _save_set(client, lid, 3, 18).status_code == 200
+    rv = client.post("/log", data={"expected_week": "1"})
 
     assert rv.status_code == 302
     backup_path = next(Path(app.config["BACKUP_DIR"]).glob("sbs-w1-*.db.bak"))
@@ -336,8 +362,11 @@ def test_plan_submit_form_has_double_click_guard(client):
     marker is present on the rendered form; the JS body itself is not
     unit-tested here (no browser/JS runner in the suite).
     """
-    html = client.get("/").get_data(as_text=True)
-    assert "data-disable-submit" in html
+    html = client.post(
+        "/log/review", data={"expected_week": "1"}
+    ).get_data(as_text=True)
+    submit_form = html.split('action="/log"', 1)[1].split("</form>", 1)[0]
+    assert "data-disable-submit" in submit_form
 
 
 def test_plan_form_carries_expected_program_week(client):
@@ -403,7 +432,10 @@ def test_autosave_persists_and_prefills_then_advances(client, make_lift, db_conn
 
 def test_autosave_rejects_stale_expected_week(client, make_lift, db_conn):
     lid = make_lift(name="Curl", start=30.0)
-    assert client.post("/log", data={"expected_week": "1"}).status_code == 302
+    assert client.post(
+        "/log",
+        data={"expected_week": "1", "skipped_slot_ids": str(lid)},
+    ).status_code == 302
 
     rv = _save_set(client, lid, 3, 18, week=1)
 
@@ -550,14 +582,16 @@ def test_plan_submit_preserves_existing_actual_weight_and_set_roles(
         )
         assert response.status_code == 200
 
-    response = client.post(
-        "/log",
-        data={
-            "expected_week": "1",
-            f"set_{lid}_1": "9",
-            f"set_{lid}_2": "7",
-        },
-    )
+    for set_number, reps in ((1, 9), (2, 7)):
+        response = client.post(
+            f"/log/save?lid={lid}&set_number={set_number}",
+            data={
+                "expected_week": "1",
+                f"set_{lid}_{set_number}": str(reps),
+            },
+        )
+        assert response.status_code == 200
+    response = client.post("/log", data={"expected_week": "1"})
     assert response.status_code == 302
     facts = [
         row for row in client.get("/training/history").get_json()

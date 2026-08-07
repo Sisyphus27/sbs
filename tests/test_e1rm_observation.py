@@ -100,7 +100,7 @@ def test_sbs_qualified_observations_survive_v2_upgrade_and_keep_historical_peak(
                 "e1rm_qualified": "0",
             },
         )
-        observation_only = client.post(
+        qualified_observation = client.post(
             "/training/sets/full",
             data={
                 "expected_week": "1",
@@ -126,7 +126,20 @@ def test_sbs_qualified_observations_survive_v2_upgrade_and_keep_historical_peak(
                 "e1rm_qualified": "0",
             },
         )
-        observation_without_driver = client.post(
+        observation_slot_driver = client.post(
+            "/training/sets/full",
+            data={
+                "expected_week": "1",
+                "slot_id": str(observation_only_slot_id),
+                "set_number": "3",
+                "actual_added_weight": "56",
+                "reps": "10",
+                "warmup": "0",
+                "drives_progression": "1",
+                "e1rm_qualified": "0",
+            },
+        )
+        second_slot_observation = client.post(
             "/training/sets/full",
             data={
                 "expected_week": "1",
@@ -142,10 +155,12 @@ def test_sbs_qualified_observations_survive_v2_upgrade_and_keep_historical_peak(
 
     assert [
         driver_only.status_code,
-        observation_only.status_code,
+        qualified_observation.status_code,
         ordinary.status_code,
-        observation_without_driver.status_code,
+        observation_slot_driver.status_code,
+        second_slot_observation.status_code,
     ] == [
+        200,
         200,
         200,
         200,
@@ -213,7 +228,13 @@ def test_sbs_qualified_observations_survive_v2_upgrade_and_keep_historical_peak(
                 "e1rm_qualified": "1",
             },
         ).status_code == 200
-        finalized = client.post("/training/finalize", data={"expected_week": "2"})
+        finalized = client.post(
+            "/training/finalize",
+            data={
+                "expected_week": "2",
+                "skipped_slot_ids": str(observation_only_slot_id),
+            },
+        )
 
     assert finalized.status_code == 200
     with sqlite3.connect(db_path) as after_second_week:

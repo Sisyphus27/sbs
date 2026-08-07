@@ -6,6 +6,16 @@ schema (two hand-synced column->cast tables). Single-source them here.
 """
 from flask import request
 
+from ..services.training_validation import TrainingInputError
+
+
+def skipped_slot_ids():
+    """Parse the repeated explicit Week-settlement skip field."""
+    try:
+        return [int(value) for value in request.form.getlist("skipped_slot_ids")]
+    except (TypeError, ValueError) as error:
+        raise TrainingInputError("bad skipped training slot") from error
+
 
 def present_fields(casts):
     """Walk a {col: cast} table over the submitted form; return (fields, bad_col).

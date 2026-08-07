@@ -1,4 +1,5 @@
 <span id="ledger-status-{{ it.id }}"
+      data-ledger-status
       class="ledger-status {{ 'is-logged' if it.is_logged else 'is-unresolved' }}{{ ' is-zero' if it.is_zero else '' }}"
       {% if status_oob %}hx-swap-oob="outerHTML"{% endif %}>
   {% if it.is_zero %}已补录 · 0 次失败{% elif it.is_logged %}已补录{% else %}待处理{% endif %}

@@ -51,13 +51,19 @@ def cmd_finalize_week(args) -> None:
     try:
         if repo.get_settings(conn)["week"] != args.expected_week:
             raise SystemExit("stale week")
-        snapshot(
-            args.db,
-            dest_dir=args.backup_dir,
-            week=args.expected_week,
-            ts=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S"),
+        def snapshot_before_advance():
+            snapshot(
+                args.db,
+                dest_dir=args.backup_dir,
+                week=args.expected_week,
+                ts=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S"),
+            )
+
+        new_week = finalize_week(
+            conn,
+            expected_week=args.expected_week,
+            before_advance=snapshot_before_advance,
         )
-        new_week = finalize_week(conn, expected_week=args.expected_week)
     except TrainingInputError as error:
         raise SystemExit(str(error)) from error
     finally:

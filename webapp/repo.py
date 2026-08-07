@@ -392,7 +392,8 @@ def list_progression_drivers(conn: sqlite3.Connection, *, program_week: int):
     """Return the one explicit progression set for each current-week session-slot."""
     return conn.execute(
         "SELECT ts.id AS session_id, ts.program_week, ts.day, ts.bodyweight_kg, "
-        "sl.slot_id, sl.actual_added_weight, sl.reps, sl.e1rm_qualified, "
+        "sl.slot_id, sl.set_number, sl.actual_added_weight, sl.reps, "
+        "sl.e1rm_qualified, "
         "e.name, e.load_model, "
         "ps.lift_kind, ps.mode AS current_slot_mode, "
         "ss.mode AS current_state_mode, pe.mode, pe.planned_sets, pe.planned_reps, "

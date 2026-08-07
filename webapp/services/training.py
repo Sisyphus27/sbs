@@ -280,8 +280,11 @@ class _DriverHistory(list):
             )
 
 
-def _progression_models(row, expected_week: int, canonical_e1rm,
-                        projection_available: bool):
+def _validate_progression_driver(row):
+    if row["actual_added_weight"] is None or not math.isfinite(
+        row["actual_added_weight"]
+    ):
+        raise TrainingInputError("progression driver actual weight is unconfirmed")
     mode = row["mode"]
     if mode is None:
         raise TrainingInputError("progression driver snapshot is unconfirmed")
@@ -297,6 +300,12 @@ def _progression_models(row, expected_week: int, canonical_e1rm,
     }
     if mode not in required or any(row[name] is None for name in required[mode]):
         raise TrainingInputError("progression driver snapshot is incomplete")
+    return mode
+
+
+def _progression_models(row, expected_week: int, canonical_e1rm,
+                        projection_available: bool):
+    mode = _validate_progression_driver(row)
 
     bodyweight_pct = row["bodyweight_pct"]
     if bodyweight_pct is None:
@@ -364,7 +373,8 @@ def _progression_models(row, expected_week: int, canonical_e1rm,
     return profile, lift, state, prior_e1rm
 
 
-def _observation_peaks(conn: sqlite3.Connection, expected_week: int):
+def _observation_peaks(conn: sqlite3.Connection, expected_week: int,
+                       allowed_slot_ids=None):
     sbs_peaks = {}
     t2_peaks = {}
     for row in repo.list_training_facts(conn):
@@ -372,6 +382,10 @@ def _observation_peaks(conn: sqlite3.Connection, expected_week: int):
             row["program_week"] != expected_week
             or row["finalized_at"] is not None
             or not row["e1rm_qualified"]
+            or (
+                allowed_slot_ids is not None
+                and row["slot_id"] not in allowed_slot_ids
+            )
         ):
             continue
         if row["mode"] == "sbs":
@@ -391,25 +405,67 @@ def _observation_peaks(conn: sqlite3.Connection, expected_week: int):
     return sbs_peaks, t2_peaks
 
 
-def finalize_week(conn: sqlite3.Connection, *, expected_week: int) -> int:
+def _settlement_drivers(conn: sqlite3.Connection, *, expected_week: int,
+                        skipped_slot_ids=()):
+    settings = repo.get_settings(conn)
+    planned = [
+        slot for slot in repo.list_training_slots(conn)
+        if repo.get_training_state(conn, slot["id"]) is not None
+        and 1 <= slot["day"] <= settings["days_per_week"]
+    ]
+    planned_ids = [slot["id"] for slot in planned]
+    skipped_ids = tuple(skipped_slot_ids)
+    skipped = set(skipped_ids)
+    if len(skipped) != len(skipped_ids):
+        raise TrainingInputError("duplicate skipped training slot")
+    if skipped - set(planned_ids):
+        raise TrainingInputError("unknown skipped training slot")
+
+    drivers = {}
+    for row in repo.list_progression_drivers(
+            conn, program_week=expected_week):
+        slot_id = row["slot_id"]
+        if slot_id not in planned_ids:
+            continue
+        try:
+            _validate_progression_driver(row)
+        except TrainingInputError:
+            continue
+        if slot_id in drivers:
+            raise TrainingInputError("duplicate progression driver")
+        drivers[slot_id] = row
+    if skipped & set(drivers):
+        raise TrainingInputError("skipped training slot is already logged")
+    unresolved = [
+        slot_id for slot_id in planned_ids
+        if slot_id not in skipped and slot_id not in drivers
+    ]
+    if unresolved:
+        raise TrainingInputError("unresolved training slots")
+    return [drivers[slot_id] for slot_id in planned_ids if slot_id in drivers]
+
+
+def finalize_week(conn: sqlite3.Connection, *, expected_week: int,
+                  skipped_slot_ids=(), before_advance=None) -> int:
     """Atomically progress explicit drivers, finalize sessions, and advance week."""
     timestamp = datetime.now(timezone.utc).isoformat()
     try:
         with conn:
             if not repo.lock_week_if_current(conn, expected_week):
                 raise StaleTrainingWeekError("stale week")
-            sbs_observation_peaks, t2_observation_peaks = _observation_peaks(
-                conn, expected_week
+            drivers = _settlement_drivers(
+                conn,
+                expected_week=expected_week,
+                skipped_slot_ids=skipped_slot_ids,
             )
-            for row in repo.list_progression_drivers(
-                conn, program_week=expected_week
-            ):
-                if row["actual_added_weight"] is None or not math.isfinite(
-                    row["actual_added_weight"]
-                ):
-                    raise TrainingInputError(
-                        "progression driver actual weight is unconfirmed"
-                    )
+            if before_advance is not None:
+                before_advance()
+            sbs_observation_peaks, t2_observation_peaks = _observation_peaks(
+                conn,
+                expected_week,
+                allowed_slot_ids={row["slot_id"] for row in drivers},
+            )
+            for row in drivers:
                 is_sbs = row["mode"] == "sbs"
                 is_loadable_t2 = (
                     row["mode"] == "linear_t2"
@@ -541,7 +597,22 @@ def preview_progression(source_conn: sqlite3.Connection, *, expected_week: int,
                 if row["slot_id"] == slot_id
                 and row["program_week"] in (expected_week - 1, expected_week)
             ]
-            finalize_week(preview_conn, expected_week=expected_week)
+            settings = repo.get_settings(preview_conn)
+            driver_ids = {
+                row["slot_id"] for row in repo.list_progression_drivers(
+                    preview_conn, program_week=expected_week
+                )
+            }
+            skipped_slot_ids = [
+                item["slot_id"] for item in training_plan(preview_conn)["slots"]
+                if item["slot_id"] not in driver_ids
+                and 1 <= item["day"] <= settings["days_per_week"]
+            ]
+            finalize_week(
+                preview_conn,
+                expected_week=expected_week,
+                skipped_slot_ids=skipped_slot_ids,
+            )
             after = repo.get_training_state(preview_conn, slot_id)
             next_slot = next(
                 item for item in training_plan(preview_conn)["slots"]
@@ -559,4 +630,64 @@ def preview_progression(source_conn: sqlite3.Connection, *, expected_week: int,
         "after": dict(after),
         "next_plan": next_slot,
         "performance_rows": performance_rows,
+    }
+
+
+def review_week_settlement(conn: sqlite3.Connection, *, expected_week: int,
+                           skipped_slot_ids=()) -> dict:
+    """Validate and project one read-only, explicit Week settlement request."""
+    if repo.get_settings(conn)["week"] != expected_week:
+        raise StaleTrainingWeekError("stale week")
+    skipped_ids = tuple(skipped_slot_ids)
+    drivers = _settlement_drivers(
+        conn,
+        expected_week=expected_week,
+        skipped_slot_ids=skipped_ids,
+    )
+    driver_by_slot = {row["slot_id"]: row for row in drivers}
+    skipped = set(skipped_ids)
+    settings = repo.get_settings(conn)
+    planned = [
+        slot for slot in training_plan(conn)["slots"]
+        if 1 <= slot["day"] <= settings["days_per_week"]
+    ]
+    rows = []
+    for slot in planned:
+        slot_id = slot["slot_id"]
+        if slot_id in skipped:
+            rows.append({
+                "slot_id": slot_id,
+                "name": slot["name"],
+                "status": "skipped",
+                "failed_zero": False,
+                "preview": None,
+            })
+            continue
+        driver = driver_by_slot[slot_id]
+        preview = preview_progression(
+            conn,
+            expected_week=expected_week,
+            slot_id=slot_id,
+            set_number=driver["set_number"],
+            actual_added_weight=driver["actual_added_weight"],
+            reps=driver["reps"],
+            warmup=False,
+            drives_progression=True,
+            e1rm_qualified=bool(driver["e1rm_qualified"]),
+        )
+        rows.append({
+            "slot_id": slot_id,
+            "name": slot["name"],
+            "status": "logged",
+            "failed_zero": driver["reps"] == 0,
+            "preview": preview,
+        })
+    return {
+        "expected_week": expected_week,
+        "new_week": expected_week + 1,
+        "logged_count": len(drivers),
+        "skipped_count": len(skipped),
+        "failed_zero_count": sum(row["failed_zero"] for row in rows),
+        "skipped_slot_ids": skipped_ids,
+        "rows": rows,
     }

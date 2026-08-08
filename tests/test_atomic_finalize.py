@@ -5,7 +5,7 @@ import pytest
 
 from sbs_cli.engine.onerm import estimate_1rm
 from tests.v1_helpers import insert_v1_slot
-from webapp import training_cli
+from webapp import backup, training_cli
 from webapp.app import create_app
 from webapp.services import training as training_service
 
@@ -117,6 +117,55 @@ def test_cli_finalize_uses_the_same_domain_command(tmp_path, capsys):
     assert state[1] == pytest.approx(estimate_1rm(31.0, 10))
     assert week == 2
     assert list(backup_dir.glob("sbs-w1-*.db.bak"))
+
+
+@pytest.mark.parametrize("entry_point", ["training", "plan", "cli"])
+def test_snapshot_failure_rolls_back_every_finalize_entry_point(
+        tmp_path, monkeypatch, entry_point):
+    app, db_path, backup_dir, slot_id = _app_with_t3_slot(tmp_path)
+    with app.test_client() as client:
+        assert client.post(
+            "/training/sets/quick",
+            data={
+                "expected_week": "1",
+                "slot_id": str(slot_id),
+                "set_number": "3",
+                "actual_added_weight": "31",
+                "reps": "10",
+            },
+        ).status_code == 200
+
+    def fail_snapshot(*_args, **_kwargs):
+        raise RuntimeError("simulated snapshot failure")
+
+    monkeypatch.setattr(backup, "snapshot", fail_snapshot)
+
+    with pytest.raises(RuntimeError, match="simulated snapshot failure"):
+        if entry_point == "cli":
+            training_cli.run(
+                [
+                    "finalize-week",
+                    "--db",
+                    str(db_path),
+                    "--backup-dir",
+                    str(backup_dir),
+                    "--expected-week",
+                    "1",
+                ]
+            )
+        else:
+            endpoint = "/training/finalize" if entry_point == "training" else "/log"
+            with app.test_client() as client:
+                client.post(endpoint, data={"expected_week": "1"})
+
+    with sqlite3.connect(db_path) as conn:
+        assert conn.execute("SELECT week FROM settings WHERE id = 1").fetchone()[0] == 1
+        assert conn.execute(
+            "SELECT weight FROM strength_state WHERE slot_id = ?", (slot_id,)
+        ).fetchone()[0] == 30.0
+        assert conn.execute(
+            "SELECT finalized_at FROM training_session WHERE program_week = 1"
+        ).fetchone()[0] is None
 
 
 def test_duplicate_finalize_is_stale_and_does_not_progress_twice(tmp_path):

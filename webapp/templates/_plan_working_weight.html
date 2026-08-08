@@ -1,6 +1,6 @@
 {% if it.load_model != 'barbell' %}
 <span id="working-weight-{{ it.id }}" class="ledger-working meta num"
       {% if working_oob %}hx-swap-oob="outerHTML"{% endif %}>
-  {{ it.working_weight_kind }} Working {% if it.current_working_weight is not none %}{{ it.current_working_weight }} kg{% else %}不可用{% endif %}
+  {{ it.working_weight_kind }} Working Weight {% if it.current_working_weight is not none %}{{ it.current_working_weight }} kg{% else %}不可用{% endif %}
 </span>
 {% endif %}

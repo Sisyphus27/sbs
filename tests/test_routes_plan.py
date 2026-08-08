@@ -155,13 +155,13 @@ def test_week_ledger_preserves_load_model_weight_semantics(
     pure_row = pure_row[:pure_row.index("</tr>")]
 
     assert f'name="actual_added_weight_{weighted}"' in weighted_row
-    assert "Planned Working 75.0 kg" in weighted_row
+    assert "Planned Working Weight 75.0 kg" in weighted_row
     assert (
         f'type="hidden" name="actual_added_weight_{pure}" value="0"'
         in pure_row
     )
     assert "Actual Added 0 kg" in pure_row
-    assert "Planned Working 75.0 kg" in pure_row
+    assert "Planned Working Weight 75.0 kg" in pure_row
 
     weighted_response = _save_set(
         client, weighted, 3, 8, actual_added_weight=10.0
@@ -176,8 +176,8 @@ def test_week_ledger_preserves_load_model_weight_semantics(
     assert weighted_response.status_code == 200
     assert f'id="working-weight-{weighted}"' in weighted_fragment
     assert 'hx-swap-oob="outerHTML"' in weighted_fragment
-    assert "Actual Working 不可用" in weighted_fragment
-    assert "Actual Working 不可用" in weighted_row
+    assert "Actual Working Weight 不可用" in weighted_fragment
+    assert "Actual Working Weight 不可用" in weighted_row
 
     recorded = client.post(
         "/training/sets/full",
@@ -200,7 +200,7 @@ def test_week_ledger_preserves_load_model_weight_semantics(
     recorded_row = recorded_row[:recorded_row.index("</tr>")]
 
     assert recorded.status_code == 200
-    assert "Actual Working 90.0 kg" in recorded_row
+    assert "Actual Working Weight 90.0 kg" in recorded_row
 
     response = _save_set(
         client, pure, 3, 8, actual_added_weight=2.5

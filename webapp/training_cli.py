@@ -4,7 +4,7 @@ import argparse
 from datetime import date, datetime, timezone
 
 from . import repo
-from .backup import snapshot
+from .backup import make_snapshot_before_advance
 from .db import connect
 from .services.training import TrainingInputError, finalize_week, save_draft_set
 
@@ -51,13 +51,12 @@ def cmd_finalize_week(args) -> None:
     try:
         if repo.get_settings(conn)["week"] != args.expected_week:
             raise SystemExit("stale week")
-        def snapshot_before_advance():
-            snapshot(
-                args.db,
-                dest_dir=args.backup_dir,
-                week=args.expected_week,
-                ts=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S"),
-            )
+        snapshot_before_advance = make_snapshot_before_advance(
+            args.db,
+            dest_dir=args.backup_dir,
+            week=args.expected_week,
+            timestamp=lambda: datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S"),
+        )
 
         new_week = finalize_week(
             conn,

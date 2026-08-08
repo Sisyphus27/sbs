@@ -1,4 +1,5 @@
 """Snapshot the SQLite db before destructive operations."""
+from collections.abc import Callable
 from contextlib import closing
 import os
 import sqlite3
@@ -51,3 +52,18 @@ def snapshot(src_db: str, *, dest_dir: str, week: int, ts: str) -> str:
         raise
     _prune(dest_dir)
     return dest
+
+
+def make_snapshot_before_advance(
+        src_db: str, *, dest_dir: str, week: int,
+        timestamp: Callable[[], str]) -> Callable[[], None]:
+    """Bind one pre-advance snapshot callback for the finalization command."""
+    def snapshot_before_advance() -> None:
+        snapshot(
+            src_db,
+            dest_dir=dest_dir,
+            week=week,
+            ts=timestamp(),
+        )
+
+    return snapshot_before_advance

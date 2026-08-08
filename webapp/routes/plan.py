@@ -12,6 +12,7 @@ from flask import (
     url_for,
 )
 from .. import repo
+from ..backup import make_snapshot_before_advance
 from ..db import get_db
 from ..services.training import (
     StaleTrainingWeekError,
@@ -418,15 +419,13 @@ def submit():
         return ("stale week", 409)
     except TrainingInputError as error:
         return (str(error), 400)
-    from ..backup import snapshot
     from datetime import datetime, timezone
-    def snapshot_before_advance():
-        snapshot(
-            current_app.config["DB_PATH"],
-            dest_dir=current_app.config["BACKUP_DIR"],
-            week=expected_week,
-            ts=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S"),
-        )
+    snapshot_before_advance = make_snapshot_before_advance(
+        current_app.config["DB_PATH"],
+        dest_dir=current_app.config["BACKUP_DIR"],
+        week=expected_week,
+        timestamp=lambda: datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S"),
+    )
 
     try:
         new_week = finalize_week(

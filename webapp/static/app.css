@@ -96,7 +96,7 @@ body{display:flex;min-height:100vh}
 .ledger-control-label{font-size:.82em;color:var(--muted)}
 .ledger-working{display:block;margin-top:3px;white-space:nowrap}
 .ledger-fixed-weight{white-space:nowrap}
-.ledger-earlier-sets summary{cursor:pointer;white-space:nowrap;color:var(--accent);font-size:.88em}
+.ledger-earlier-sets summary{cursor:pointer;white-space:nowrap;color:var(--muted);font-size:.88em}
 .ledger-earlier-grid{display:grid;gap:7px;margin-top:8px}
 .week-workspace{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
 .week-ledger-panel{min-width:0}

@@ -175,6 +175,14 @@ def _v1_plan_by_day(conn):
             entry for entry in set_entries
             if entry.confirmed and not entry.warmup and entry.drives_progression
         ), None)
+        coverage = []
+        if progression_driver is not None or final_entry.reps is not None:
+            coverage.extend(("addedWeight", "driverReps"))
+        coverage.extend(
+            f"earlierSetReps.{entry.number}"
+            for entry in set_entries[:-1]
+            if entry.reps is not None
+        )
         actual_added_weight = (
             final_entry.actual_added_weight
             if final_entry.actual_added_weight is not None
@@ -206,6 +214,11 @@ def _v1_plan_by_day(conn):
             target=slot["planned_target"],
             streak=slot["state_streak"],
             set_entries=set_entries,
+            driver_set_number=final_entry.number,
+            workspace_coverage=coverage,
+            progression_driver_reps=(
+                None if progression_driver is None else progression_driver.reps
+            ),
             is_logged=final_entry.reps is not None,
             is_settlement_ready=progression_driver is not None,
             is_zero=(
@@ -219,6 +232,58 @@ def _v1_plan_by_day(conn):
     ]
 
 
+def _workspace_server_snapshot(item, coverage):
+    return {
+        "coverage": coverage,
+        "driverReps": item.progression_driver_reps,
+        "hasDriverFact": item.is_settlement_ready,
+        "settlementReady": item.is_settlement_ready,
+    }
+
+
+def _week_workspace_snapshot(expected_week, items):
+    return {
+        "expectedWeek": expected_week,
+        "focusedSlotId": None,
+        "focusSequence": 0,
+        "lifts": [
+            {
+                "slotId": item.id,
+                "driverSetNumber": item.driver_set_number,
+                "draft": {
+                    "addedWeight": item.actual_added_weight,
+                    "driverReps": (
+                        item.set_entries[-1].reps
+                        if item.set_entries[-1].reps is not None else ""
+                    ),
+                    "earlierSetReps": {
+                        str(entry.number): (
+                            entry.reps if entry.reps is not None else ""
+                        )
+                        for entry in item.set_entries[:-1]
+                    },
+                },
+                "serverSnapshot": _workspace_server_snapshot(
+                    item, item.workspace_coverage
+                ),
+                "settlementIntent": "record",
+            }
+            for item in items
+        ],
+    }
+
+
+def _inspector_response(*, preview, expected_week, slot_id, focus_sequence):
+    return render_template(
+        "_week_workspace_response.html",
+        response_role="inspector",
+        expected_week=expected_week,
+        slot_id=slot_id,
+        focus_sequence=focus_sequence,
+        preview=preview,
+    )
+
+
 @bp.route("/")
 def view():
     from ..services.reseed import due_lifts
@@ -227,10 +292,15 @@ def view():
     items = [item for _day, day_items in by_day for item in day_items]
     handled_count = sum(item.is_settlement_ready for item in items)
     due, _cyc = due_lifts(conn)
-    return render_template("plan.html", week=week, by_day=by_day,
-                           due_reseeds=[r["name"] for r, _st in due],
-                           handled_count=handled_count,
-                           total_count=len(items))
+    return render_template(
+        "plan.html",
+        week=week,
+        by_day=by_day,
+        due_reseeds=[r["name"] for r, _st in due],
+        handled_count=handled_count,
+        total_count=len(items),
+        week_workspace_snapshot=_week_workspace_snapshot(week, items),
+    )
 
 
 @bp.route("/log/save", methods=["POST"])
@@ -243,15 +313,32 @@ def save_log():
         return ("bad slot or set number", 400)
     try:
         expected_week = int(request.form["expected_week"])
+    except (KeyError, TypeError, ValueError):
+        return ("bad expected week", 400)
+    try:
+        response_slot_id = int(request.form["slot_id"])
+        response_set_number = int(request.form["set_number"])
+        save_sequence = int(request.form["save_sequence"])
+        focused_slot_id = int(request.form["focused_slot_id"])
+        focus_sequence = int(request.form["focus_sequence"])
+    except (KeyError, TypeError, ValueError):
+        return ("bad save identity", 400)
+    try:
         reps = int(
             request.form.get(
                 f"set_{lid}_{set_number}", request.form.get("reps")
             )
         )
     except (KeyError, TypeError, ValueError):
-        if "expected_week" not in request.form:
-            return ("bad expected week", 400)
         return ("bad reps", 400)
+    if (
+        response_slot_id != lid
+        or response_set_number != set_number
+        or save_sequence < 1
+        or focused_slot_id < 1
+        or focus_sequence < 1
+    ):
+        return ("bad save identity", 400)
     plan = training_plan(conn)
     slot = next(
         (item for item in plan["slots"] if item["slot_id"] == lid), None
@@ -267,10 +354,7 @@ def save_log():
     actual_added_weight = request.form.get(
         f"actual_added_weight_{lid}", request.form.get("actual_added_weight")
     )
-    if (
-        actual_added_weight is not None
-        and (fact is None or set_number == slot["planned_sets"])
-    ):
+    if actual_added_weight is not None and set_number == slot["planned_sets"]:
         try:
             fields["actual_added_weight"] = float(actual_added_weight)
         except (TypeError, ValueError):
@@ -310,8 +394,20 @@ def save_log():
     item = next(
         item for _day, items in by_day for item in items if item.id == lid
     )
+    coverage = (
+        ["addedWeight", "driverReps"]
+        if set_number == item.driver_set_number
+        else [f"earlierSetReps.{set_number}"]
+    )
     return render_template(
-        "_plan_save_result.html",
+        "_week_workspace_response.html",
+        response_role="save",
+        expected_week=expected_week,
+        slot_id=lid,
+        save_sequence=save_sequence,
+        focused_slot_id=focused_slot_id,
+        focus_sequence=focus_sequence,
+        server_snapshot=_workspace_server_snapshot(item, coverage),
         it=item,
         set_number=set_number,
         preview=preview,
@@ -329,6 +425,13 @@ def preview_log():
         expected_week = int(request.form["expected_week"])
     except (KeyError, TypeError, ValueError):
         return ("bad expected week", 400)
+    try:
+        response_slot_id = int(request.form["slot_id"])
+        focus_sequence = int(request.form["focus_sequence"])
+    except (KeyError, TypeError, ValueError):
+        return ("bad inspector identity", 400)
+    if response_slot_id != lid or focus_sequence < 1:
+        return ("bad inspector identity", 400)
     plan = training_plan(conn)
     if plan["expected_week"] != expected_week:
         return ("stale week", 409)
@@ -338,14 +441,16 @@ def preview_log():
     if slot is None:
         return ("unknown training slot", 400)
     if request.form.get("intent") == "skip":
-        return render_template(
-            "_focus_inspector.html",
+        return _inspector_response(
             preview={
                 "name": slot["name"],
                 "mode": slot["mode"],
                 "skipped": True,
                 "comparison": None,
             },
+            expected_week=expected_week,
+            slot_id=lid,
+            focus_sequence=focus_sequence,
         )
     set_number = slot["planned_sets"]
     reps_input = request.form.get(
@@ -358,14 +463,16 @@ def preview_log():
         reps_input is None or not reps_input.strip()
         or weight_input is None or not weight_input.strip()
     ):
-        return render_template(
-            "_focus_inspector.html",
+        return _inspector_response(
             preview={
                 "name": slot["name"],
                 "mode": slot["mode"],
                 "awaiting_input": True,
                 "comparison": None,
             },
+            expected_week=expected_week,
+            slot_id=lid,
+            focus_sequence=focus_sequence,
         )
     try:
         reps = int(reps_input)
@@ -391,7 +498,12 @@ def preview_log():
     )
     if preview_error is not None:
         return preview_error
-    return render_template("_focus_inspector.html", preview=preview)
+    return _inspector_response(
+        preview=preview,
+        expected_week=expected_week,
+        slot_id=lid,
+        focus_sequence=focus_sequence,
+    )
 
 
 @bp.route("/log", methods=["POST"])

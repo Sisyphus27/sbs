@@ -133,11 +133,27 @@ def test_homepage_saves_each_set_through_v1_training_facts(tmp_path):
     with app.test_client() as client:
         first = client.post(
             f"/log/save?lid={slot_id}&set_number=1",
-            data={"expected_week": "1", "reps": "15"},
+            data={
+                "expected_week": "1",
+                "slot_id": str(slot_id),
+                "set_number": "1",
+                "save_sequence": "1",
+                "focused_slot_id": str(slot_id),
+                "focus_sequence": "1",
+                "reps": "15",
+            },
         )
         last = client.post(
             f"/log/save?lid={slot_id}&set_number=3",
-            data={"expected_week": "1", "reps": "0"},
+            data={
+                "expected_week": "1",
+                "slot_id": str(slot_id),
+                "set_number": "3",
+                "save_sequence": "2",
+                "focused_slot_id": str(slot_id),
+                "focus_sequence": "2",
+                "reps": "0",
+            },
         )
         history = client.get("/training/history").get_json()
 
@@ -158,7 +174,15 @@ def test_homepage_finalize_uses_the_v1_atomic_command(tmp_path):
     with app.test_client() as client:
         saved = client.post(
             f"/log/save?lid={slot_id}&set_number=3",
-            data={"expected_week": "1", "reps": "15"},
+            data={
+                "expected_week": "1",
+                "slot_id": str(slot_id),
+                "set_number": "3",
+                "save_sequence": "1",
+                "focused_slot_id": str(slot_id),
+                "focus_sequence": "1",
+                "reps": "15",
+            },
         )
         finalized = client.post(
             "/log",

@@ -30,10 +30,24 @@ def _save_set(client, slot_id, set_number, reps, *, week, weight):
         f"/log/save?lid={slot_id}&set_number={set_number}",
         data={
             "expected_week": str(week),
+            "slot_id": str(slot_id),
+            "set_number": str(set_number),
+            "save_sequence": "1",
+            "focused_slot_id": str(slot_id),
+            "focus_sequence": "1",
             f"actual_added_weight_{slot_id}": str(weight),
             f"set_{slot_id}_{set_number}": str(reps),
         },
     )
+
+
+def _inspector_data(slot_id, data, *, focus_sequence=1):
+    payload = {
+        "slot_id": str(slot_id),
+        "focus_sequence": str(focus_sequence),
+    }
+    payload.update(data)
+    return payload
 
 
 def test_sbs_preview_names_tm_and_next_working_weight_without_writing_source(
@@ -45,11 +59,11 @@ def test_sbs_preview_names_tm_and_next_working_weight_without_writing_source(
 
     response = client.post(
         f"/log/preview?lid={slot_id}",
-        data={
+        data=_inspector_data(slot_id, {
             "expected_week": "1",
             f"actual_added_weight_{slot_id}": "70",
             f"set_{slot_id}_5": "30",
-        },
+        }),
     )
 
     assert response.status_code == 200
@@ -92,12 +106,20 @@ def test_preview_matches_canonical_finalize_for_each_progression_mode(
         "SELECT * FROM strength_state WHERE slot_id = ?", (slot_id,)
     ).fetchone())
 
-    preview = client.post(f"/log/preview?lid={slot_id}", data=data)
+    preview = client.post(
+        f"/log/preview?lid={slot_id}",
+        data=_inspector_data(slot_id, data),
+    )
     assert preview.status_code == 200
     preview_html = preview.get_data(as_text=True)
 
-    saved = client.post(
-        f"/log/save?lid={slot_id}&set_number={set_number}", data=data
+    saved = _save_set(
+        client,
+        slot_id,
+        set_number,
+        reps,
+        week=1,
+        weight=actual_added_weight,
     )
     assert saved.status_code == 200
     assert client.post(
@@ -173,11 +195,11 @@ def test_performance_comparison_appears_only_in_the_focused_inspector(
 
     preview = client.post(
         f"/log/preview?lid={slot_id}",
-        data={
+        data=_inspector_data(slot_id, {
             "expected_week": "2",
             f"actual_added_weight_{slot_id}": "32.5",
             f"set_{slot_id}_3": "15",
-        },
+        }),
     )
     assert preview.status_code == 200
     inspector = preview.get_data(as_text=True)
@@ -195,11 +217,25 @@ def test_skip_preview_is_read_only_and_does_not_implement_settlement_state(
 
     response = client.post(
         f"/log/preview?lid={slot_id}",
-        data={"expected_week": "1", "intent": "skip"},
+        data={
+            "expected_week": "1",
+            "slot_id": str(slot_id),
+            "focus_sequence": "9",
+            "intent": "skip",
+        },
     )
 
     assert response.status_code == 200
     preview = response.get_data(as_text=True)
+    assert 'data-week-workspace-response' in preview
+    assert 'data-response-role="inspector"' in preview
+    assert 'data-expected-week="1"' in preview
+    assert f'data-slot-id="{slot_id}"' in preview
+    assert 'data-focus-sequence="9"' in preview
+    assert 'data-save-sequence' not in preview
+    assert 'data-fragment-role="persistent"' not in preview
+    assert 'data-fragment-role="inspector"' in preview
+    assert 'hx-swap-oob' not in preview
     assert "本周跳过" in preview
     assert "不生成 Training Fact" in preview
     assert "Progression 不变" in preview
@@ -215,7 +251,8 @@ def test_week_workspace_has_one_input_free_inspector_refreshed_by_driver_save(
 
     page = client.get("/").get_data(as_text=True)
     assert page.count('id="focus-inspector"') == 1
-    assert page.count('hx-target="#focus-inspector"') == 4
+    assert page.count('data-inspector-url=') == 2
+    assert 'hx-target="#focus-inspector"' not in page
     inspector = page.split('id="focus-inspector"', 1)[1].split(
         "</section>", 1
     )[0]
@@ -228,7 +265,8 @@ def test_week_workspace_has_one_input_free_inspector_refreshed_by_driver_save(
     assert saved.status_code == 200
     fragment = saved.get_data(as_text=True)
     assert 'id="focus-inspector"' in fragment
-    assert 'hx-swap-oob="outerHTML"' in fragment
+    assert 'data-fragment-role="inspector"' in fragment
+    assert 'hx-swap-oob' not in fragment
     assert "Squat" in fragment
     assert "Training Max" in fragment
 
@@ -248,11 +286,11 @@ def test_bodyweight_preview_distinguishes_added_from_working_weight_without_fall
 
     response = client.post(
         f"/log/preview?lid={slot_id}",
-        data={
+        data=_inspector_data(slot_id, {
             "expected_week": "1",
             f"actual_added_weight_{slot_id}": "10",
             f"set_{slot_id}_3": "8",
-        },
+        }),
     )
 
     assert response.status_code == 200
@@ -276,13 +314,13 @@ def test_preview_error_keeps_the_lift_unresolved_and_source_unchanged(
     )
     before = _source_state(db_conn, slot_id)
 
-    response = client.post(
-        f"/log/save?lid={slot_id}&set_number=3",
-        data={
-            "expected_week": str(expected_week),
-            f"actual_added_weight_{slot_id}": "30",
-            f"set_{slot_id}_3": str(reps),
-        },
+    response = _save_set(
+        client,
+        slot_id,
+        3,
+        reps,
+        week=expected_week,
+        weight=30.0,
     )
 
     assert response.status_code == status
@@ -300,7 +338,9 @@ def test_focusing_an_unlogged_lift_selects_context_without_inventing_a_preview(
 
     response = client.post(
         f"/log/preview?lid={slot_id}",
-        data={"expected_week": "1", "intent": "focus"},
+        data=_inspector_data(
+            slot_id, {"expected_week": "1", "intent": "focus"}
+        ),
     )
 
     assert response.status_code == 200
@@ -365,7 +405,8 @@ def test_earlier_set_edit_refreshes_the_focused_performance_volume(
     assert earlier.status_code == 200
     fragment = earlier.get_data(as_text=True)
     assert 'id="focus-inspector"' in fragment
-    assert 'hx-swap-oob="outerHTML"' in fragment
+    assert 'data-fragment-role="inspector"' in fragment
+    assert 'hx-swap-oob' not in fragment
     assert "Training volume 750 kg" in fragment
     assert "est1RM" in fragment
 
@@ -387,11 +428,11 @@ def test_est1rm_comparison_ignores_history_without_a_confirmed_prescription(
 
     preview = client.post(
         f"/log/preview?lid={slot_id}",
-        data={
+        data=_inspector_data(slot_id, {
             "expected_week": "2",
             f"actual_added_weight_{slot_id}": "30",
             f"set_{slot_id}_3": "15",
-        },
+        }),
     )
 
     assert preview.status_code == 200

@@ -303,6 +303,19 @@ test("cross-lift saves run in parallel while obsolete inspectors are discarded",
                "persistent twelve");
   assert.equal(renderEffect(lateTwelve, "inspector"), undefined);
 
+  const failedInspector = handle({
+    type: "inspectorResult",
+    expectedWeek: 7,
+    slotId: 12,
+    focusSequence: 3,
+    success: false,
+    error: "preview failed",
+  });
+  assert.equal(renderEffect(failedInspector, "inspector").error,
+               "preview failed");
+  assert.equal(renderEffect(failedInspector, "inspector").fragment, undefined);
+  assert.equal(workspaceView(failedInspector).pending, 0);
+
   const currentInspector = handle({
     type: "inspectorResult",
     expectedWeek: 7,

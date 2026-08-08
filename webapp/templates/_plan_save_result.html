@@ -1,9 +1,2 @@
 <span id="save-{{ it.id }}-{{ set_number }}" class="save-ok num">已保存</span>
-{% set status_oob = true %}
-{% include '_plan_lift_status.html' %}
-{% set working_oob = true %}
 {% include '_plan_working_weight.html' %}
-{% if preview %}
-  {% set inspector_oob = true %}
-  {% include '_focus_inspector.html' %}
-{% endif %}

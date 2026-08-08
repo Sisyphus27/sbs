@@ -8,6 +8,11 @@ def _save_driver(client, slot_id, *, set_number, reps, weight):
         f"/log/save?lid={slot_id}&set_number={set_number}",
         data={
             "expected_week": "1",
+            "slot_id": str(slot_id),
+            "set_number": str(set_number),
+            "save_sequence": "1",
+            "focused_slot_id": str(slot_id),
+            "focus_sequence": "1",
             f"actual_added_weight_{slot_id}": str(weight),
             f"set_{slot_id}_{set_number}": str(reps),
         },
@@ -103,8 +108,9 @@ def test_week_workspace_exposes_logged_zero_and_unresolved_settlement_controls(
     unresolved_row = page.split(
         f'id="ledger-row-{unresolved_id}"', 1
     )[1].split("</tr>", 1)[0]
-    assert 'data-settlement-state="unresolved"' in unresolved_row
-    assert 'data-skip-toggle' in unresolved_row
+    assert "待处理" in unresolved_row
+    assert 'data-skip-lift' in unresolved_row
+    assert 'data-resume-lift' in unresolved_row
     assert f'name="skipped_slot_ids" value="{unresolved_id}"' in unresolved_row
     assert "本周跳过" in unresolved_row
 
@@ -157,7 +163,6 @@ def test_final_review_is_read_only_and_confirm_applies_logged_and_skipped(
     next_week_row = client.get("/").get_data(as_text=True).split(
         f'id="ledger-row-{skipped_id}"', 1
     )[1].split("</tr>", 1)[0]
-    assert 'data-settlement-state="unresolved"' in next_week_row
     assert "待处理" in next_week_row
 
 
@@ -315,9 +320,7 @@ def test_workspace_logged_state_uses_the_confirmed_progression_driver(
         f'id="ledger-row-{final_non_driver_id}"', 1
     )[1].split("</tr>", 1)[0]
 
-    assert 'data-settlement-state="logged"' in earlier_driver_row
     assert "已补录 · 0 次失败" in earlier_driver_row
-    assert 'data-settlement-state="unresolved"' in final_non_driver_row
     assert "待处理" in final_non_driver_row
     review = client.post(
         "/log/review",
@@ -355,7 +358,7 @@ def test_earlier_driver_can_settle_while_offline_export_keeps_final_set_debt(
     )[1].split("</tr>", 1)[0]
     offline_export = client.get("/export/week.html").get_data(as_text=True)
 
-    assert 'data-settlement-state="logged"' in row
+    assert "已补录" in row
     assert 'class="name">Curl' in offline_export
     assert 'class="name done">✓ Curl' not in offline_export
     assert '<details data-day="1" class="st-empty" open>' in offline_export
@@ -378,7 +381,6 @@ def test_workspace_reopens_driver_saved_before_a_training_mode_switch(
     page = client.get("/").get_data(as_text=True)
     row = page.split(f'id="ledger-row-{slot_id}"', 1)[1].split("</tr>", 1)[0]
 
-    assert 'data-settlement-state="unresolved"' in row
     assert "待处理" in row
 
     state_before = dict(db_conn.execute(

@@ -1,0 +1,17 @@
+<template data-week-workspace-response
+          data-response-role="{{ response_role }}"
+          data-expected-week="{{ expected_week }}"
+          data-slot-id="{{ slot_id }}"
+          {% if response_role == 'save' %}data-save-sequence="{{ save_sequence }}"
+          data-focused-slot-id="{{ focused_slot_id }}"{% endif %}
+          data-focus-sequence="{{ focus_sequence }}">
+  {% if response_role == 'save' %}
+  <script type="application/json" data-server-snapshot>{{ server_snapshot | tojson }}</script>
+  <template data-fragment-role="persistent">
+    {% include '_plan_save_result.html' %}
+  </template>
+  {% endif %}
+  <template data-fragment-role="inspector">
+    {% include '_focus_inspector.html' %}
+  </template>
+</template>

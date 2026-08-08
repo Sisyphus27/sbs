@@ -13,27 +13,7 @@
       <p>不生成 Training Fact；Progression 不变。</p>
     {% else %}
       <strong>Program week {{ preview.next_week }}</strong>
-    {% if preview.mode == 'sbs' %}
-      <p>Training Max {{ preview.before.tm }} → {{ preview.after.tm }}</p>
-      <p>下一周 Working Weight {{ preview.next_plan.planned_working_weight }} kg</p>
-    {% elif preview.mode == 'linear_t2' %}
-      {% if preview.next_plan.load_model == 'bodyweight' %}
-      <p>Added weight {{ preview.before.weight }} → {{ preview.after.weight }} kg</p>
-      {% else %}
-      <p>Working Weight {{ preview.before.weight }} → {{ preview.after.weight }} kg</p>
-      {% endif %}
-      <p>目标 {{ preview.before.target }} → {{ preview.after.target }} · streak {{ preview.before.streak }} → {{ preview.after.streak }}</p>
-      <p>下一周处方 Working Weight {{ preview.next_plan.planned_working_weight }} kg · 目标 {{ preview.next_plan.planned_target }} 次 · streak {{ preview.next_plan.state_streak }}</p>
-    {% elif preview.mode == 'linear_t3' %}
-      {% if preview.next_plan.load_model == 'bodyweight' %}
-      <p>Added weight {{ preview.before.weight }} → {{ preview.after.weight }} kg</p>
-      {% else %}
-      <p>Working Weight {{ preview.before.weight }} → {{ preview.after.weight }} kg</p>
-      {% endif %}
-      <p>下一周处方 Working Weight {{ preview.next_plan.planned_working_weight }} kg · 目标 {{ preview.next_plan.planned_target }} 次</p>
-    {% else %}
-      <p>record-only：无自动 Progression。</p>
-    {% endif %}
+      {% include '_progression_outcome.html' %}
     {% endif %}
   </div>
   {% if not preview.skipped and not preview.awaiting_input %}

@@ -69,6 +69,7 @@ body{display:flex;min-height:100vh}
 
 /* save state and week-over-week comparison under set inputs */
 .save-ok{color:var(--muted);font-size:.85em;margin-left:6px}
+.save-error{display:block;color:var(--danger);font-size:.8em;margin-top:3px}
 .save-ok .up{color:var(--up);font-weight:bold}
 .save-ok .down{color:var(--down);font-weight:bold}
 .save-ok .first{color:var(--muted)}

@@ -22,14 +22,9 @@
       <td>
         {% if item.status == 'skipped' %}
           不生成 Training Fact；Progression 不变
-        {% elif item.preview.mode == 'sbs' %}
-          Training Max {{ item.preview.before.tm }} → {{ item.preview.after.tm }}；下一周 Working Weight {{ item.preview.next_plan.planned_working_weight }} kg
-        {% elif item.preview.mode == 'linear_t2' %}
-          {% if item.preview.next_plan.load_model == 'bodyweight' %}Added weight{% else %}Working Weight{% endif %} {{ item.preview.before.weight }} → {{ item.preview.after.weight }} kg；目标 {{ item.preview.before.target }} → {{ item.preview.after.target }}；streak {{ item.preview.before.streak }} → {{ item.preview.after.streak }}；下一周 Working Weight {{ item.preview.next_plan.planned_working_weight }} kg
-        {% elif item.preview.mode == 'linear_t3' %}
-          {% if item.preview.next_plan.load_model == 'bodyweight' %}Added weight{% else %}Working Weight{% endif %} {{ item.preview.before.weight }} → {{ item.preview.after.weight }} kg；下一周 Working Weight {{ item.preview.next_plan.planned_working_weight }} kg · 目标 {{ item.preview.next_plan.planned_target }} 次
         {% else %}
-          record-only：无自动 Progression
+          {% set preview = item.preview %}
+          {% include '_progression_outcome.html' %}
         {% endif %}
       </td>
     </tr>

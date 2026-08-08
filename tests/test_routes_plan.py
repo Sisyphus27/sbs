@@ -44,6 +44,23 @@ def test_plan_view_empty(client):
     assert b"Week" in rv.data
 
 
+def test_live_week_pages_load_app_script_once_without_changing_offline_export(
+        client):
+    app_script = '<script src="/static/app.js"></script>'
+
+    workspace = client.get("/").get_data(as_text=True)
+    review = client.post(
+        "/log/review", data={"expected_week": "1"}
+    ).get_data(as_text=True)
+    lifts = client.get("/lifts").get_data(as_text=True)
+    offline_export = client.get("/export/week.html").get_data(as_text=True)
+
+    assert workspace.count(app_script) == 1
+    assert review.count(app_script) == 1
+    assert lifts.count(app_script) == 1
+    assert app_script not in offline_export
+
+
 def test_homepage_renders_week_ledger_in_day_and_plan_order(client, make_lift):
     day_two = make_lift(name="Day two row", day=2, sort_order=0, start=30.0)
     day_one_second = make_lift(
@@ -378,6 +395,39 @@ def test_autosave_includes_expected_program_week(client, make_lift):
     make_lift(name="Curl", start=30.0)
     html = client.get("/").get_data(as_text=True)
     assert 'hx-include="[name=\'expected_week\'],' in html
+
+
+def test_week_request_sources_have_distinct_error_regions_and_return_details(
+        client, make_lift):
+    lid = make_lift(name="Curl", start=30.0)
+    html = client.get("/").get_data(as_text=True)
+    row = html.split(f'id="ledger-row-{lid}"', 1)[1].split("</tr>", 1)[0]
+
+    error_ids = (
+        f"request-error-weight-{lid}",
+        f"request-error-set-{lid}-1",
+        f"request-error-set-{lid}-2",
+        f"request-error-set-{lid}-3",
+        f"request-error-skip-{lid}",
+        f"request-error-focus-{lid}",
+    )
+    for error_id in error_ids:
+        assert f'data-request-error-id="{error_id}"' in row
+        assert f'id="{error_id}"' in row
+    assert row.count('role="alert"') == len(error_ids)
+    assert 'data-server-state="unresolved"' in row
+
+    saved = _save_set(client, lid, 3, 10, actual_added_weight=30.0)
+    assert saved.status_code == 200
+    assert 'data-server-state="logged"' in saved.get_data(as_text=True)
+
+    invalid = _save_set(client, lid, 3, -1, actual_added_weight=30.0)
+    assert invalid.status_code == 400
+    assert invalid.get_data(as_text=True) == (
+        "week, slot, and set number must be positive; reps must be nonnegative"
+    )
+    assert "<input" not in invalid.get_data(as_text=True)
+    assert "<tr" not in invalid.get_data(as_text=True)
 
 
 def test_export_week_standalone_with_progress(client, make_lift, db_conn):

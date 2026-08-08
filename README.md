@@ -33,12 +33,15 @@ conda run -n sbs python -m webapp
 ## 每周流程
 
 ```
-打开首页  →  看当周计划(按天列出每个动作:重量×次数×组数 + 目标)
-练完填末组次数  →  点「提交并算下周」
-→  引擎按三层规则更新每个动作,week+1,渲染下周
+打开 Week Workspace  →  在 Week Ledger 中跨 Day 查看整周 Lift
+补录 Actual Added weight 与 progression-driver／末组次数
+→  需要时展开「补录前 N 组」；每次有效保存后在聚焦检查器核对预计 Progression
+→  未训练的 Lift 显式选择「本周跳过」
+→  全部 Lift 已补录或跳过后进入「最终复核」
+→  一次确认原子应用 Progression、finalize sessions 并进入下一个 Program week
 ```
 
-不再导出 JSON、不再传文件、不再开终端。提交前自动给 `sbs.db` 存一份快照到 `backups/`。
+空白表示尚未处理；实际 `0` 次会保存为失败 Training Fact；“本周跳过”不生成 Training Fact，也不改变该 Lift 的 Progression。最终确认受 `expected_week` 保护，并在同一事务推进前自动把 `sbs.db` 快照到 `backups/`。不再导出 JSON、不再传文件、不再开终端。
 
 ---
 

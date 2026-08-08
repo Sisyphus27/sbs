@@ -531,6 +531,117 @@ def test_plan_keeps_queued_autosave_sources_stable_while_refreshing_inspector(
     assert "<input" not in driver_fragment and "<tr" not in driver_fragment
 
 
+def test_earlier_set_first_stays_unresolved_until_driver_can_be_previewed(
+        client, make_lift, db_conn):
+    lid = make_lift(name="Curl", mode="linear_t3", sets=3, start=30.0)
+    unresolved_id = make_lift(
+        name="Still unresolved", mode="linear_t3", sets=3, start=20.0
+    )
+    assert _save_set(
+        client, unresolved_id, 3, 10, actual_added_weight=20.0
+    ).status_code == 200
+    assert client.post(
+        f"/lifts/{unresolved_id}/mode",
+        data={"mode": "linear_t2", "weight": "20.0"},
+    ).status_code == 302
+    state_before = dict(repo.get_training_state(db_conn, lid))
+
+    earlier = _save_set(
+        client, lid, 1, 15, actual_added_weight=32.5
+    )
+
+    assert earlier.status_code == 200
+    earlier_fragment = earlier.get_data(as_text=True)
+    assert "已保存" in earlier_fragment
+    assert '<input' not in earlier_fragment and '<tr' not in earlier_fragment
+    assert 'data-server-state="unresolved"' in earlier_fragment
+    assert "待有效输入" in earlier_fragment
+    assert "Training volume 488 kg" in earlier_fragment
+    assert "est1RM" not in earlier_fragment
+    assert "Program week 2" not in earlier_fragment
+    assert "下一周处方" not in earlier_fragment
+    assert dict(repo.get_training_state(db_conn, lid)) == state_before
+    assert [
+        (
+            row["set_number"],
+            row["actual_added_weight"],
+            row["reps"],
+            row["warmup"],
+            row["drives_progression"],
+        )
+        for row in _slot_facts(db_conn, lid)
+    ] == [(1, 32.5, 15, 0, 0)]
+
+    driver = _save_set(
+        client, lid, 3, 20, actual_added_weight=30.0
+    )
+
+    assert driver.status_code == 200
+    driver_fragment = driver.get_data(as_text=True)
+    assert 'data-server-state="logged"' in driver_fragment
+    assert "待有效输入" not in driver_fragment
+    assert "Program week 2" in driver_fragment
+    assert "Working Weight 30.0 → 32.5 kg" in driver_fragment
+    assert "下一周处方 Working Weight 32.5 kg" in driver_fragment
+    assert "Training volume 1088 kg" in driver_fragment
+    assert "est1RM" in driver_fragment
+    assert dict(repo.get_training_state(db_conn, lid)) == state_before
+
+    incomplete = client.post("/log", data={"expected_week": "1"})
+    assert incomplete.status_code == 400
+    assert incomplete.get_data(as_text=True) == "unresolved training slots"
+    assert repo.get_settings(db_conn)["week"] == 1
+    assert dict(repo.get_training_state(db_conn, lid)) == state_before
+
+    settled = client.post(
+        "/log",
+        data={
+            "expected_week": "1",
+            "skipped_slot_ids": str(unresolved_id),
+        },
+    )
+    assert settled.status_code == 302
+    assert repo.get_settings(db_conn)["week"] == 2
+    assert repo.get_training_state(db_conn, lid)["weight"] == 32.5
+
+
+def test_earlier_set_after_mode_switch_awaits_a_valid_current_driver(
+        client, make_lift, db_conn):
+    lid = make_lift(name="Curl", mode="linear_t3", sets=3, start=30.0)
+    assert _save_set(
+        client, lid, 3, 10, actual_added_weight=30.0
+    ).status_code == 200
+    assert client.post(
+        f"/lifts/{lid}/mode",
+        data={"mode": "linear_t2", "weight": "30.0"},
+    ).status_code == 302
+    state_before = dict(repo.get_training_state(db_conn, lid))
+
+    earlier = _save_set(
+        client, lid, 1, 8, actual_added_weight=30.0
+    )
+
+    assert earlier.status_code == 200
+    fragment = earlier.get_data(as_text=True)
+    assert 'data-server-state="unresolved"' in fragment
+    assert "待有效输入" in fragment
+    assert "Training volume 540 kg" in fragment
+    assert "Program week 2" not in fragment
+    assert "下一周处方" not in fragment
+    assert dict(repo.get_training_state(db_conn, lid)) == state_before
+    assert [
+        (
+            row["set_number"],
+            row["mode"],
+            row["drives_progression"],
+        )
+        for row in _slot_facts(db_conn, lid)
+    ] == [
+        (1, "linear_t3", 0),
+        (3, "linear_t3", 1),
+    ]
+
+
 def test_focus_inspector_marks_first_recorded_week_without_inventing_a_delta(
         client, make_lift):
     lid = make_lift(name="Curl", start=30.0)

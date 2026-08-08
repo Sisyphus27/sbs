@@ -16,7 +16,7 @@
       {% include '_progression_outcome.html' %}
     {% endif %}
   </div>
-  {% if not preview.skipped and not preview.awaiting_input %}
+  {% if not preview.skipped and (not preview.awaiting_input or preview.comparison) %}
   <div class="focus-performance">
     <h3>本次表现</h3>
     {% set comparison = preview.comparison %}

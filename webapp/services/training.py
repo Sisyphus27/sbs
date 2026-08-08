@@ -303,6 +303,14 @@ def _validate_progression_driver(row):
     return mode
 
 
+def _is_valid_progression_driver(row):
+    try:
+        _validate_progression_driver(row)
+    except TrainingInputError:
+        return False
+    return True
+
+
 def _progression_models(row, expected_week: int, canonical_e1rm,
                         projection_available: bool):
     mode = _validate_progression_driver(row)
@@ -427,9 +435,7 @@ def _settlement_drivers(conn: sqlite3.Connection, *, expected_week: int,
         slot_id = row["slot_id"]
         if slot_id not in planned_ids:
             continue
-        try:
-            _validate_progression_driver(row)
-        except TrainingInputError:
+        if not _is_valid_progression_driver(row):
             continue
         if slot_id in drivers:
             raise TrainingInputError("duplicate progression driver")
@@ -602,7 +608,16 @@ def preview_progression(source_conn: sqlite3.Connection, *, expected_week: int,
                 row["slot_id"] for row in repo.list_progression_drivers(
                     preview_conn, program_week=expected_week
                 )
+                if _is_valid_progression_driver(row)
             }
+            if slot_id not in driver_ids:
+                return {
+                    "slot_id": slot_id,
+                    "name": slot["name"],
+                    "mode": slot["mode"],
+                    "awaiting_input": True,
+                    "performance_rows": performance_rows,
+                }
             skipped_slot_ids = [
                 item["slot_id"] for item in training_plan(preview_conn)["slots"]
                 if item["slot_id"] not in driver_ids

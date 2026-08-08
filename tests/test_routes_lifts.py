@@ -2,6 +2,13 @@ from webapp import repo
 from tests.v1_helpers import mirror_legacy_lift
 
 
+def _training_slot_by_name(conn, name):
+    return next(
+        (slot for slot in repo.list_training_slots(conn) if slot["name"] == name),
+        None,
+    )
+
+
 def _lift(app):
     from webapp.db import connect
     conn = connect(app.config["DB_PATH"])
@@ -54,7 +61,7 @@ def test_new_pure_bodyweight_defaults_pct(client, app):
     with app.app_context():
         from webapp.db import connect
         conn = connect(app.config["DB_PATH"])
-        assert repo.get_lift_by_name(conn, "Pull-up")["bodyweight_pct"] == 1.0
+        assert _training_slot_by_name(conn, "Pull-up")["bodyweight_pct"] == 1.0
         conn.close()
 
 

@@ -83,18 +83,29 @@ def new():
     else:
         pct = _f("bodyweight_pct", 0.0, float) or 0.0
     try:
-        lid = repo.create_lift(
-            conn, name=name, load_model=load_model, mode=mode,
-            day=_f("day", 1, int), sort_order=999,
-            sets=_f("sets", 3, int), max=_f("max", cast=float),
-            intensity=_f("intensity", cast=float), reps=_f("reps", cast=int),
-            repout=_f("repout", cast=int), start=_f("start", cast=float),
-            lift_kind=_f("lift_kind") if mode == "sbs" else None, incr=incr,
-            bodyweight_pct=pct)
+        if load_model == "pure_bodyweight":
+            lid = repo.create_pure_bodyweight_training_slot(
+                conn,
+                name=name,
+                day=_f("day", 1, int),
+                sort_order=999,
+                sets=_f("sets", 3, int),
+                bodyweight_pct=pct,
+            )
+            lift = repo.get_training_slot(conn, lid)
+        else:
+            lid = repo.create_lift(
+                conn, name=name, load_model=load_model, mode=mode,
+                day=_f("day", 1, int), sort_order=999,
+                sets=_f("sets", 3, int), max=_f("max", cast=float),
+                intensity=_f("intensity", cast=float), reps=_f("reps", cast=int),
+                repout=_f("repout", cast=int), start=_f("start", cast=float),
+                lift_kind=_f("lift_kind") if mode == "sbs" else None,
+                incr=incr, bodyweight_pct=pct)
+            lift = repo.get_lift(conn, lid)
     except Exception as e:
         flash(f"创建 Lift 失败: {e}", "error")
         return render_template("_lift_row.html", lift=None, error=str(e)), 400
-    lift = repo.get_lift(conn, lid)
     return render_template("_lift_row.html", lift=lift)
 
 

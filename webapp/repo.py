@@ -78,6 +78,63 @@ def create_lift(conn: sqlite3.Connection, *, name: str,
     return lid
 
 
+def create_pure_bodyweight_training_slot(
+        conn: sqlite3.Connection, *, name: str, day: int,
+        sort_order: int, sets: int, bodyweight_pct: float = 1.0) -> int:
+    """Create one current-schema pure-bodyweight record-only Lift."""
+    from math import isfinite
+
+    from sbs_cli.data.schema import Lift
+    from sbs_cli.engine.modes import get_mode
+
+    if not isfinite(bodyweight_pct) or bodyweight_pct <= 0:
+        raise ValueError("pure bodyweight percentage must be positive and finite")
+    lift = Lift(
+        name=name,
+        load_model="pure_bodyweight",
+        mode="none",
+        day=day,
+        sets=sets,
+        start=0.0,
+        bodyweight_pct=bodyweight_pct,
+    )
+    state = get_mode("none").initial_state(lift, None)
+    with conn:
+        exercise_id = conn.execute(
+            "INSERT INTO exercise (name, load_model) VALUES (?, ?)",
+            (name, "pure_bodyweight"),
+        ).lastrowid
+        slot_id = conn.execute(
+            "INSERT INTO program_slot "
+            "(exercise_id, day, sort_order, mode, sets, start_weight, "
+            "bodyweight_pct) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                exercise_id,
+                day,
+                sort_order,
+                "none",
+                sets,
+                0.0,
+                bodyweight_pct,
+            ),
+        ).lastrowid
+        conn.execute(
+            "INSERT INTO strength_state "
+            "(slot_id, mode, tm, weight, target, streak, est1rm) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                slot_id,
+                state.mode,
+                state.tm,
+                state.weight,
+                state.target,
+                state.streak,
+                state.est1rm,
+            ),
+        )
+    return slot_id
+
+
 def _init_lift_state(conn, lid, mode, max, start):
     """Dispatch to the registered mode handler to seed lift_state (ADR 0005).
 

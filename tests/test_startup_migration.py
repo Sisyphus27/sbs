@@ -298,6 +298,11 @@ def test_homepage_finalize_confirms_migrated_current_week_sets(tmp_path):
                 f"/log/save?lid={slot_id}&set_number={set_number}",
                 data={
                     "expected_week": "1",
+                    "slot_id": str(slot_id),
+                    "set_number": str(set_number),
+                    "save_sequence": str(set_number),
+                    "focused_slot_id": str(slot_id),
+                    "focus_sequence": str(set_number),
                     f"actual_added_weight_{slot_id}": "30",
                     f"set_{slot_id}_{set_number}": str(reps),
                 },

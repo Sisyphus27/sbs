@@ -46,6 +46,11 @@ def test_rendered_pure_bodyweight_creation_can_save_record_only_fact(tmp_path):
         f"/log/save?lid={slot_id}&set_number={set_number}",
         data={
             "expected_week": "1",
+            "slot_id": str(slot_id),
+            "set_number": str(set_number),
+            "save_sequence": "1",
+            "focused_slot_id": str(slot_id),
+            "focus_sequence": "1",
             f"actual_added_weight_{slot_id}": "0",
             f"set_{slot_id}_{set_number}": "10",
         },

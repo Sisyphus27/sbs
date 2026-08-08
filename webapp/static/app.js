@@ -54,162 +54,295 @@
 
 (function () {
   var workspace = document.querySelector('[data-week-settlement]');
-  if (!workspace) return;
-  var form = workspace.querySelector('form[data-disable-submit]');
+  var snapshotElement = document.getElementById('week-workspace-snapshot');
+  if (!workspace || !snapshotElement || !window.createWeekWorkspace) return;
+  var snapshot = JSON.parse(snapshotElement.textContent);
+  var expectedWeek = snapshot.expectedWeek;
+  var handle = window.createWeekWorkspace(snapshot);
   var review = document.getElementById('settlement-review');
   var handled = workspace.querySelector('[data-handled-count]');
   var pending = workspace.querySelector('[data-pending-count]');
   var next = workspace.querySelector('[data-next-unresolved]');
 
-  function rows() {
-    return Array.prototype.slice.call(
-      workspace.querySelectorAll('.week-ledger-row')
-    );
+  function rowFor(slotId) {
+    return document.getElementById('ledger-row-' + slotId);
   }
 
-  function requestSources(row) {
-    return Array.prototype.slice.call(
-      row.querySelectorAll('[data-request-error-id]')
-    );
-  }
+  function renderWorkspace(effect) {
+    effect.view.lifts.forEach(function (lift) {
+      var row = rowFor(lift.slotId);
+      if (!row) return;
+      row.classList.toggle('is-skipped', lift.state === 'skipped');
+      row.classList.toggle('is-logged', lift.state === 'logged');
+      row.classList.toggle('is-unresolved', lift.state === 'unresolved');
 
-  function hasRequestFailure(row) {
-    return requestSources(row).some(function (source) {
-      return source.dataset.requestFailed === 'true';
-    });
-  }
-
-  function setRequestError(source, message) {
-    var error = document.getElementById(source.dataset.requestErrorId);
-    if (error) error.textContent = message;
-  }
-
-  function rowState(row) {
-    if (Number(row.dataset.pendingRequests || 0) > 0) return 'unresolved';
-    if (hasRequestFailure(row)) return 'unresolved';
-    var status = row.querySelector('[data-ledger-status]');
-    if (status && status.dataset.serverState === 'logged') return 'logged';
-    if (row.dataset.skipped === 'true') return 'skipped';
-    return 'unresolved';
-  }
-
-  function syncRow(row) {
-    var state = rowState(row);
-    var requestPending = Number(row.dataset.pendingRequests || 0) > 0;
-    var requestFailed = hasRequestFailure(row);
-    if (state === 'logged' && row.dataset.skipped === 'true') {
-      row.dataset.skipped = 'false';
-      row.querySelector('[name="skipped_slot_ids"]').disabled = true;
-      row.querySelectorAll('input:not([name="skipped_slot_ids"])').forEach(
-        function (input) { input.disabled = false; }
-      );
-    }
-    row.dataset.settlementState = state;
-    row.classList.toggle('is-skipped', state === 'skipped');
-    row.classList.toggle('is-logged', state === 'logged');
-    row.classList.toggle('is-unresolved', state === 'unresolved');
-    var status = row.querySelector('[data-ledger-status]');
-    if (status && state === 'unresolved' && (requestPending || requestFailed)) {
-      status.className = 'ledger-status is-unresolved';
-      status.textContent = requestPending
-        ? '保存中 · 待处理'
-        : '保存失败 · 待处理';
-    } else if (status && state === 'logged') {
-      var failedZero = status.dataset.serverZero === 'true';
-      status.className = 'ledger-status is-logged' + (
-        failedZero ? ' is-zero' : ''
-      );
-      status.textContent = failedZero ? '已补录 · 0 次失败' : '已补录';
-    } else if (status && state === 'skipped') {
-      status.className = 'ledger-status is-skipped';
-      status.textContent = '本周跳过';
-    } else if (status) {
-      status.className = 'ledger-status is-unresolved';
-      status.textContent = '待处理';
-    }
-    var toggle = row.querySelector('[data-skip-toggle]');
-    if (toggle) {
-      toggle.hidden = state === 'logged';
-      toggle.disabled = state === 'logged' || requestPending;
-      if (state === 'logged') toggle.textContent = '本周跳过';
-    }
-  }
-
-  function syncWorkspace() {
-    var allRows = rows();
-    allRows.forEach(syncRow);
-    var handledCount = allRows.filter(function (row) {
-      return rowState(row) !== 'unresolved';
-    }).length;
-    var hasPendingRequest = allRows.some(function (row) {
-      return Number(row.dataset.pendingRequests || 0) > 0;
-    });
-    handled.textContent = handledCount;
-    pending.textContent = allRows.length - handledCount;
-    review.disabled = handledCount !== allRows.length || hasPendingRequest;
-    next.disabled = handledCount === allRows.length;
-  }
-
-  workspace.querySelectorAll('[data-skip-toggle]').forEach(function (toggle) {
-    toggle.addEventListener('click', function () {
-      var row = toggle.closest('.week-ledger-row');
-      var skipping = row.dataset.skipped !== 'true';
-      row.dataset.skipped = skipping ? 'true' : 'false';
-      var hidden = row.querySelector('[name="skipped_slot_ids"]');
-      hidden.disabled = !skipping;
-      row.querySelectorAll('input:not([name="skipped_slot_ids"])').forEach(
-        function (input) { input.disabled = skipping; }
-      );
       var status = row.querySelector('[data-ledger-status]');
-      status.className = 'ledger-status ' + (
-        skipping ? 'is-skipped' : 'is-unresolved'
-      );
-      status.textContent = skipping ? '本周跳过' : '待处理';
-      toggle.textContent = skipping ? '恢复补录' : '本周跳过';
-      toggle.value = skipping ? 'skip' : 'focus';
-      if (window.htmx) window.htmx.trigger(toggle, 'settlement-preview');
-      syncWorkspace();
-    });
-  });
+      if (status) {
+        status.className = 'ledger-status ' + (
+          lift.state === 'logged' ? 'is-logged' :
+            lift.state === 'skipped' ? 'is-skipped' : 'is-unresolved'
+        );
+        if (lift.failedZero) status.classList.add('is-zero');
+        status.textContent = lift.saving ? '保存中 · 待处理' :
+          lift.error ? '保存失败 · 待处理' :
+            lift.failedZero ? '已补录 · 0 次失败' :
+              lift.state === 'logged' ? '已补录' :
+                lift.state === 'skipped' ? '本周跳过' : '待处理';
+      }
 
-  next.addEventListener('click', function () {
-    var row = rows().find(function (candidate) {
-      return rowState(candidate) === 'unresolved';
-    });
-    if (!row) return;
-    row.scrollIntoView({behavior: 'smooth', block: 'center'});
-    var focus = row.querySelector('.focus-lift');
-    if (focus) focus.click();
-  });
+      var error = row.querySelector('[data-workspace-error]');
+      if (error) error.textContent = lift.error || '';
+      var skippedInput = row.querySelector('[name="skipped_slot_ids"]');
+      if (skippedInput) skippedInput.disabled = lift.state !== 'skipped';
+      row.querySelectorAll('input[data-week-field]').forEach(function (input) {
+        input.disabled = lift.state === 'skipped';
+      });
 
-  document.body.addEventListener('htmx:beforeRequest', function (event) {
-    var source = event.detail.elt;
-    var row = source.closest('.week-ledger-row');
-    if (!row) return;
-    row.dataset.pendingRequests = String(
-      Number(row.dataset.pendingRequests || 0) + 1
+      var skip = row.querySelector('[data-skip-lift]');
+      var resume = row.querySelector('[data-resume-lift]');
+      if (skip) {
+        skip.hidden = lift.state === 'logged'
+          || lift.settlementIntent === 'skip';
+        skip.disabled = lift.state === 'logged';
+      }
+      if (resume) {
+        resume.hidden = lift.state === 'logged'
+          || lift.settlementIntent !== 'skip';
+        resume.disabled = lift.state === 'logged';
+      }
+    });
+    handled.textContent = effect.view.handled;
+    pending.textContent = effect.view.pending;
+    review.disabled = !effect.view.reviewEligible;
+    next.disabled = effect.view.nextUnresolvedSlotId === null;
+  }
+
+  function replaceTopLevelElements(fragment) {
+    var container = document.createElement('template');
+    container.innerHTML = fragment.trim();
+    Array.prototype.slice.call(container.content.children).forEach(
+      function (replacement) {
+        if (!replacement.id) return;
+        var current = document.getElementById(replacement.id);
+        if (current) current.replaceWith(replacement);
+      }
     );
-    syncWorkspace();
-  });
-  document.body.addEventListener('htmx:afterRequest', function (event) {
-    var source = event.detail.elt;
-    var row = source.closest('.week-ledger-row');
-    if (!row) return;
-    row.dataset.pendingRequests = String(Math.max(
-      0, Number(row.dataset.pendingRequests || 0) - 1
-    ));
-    source.dataset.requestFailed = event.detail.successful ? 'false' : 'true';
-    if (event.detail.successful) {
-      setRequestError(source, '');
+  }
+
+  function renderInspector(fragment) {
+    var container = document.createElement('template');
+    container.innerHTML = fragment.trim();
+    var replacement = container.content.firstElementChild;
+    var current = document.getElementById('focus-inspector');
+    if (current && replacement) current.replaceWith(replacement);
+  }
+
+  function renderInspectorError(message) {
+    var current = document.getElementById('focus-inspector');
+    if (!current) return;
+    var error = document.createElement('div');
+    error.className = 'flash flash-error';
+    error.textContent = message;
+    current.textContent = '';
+    current.appendChild(error);
+  }
+
+  function renderReload() {
+    workspace.querySelectorAll('button, input').forEach(function (control) {
+      control.disabled = true;
+    });
+    var instruction = document.createElement('div');
+    instruction.className = 'flash flash-error';
+    instruction.textContent = 'Program week 已变更，请重新加载页面。';
+    workspace.insertBefore(instruction, workspace.firstChild);
+  }
+
+  function executeEffects(effects) {
+    effects.forEach(function (effect) {
+      if (effect.type === 'request') {
+        sendRequest(effect);
+      } else if (effect.role === 'workspace') {
+        renderWorkspace(effect);
+      } else if (effect.role === 'persistent') {
+        replaceTopLevelElements(effect.fragment);
+      } else if (effect.role === 'inspector') {
+        if (effect.fragment) {
+          renderInspector(effect.fragment);
+        } else if (effect.error) {
+          renderInspectorError(effect.error);
+        }
+      } else if (effect.role === 'reload') {
+        renderReload();
+      }
+    });
+  }
+
+  function responseEnvelope(responseText) {
+    var parsed = new DOMParser().parseFromString(responseText, 'text/html');
+    var envelope = parsed.querySelector('template[data-week-workspace-response]');
+    if (!envelope) return null;
+    var snapshotScript = envelope.content.querySelector(
+      'script[data-server-snapshot]'
+    );
+    function fragment(role) {
+      var child = envelope.content.querySelector(
+        'template[data-fragment-role="' + role + '"]'
+      );
+      return child ? child.innerHTML.trim() : undefined;
+    }
+    return {
+      role: envelope.dataset.responseRole,
+      expectedWeek: Number(envelope.dataset.expectedWeek),
+      slotId: Number(envelope.dataset.slotId),
+      saveSequence: Number(envelope.dataset.saveSequence),
+      focusedSlotId: Number(envelope.dataset.focusedSlotId),
+      focusSequence: Number(envelope.dataset.focusSequence),
+      serverSnapshot: snapshotScript
+        ? JSON.parse(snapshotScript.textContent) : undefined,
+      persistentFragment: fragment('persistent'),
+      inspectorFragment: fragment('inspector'),
+    };
+  }
+
+  function resultEvent(effect, xhr) {
+    var payload = effect.payload;
+    var successful = xhr.status >= 200 && xhr.status < 300;
+    var envelope = successful ? responseEnvelope(xhr.responseText) : null;
+    if (successful && (!envelope || envelope.role !== effect.role)) {
+      successful = false;
+    }
+    var identity = envelope || payload;
+    var event = {
+      type: effect.role === 'save' ? 'saveResult' : 'inspectorResult',
+      expectedWeek: identity.expectedWeek,
+      slotId: identity.slotId,
+      focusSequence: identity.focusSequence,
+      success: successful,
+      staleWeek: xhr.status === 409,
+    };
+    if (effect.role === 'save') {
+      event.saveSequence = identity.saveSequence;
+      event.focusedSlotId = identity.focusedSlotId;
+      if (envelope && envelope.serverSnapshot) {
+        event.serverSnapshot = envelope.serverSnapshot;
+        event.coverage = envelope.serverSnapshot.coverage;
+      }
+      if (envelope && envelope.persistentFragment !== undefined) {
+        event.persistentFragment = envelope.persistentFragment;
+      }
+    }
+    if (envelope && envelope.inspectorFragment !== undefined) {
+      event.inspectorFragment = envelope.inspectorFragment;
+    }
+    if (!successful) {
+      event.error = xhr.responseText && xhr.responseText.trim()
+        ? xhr.responseText.trim() : '请求失败';
+    }
+    return event;
+  }
+
+  function transportFailureEvent(effect) {
+    var payload = effect.payload;
+    return {
+      type: effect.role === 'save' ? 'saveResult' : 'inspectorResult',
+      expectedWeek: payload.expectedWeek,
+      slotId: payload.slotId,
+      saveSequence: payload.saveSequence,
+      focusedSlotId: payload.focusedSlotId,
+      focusSequence: payload.focusSequence,
+      success: false,
+      error: '请求失败',
+    };
+  }
+
+  function sendRequest(effect) {
+    var payload = effect.payload;
+    var row = rowFor(payload.slotId);
+    var source = document.createElement('span');
+    source.hidden = true;
+    workspace.appendChild(source);
+    var url;
+    var values = {
+      expected_week: payload.expectedWeek,
+      slot_id: payload.slotId,
+      focus_sequence: payload.focusSequence,
+    };
+    if (effect.role === 'save') {
+      url = row.dataset.saveUrl + '&set_number=' + payload.setNumber;
+      values.save_sequence = payload.saveSequence;
+      values.focused_slot_id = payload.focusedSlotId;
+      values.set_number = payload.setNumber;
+      values.reps = payload.reps;
+      if (Object.prototype.hasOwnProperty.call(payload, 'actualAddedWeight')) {
+        values.actual_added_weight = payload.actualAddedWeight;
+      }
     } else {
-      var response = event.detail.xhr && event.detail.xhr.responseText;
-      setRequestError(source, response ? response.trim() : '请求失败');
-      var status = row.querySelector('[data-ledger-status]');
-      status.className = 'ledger-status is-unresolved';
-      status.textContent = '保存失败 · 待处理';
+      url = row.dataset.inspectorUrl;
+      values.intent = payload.intent === 'skip' ? 'skip' : 'focus';
+      if (Object.prototype.hasOwnProperty.call(payload, 'actualAddedWeight')) {
+        values.actual_added_weight = payload.actualAddedWeight;
+        values.reps = payload.driverReps;
+      }
     }
-    window.setTimeout(syncWorkspace, 0);
+    var completed = false;
+    window.htmx.ajax('POST', url, {
+      source: source,
+      values: values,
+      handler: function (_source, responseInfo) {
+        completed = true;
+        executeEffects(handle(resultEvent(effect, responseInfo.xhr)));
+      },
+    }).then(function () {
+      source.remove();
+    }, function () {
+      if (!completed) {
+        executeEffects(handle(transportFailureEvent(effect)));
+      }
+      source.remove();
+    });
+  }
+
+  workspace.addEventListener('change', function (event) {
+    var input = event.target.closest('input[data-week-field]');
+    if (!input) return;
+    var row = input.closest('.week-ledger-row');
+    executeEffects(handle({
+      type: 'change',
+      expectedWeek: expectedWeek,
+      slotId: Number(row.dataset.slotId),
+      field: input.dataset.weekField,
+      setNumber: Number(input.dataset.setNumber),
+      value: input.value,
+    }));
   });
-  document.body.addEventListener('htmx:afterSettle', syncWorkspace);
-  syncWorkspace();
+
+  workspace.addEventListener('click', function (event) {
+    var target = event.target;
+    var row = target.closest('.week-ledger-row');
+    if (target.closest('[data-next-unresolved]')) {
+      executeEffects(handle({
+        type: 'nextUnresolved', expectedWeek: expectedWeek,
+      }));
+    } else if (row && target.closest('[data-focus-lift]')) {
+      executeEffects(handle({
+        type: 'focus',
+        expectedWeek: expectedWeek,
+        slotId: Number(row.dataset.slotId),
+      }));
+    } else if (row && target.closest('[data-skip-lift]')) {
+      executeEffects(handle({
+        type: 'skip',
+        expectedWeek: expectedWeek,
+        slotId: Number(row.dataset.slotId),
+      }));
+    } else if (row && target.closest('[data-resume-lift]')) {
+      executeEffects(handle({
+        type: 'resume',
+        expectedWeek: expectedWeek,
+        slotId: Number(row.dataset.slotId),
+      }));
+    }
+  });
+
+  executeEffects(handle({type: 'bootstrap', expectedWeek: expectedWeek}));
 })();

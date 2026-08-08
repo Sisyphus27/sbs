@@ -1,3 +1,4 @@
+import json
 import sqlite3
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -13,6 +14,11 @@ from webapp.services.training import training_history
 def _set_data(slot_id, set_number, reps, *, week=1, actual_added_weight=None):
     data = {
         "expected_week": str(week),
+        "slot_id": str(slot_id),
+        "set_number": str(set_number),
+        "save_sequence": "1",
+        "focused_slot_id": str(slot_id),
+        "focus_sequence": "1",
         f"set_{slot_id}_{set_number}": str(reps),
     }
     if actual_added_weight is not None:
@@ -36,6 +42,12 @@ def _save_set(client, slot_id, set_number, reps, *, week=1,
 
 def _slot_facts(conn, slot_id):
     return [row for row in training_history(conn) if row["slot_id"] == slot_id]
+
+
+def _workspace_snapshot(html):
+    marker = '<script type="application/json" id="week-workspace-snapshot">'
+    payload = html.split(marker, 1)[1].split("</script>", 1)[0]
+    return json.loads(payload)
 
 
 def test_plan_view_empty(client):
@@ -125,7 +137,7 @@ def test_week_ledger_saves_weight_and_reps_for_driver_and_earlier_sets(
         )
         for row in _slot_facts(db_conn, lid)
     ] == [
-        (1, 32.5, 8, 0),
+        (1, 30.0, 8, 0),
         (3, 35.0, 0, 1),
     ]
 
@@ -175,7 +187,8 @@ def test_week_ledger_preserves_load_model_weight_semantics(
 
     assert weighted_response.status_code == 200
     assert f'id="working-weight-{weighted}"' in weighted_fragment
-    assert 'hx-swap-oob="outerHTML"' in weighted_fragment
+    assert 'data-fragment-role="persistent"' in weighted_fragment
+    assert 'hx-swap-oob' not in weighted_fragment
     assert "Actual Working Weight 不可用" in weighted_fragment
     assert "Actual Working Weight 不可用" in weighted_row
 
@@ -219,9 +232,9 @@ def test_week_ledger_renders_zero_reps_as_a_logged_failure(client, make_lift):
     page = client.get("/").get_data(as_text=True)
 
     assert response.status_code == 200
-    assert f'id="ledger-status-{lid}"' in fragment
-    assert 'hx-swap-oob="outerHTML"' in fragment
-    assert "已补录 · 0 次失败" in fragment
+    assert '"settlementReady": true' in fragment
+    assert '"driverReps": 0' in fragment
+    assert 'hx-swap-oob' not in fragment
     assert f'id="ledger-row-{lid}"' in page
     assert 'class="week-ledger-row is-logged is-zero"' in page
     assert "已补录 · 0 次失败" in page
@@ -391,35 +404,62 @@ def test_plan_form_carries_expected_program_week(client):
     assert 'type="hidden" name="expected_week" value="1"' in html
 
 
-def test_autosave_includes_expected_program_week(client, make_lift):
-    make_lift(name="Curl", start=30.0)
+def test_week_workspace_bootstraps_from_structured_snapshot_without_old_htmx_coordination(
+        client, make_lift):
+    logged_id = make_lift(name="Curl", start=30.0)
+    unresolved_id = make_lift(name="Row", start=40.0, day=2)
+    assert _save_set(
+        client, logged_id, 3, 0, actual_added_weight=30.0
+    ).status_code == 200
+
     html = client.get("/").get_data(as_text=True)
-    assert 'hx-include="[name=\'expected_week\'],' in html
+    snapshot = _workspace_snapshot(html)
+
+    assert snapshot["expectedWeek"] == 1
+    assert snapshot["focusedSlotId"] is None
+    assert snapshot["focusSequence"] == 0
+    assert [lift["slotId"] for lift in snapshot["lifts"]] == [
+        logged_id, unresolved_id
+    ]
+    logged, unresolved = snapshot["lifts"]
+    assert logged["driverSetNumber"] == 3
+    assert logged["draft"]["driverReps"] == 0
+    assert logged["serverSnapshot"] == {
+        "coverage": ["addedWeight", "driverReps"],
+        "driverReps": 0,
+        "hasDriverFact": True,
+        "settlementReady": True,
+    }
+    assert unresolved["draft"]["driverReps"] == ""
+    assert unresolved["serverSnapshot"] == {
+        "coverage": [],
+        "driverReps": None,
+        "hasDriverFact": False,
+        "settlementReady": False,
+    }
+    workspace = html.split('data-week-settlement', 1)[1]
+    for obsolete in (
+        "hx-sync", "hx-target", "hx-swap", "hx-post",
+        "data-settlement-state", "data-server-state", "data-server-zero",
+    ):
+        assert obsolete not in workspace
+    assert '<script src="/static/week_workspace.js"></script>' in html
 
 
-def test_week_request_sources_have_distinct_error_regions_and_return_details(
+def test_week_request_errors_have_one_coordinator_owned_region_and_return_details(
         client, make_lift):
     lid = make_lift(name="Curl", start=30.0)
     html = client.get("/").get_data(as_text=True)
     row = html.split(f'id="ledger-row-{lid}"', 1)[1].split("</tr>", 1)[0]
 
-    error_ids = (
-        f"request-error-weight-{lid}",
-        f"request-error-set-{lid}-1",
-        f"request-error-set-{lid}-2",
-        f"request-error-set-{lid}-3",
-        f"request-error-skip-{lid}",
-        f"request-error-focus-{lid}",
-    )
-    for error_id in error_ids:
-        assert f'data-request-error-id="{error_id}"' in row
-        assert f'id="{error_id}"' in row
-    assert row.count('role="alert"') == len(error_ids)
-    assert 'data-server-state="unresolved"' in row
+    assert row.count('data-workspace-error') == 1
+    assert row.count('role="alert"') == 1
+    assert 'data-request-error-id' not in row
+    assert 'data-server-state' not in row
 
     saved = _save_set(client, lid, 3, 10, actual_added_weight=30.0)
     assert saved.status_code == 200
-    assert 'data-server-state="logged"' in saved.get_data(as_text=True)
+    assert '"settlementReady": true' in saved.get_data(as_text=True)
 
     invalid = _save_set(client, lid, 3, -1, actual_added_weight=30.0)
     assert invalid.status_code == 400
@@ -504,31 +544,46 @@ def test_plan_view_prefills_every_saved_set(client, make_lift):
     assert 'value="18"' in html
 
 
-def test_plan_keeps_queued_autosave_sources_stable_while_refreshing_inspector(
-        client, make_lift):
+def test_save_returns_identity_tagged_inert_fragments_for_driver_and_earlier_set(
+        client, make_lift, db_conn):
     lid = make_lift(name="Curl", start=30.0)
 
-    html = client.get("/").get_data(as_text=True)
-
-    assert html.count('hx-sync="closest tr:queue all"') == 4
-    assert 'hx-sync="this:queue all"' not in html
-    assert html.count(f'hx-target="#save-{lid}-3"') == 2
-    assert html.count(f'hx-target="#save-{lid}-1"') == 1
-    assert html.count(f'hx-target="#save-{lid}-2"') == 1
-    assert 'hx-target="closest .lift-row"' not in html
-
-    fragment = _save_set(client, lid, 1, 15).get_data(as_text=True)
-    assert fragment.count('hx-swap-oob="outerHTML"') == 2
-    assert f'id="save-{lid}-1"' in fragment
-    assert f'id="ledger-status-{lid}"' in fragment
-    assert "<input" not in fragment and "<tr" not in fragment
-    assert 'id="focus-inspector"' in fragment
-    assert "Training volume 450 kg" in fragment
-
-    driver_fragment = _save_set(client, lid, 3, 18).get_data(as_text=True)
-    assert driver_fragment.count('hx-swap-oob="outerHTML"') == 2
+    driver_data = _set_data(lid, 3, 18, actual_added_weight=30.0)
+    driver_data.update(save_sequence="7", focus_sequence="11")
+    driver = client.post(
+        f"/log/save?lid={lid}&set_number=3", data=driver_data
+    )
+    assert driver.status_code == 200
+    driver_fragment = driver.get_data(as_text=True)
+    assert 'data-week-workspace-response' in driver_fragment
+    assert 'data-response-role="save"' in driver_fragment
+    assert 'data-expected-week="1"' in driver_fragment
+    assert f'data-slot-id="{lid}"' in driver_fragment
+    assert 'data-save-sequence="7"' in driver_fragment
+    assert f'data-focused-slot-id="{lid}"' in driver_fragment
+    assert 'data-focus-sequence="11"' in driver_fragment
+    assert 'data-fragment-role="persistent"' in driver_fragment
+    assert 'data-fragment-role="inspector"' in driver_fragment
+    assert 'hx-swap-oob' not in driver_fragment
+    assert f'id="save-{lid}-3"' in driver_fragment
     assert 'id="focus-inspector"' in driver_fragment
-    assert "<input" not in driver_fragment and "<tr" not in driver_fragment
+    assert '"coverage": ["addedWeight", "driverReps"]' in driver_fragment
+
+    earlier_data = _set_data(lid, 1, 10, actual_added_weight=99.0)
+    earlier_data.update(save_sequence="8", focus_sequence="12")
+    earlier = client.post(
+        f"/log/save?lid={lid}&set_number=1", data=earlier_data
+    )
+    assert earlier.status_code == 200
+    earlier_fragment = earlier.get_data(as_text=True)
+    assert 'data-save-sequence="8"' in earlier_fragment
+    assert 'data-focus-sequence="12"' in earlier_fragment
+    assert '"coverage": ["earlierSetReps.1"]' in earlier_fragment
+    assert 'hx-swap-oob' not in earlier_fragment
+    assert [
+        (row["set_number"], row["actual_added_weight"], row["reps"])
+        for row in _slot_facts(db_conn, lid)
+    ] == [(1, 30.0, 10), (3, 30.0, 18)]
 
 
 def test_earlier_set_first_stays_unresolved_until_driver_can_be_previewed(
@@ -554,9 +609,9 @@ def test_earlier_set_first_stays_unresolved_until_driver_can_be_previewed(
     earlier_fragment = earlier.get_data(as_text=True)
     assert "已保存" in earlier_fragment
     assert '<input' not in earlier_fragment and '<tr' not in earlier_fragment
-    assert 'data-server-state="unresolved"' in earlier_fragment
+    assert '"settlementReady": false' in earlier_fragment
     assert "待有效输入" in earlier_fragment
-    assert "Training volume 488 kg" in earlier_fragment
+    assert "Training volume 450 kg" in earlier_fragment
     assert "est1RM" not in earlier_fragment
     assert "Program week 2" not in earlier_fragment
     assert "下一周处方" not in earlier_fragment
@@ -570,7 +625,7 @@ def test_earlier_set_first_stays_unresolved_until_driver_can_be_previewed(
             row["drives_progression"],
         )
         for row in _slot_facts(db_conn, lid)
-    ] == [(1, 32.5, 15, 0, 0)]
+    ] == [(1, 30.0, 15, 0, 0)]
 
     driver = _save_set(
         client, lid, 3, 20, actual_added_weight=30.0
@@ -578,12 +633,12 @@ def test_earlier_set_first_stays_unresolved_until_driver_can_be_previewed(
 
     assert driver.status_code == 200
     driver_fragment = driver.get_data(as_text=True)
-    assert 'data-server-state="logged"' in driver_fragment
+    assert '"settlementReady": true' in driver_fragment
     assert "待有效输入" not in driver_fragment
     assert "Program week 2" in driver_fragment
     assert "Working Weight 30.0 → 32.5 kg" in driver_fragment
     assert "下一周处方 Working Weight 32.5 kg" in driver_fragment
-    assert "Training volume 1088 kg" in driver_fragment
+    assert "Training volume 1050 kg" in driver_fragment
     assert "est1RM" in driver_fragment
     assert dict(repo.get_training_state(db_conn, lid)) == state_before
 
@@ -623,7 +678,7 @@ def test_earlier_set_after_mode_switch_awaits_a_valid_current_driver(
 
     assert earlier.status_code == 200
     fragment = earlier.get_data(as_text=True)
-    assert 'data-server-state="unresolved"' in fragment
+    assert '"settlementReady": false' in fragment
     assert "待有效输入" in fragment
     assert "Training volume 540 kg" in fragment
     assert "Program week 2" not in fragment
@@ -746,10 +801,7 @@ def test_plan_submit_preserves_existing_actual_weight_and_set_roles(
     for set_number, reps in ((1, 9), (2, 7)):
         response = client.post(
             f"/log/save?lid={lid}&set_number={set_number}",
-            data={
-                "expected_week": "1",
-                f"set_{lid}_{set_number}": str(reps),
-            },
+            data=_set_data(lid, set_number, reps),
         )
         assert response.status_code == 200
     response = client.post("/log", data={"expected_week": "1"})
@@ -812,7 +864,7 @@ def test_save_log_rejects_blank_without_erasing_the_fact(
     assert _save_set(client, lid, 3, 18).status_code == 200
     rv = client.post(
         f"/log/save?lid={lid}&set_number=3",
-        data={"expected_week": "1", f"set_{lid}_3": ""},
+        data=_set_data(lid, 3, ""),
     )
     assert rv.status_code == 400
     assert [(row["set_number"], row["reps"])

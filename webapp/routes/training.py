@@ -5,7 +5,7 @@ from datetime import date
 from flask import Blueprint, current_app, jsonify, request
 
 from .. import repo
-from ..backup import snapshot
+from ..backup import make_snapshot_before_advance
 from ..db import get_db
 from ..services.training import (
     StaleTrainingWeekError,
@@ -138,13 +138,12 @@ def finalize():
     from datetime import datetime, timezone
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
-    def snapshot_before_advance():
-        snapshot(
-            current_app.config["DB_PATH"],
-            dest_dir=current_app.config["BACKUP_DIR"],
-            week=expected_week,
-            ts=timestamp,
-        )
+    snapshot_before_advance = make_snapshot_before_advance(
+        current_app.config["DB_PATH"],
+        dest_dir=current_app.config["BACKUP_DIR"],
+        week=expected_week,
+        timestamp=lambda: timestamp,
+    )
 
     try:
         new_week = finalize_week(

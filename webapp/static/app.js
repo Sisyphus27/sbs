@@ -67,10 +67,28 @@
     );
   }
 
+  function requestSources(row) {
+    return Array.prototype.slice.call(
+      row.querySelectorAll('[data-request-error-id]')
+    );
+  }
+
+  function hasRequestFailure(row) {
+    return requestSources(row).some(function (source) {
+      return source.dataset.requestFailed === 'true';
+    });
+  }
+
+  function setRequestError(source, message) {
+    var error = document.getElementById(source.dataset.requestErrorId);
+    if (error) error.textContent = message;
+  }
+
   function rowState(row) {
-    if (row.dataset.requestFailed === 'true') return 'unresolved';
+    if (Number(row.dataset.pendingRequests || 0) > 0) return 'unresolved';
+    if (hasRequestFailure(row)) return 'unresolved';
     var status = row.querySelector('[data-ledger-status]');
-    if (status && status.classList.contains('is-logged')) return 'logged';
+    if (status && status.dataset.serverState === 'logged') return 'logged';
     if (row.dataset.skipped === 'true') return 'skipped';
     return 'unresolved';
   }
@@ -78,6 +96,7 @@
   function syncRow(row) {
     var state = rowState(row);
     var requestPending = Number(row.dataset.pendingRequests || 0) > 0;
+    var requestFailed = hasRequestFailure(row);
     if (state === 'logged' && row.dataset.skipped === 'true') {
       row.dataset.skipped = 'false';
       row.querySelector('[name="skipped_slot_ids"]').disabled = true;
@@ -89,6 +108,25 @@
     row.classList.toggle('is-skipped', state === 'skipped');
     row.classList.toggle('is-logged', state === 'logged');
     row.classList.toggle('is-unresolved', state === 'unresolved');
+    var status = row.querySelector('[data-ledger-status]');
+    if (status && state === 'unresolved' && (requestPending || requestFailed)) {
+      status.className = 'ledger-status is-unresolved';
+      status.textContent = requestPending
+        ? '保存中 · 待处理'
+        : '保存失败 · 待处理';
+    } else if (status && state === 'logged') {
+      var failedZero = status.dataset.serverZero === 'true';
+      status.className = 'ledger-status is-logged' + (
+        failedZero ? ' is-zero' : ''
+      );
+      status.textContent = failedZero ? '已补录 · 0 次失败' : '已补录';
+    } else if (status && state === 'skipped') {
+      status.className = 'ledger-status is-skipped';
+      status.textContent = '本周跳过';
+    } else if (status) {
+      status.className = 'ledger-status is-unresolved';
+      status.textContent = '待处理';
+    }
     var toggle = row.querySelector('[data-skip-toggle]');
     if (toggle) {
       toggle.hidden = state === 'logged';
@@ -117,7 +155,6 @@
       var row = toggle.closest('.week-ledger-row');
       var skipping = row.dataset.skipped !== 'true';
       row.dataset.skipped = skipping ? 'true' : 'false';
-      row.dataset.requestFailed = 'false';
       var hidden = row.querySelector('[name="skipped_slot_ids"]');
       hidden.disabled = !skipping;
       row.querySelectorAll('input:not([name="skipped_slot_ids"])').forEach(
@@ -146,22 +183,27 @@
   });
 
   document.body.addEventListener('htmx:beforeRequest', function (event) {
-    var row = event.detail.elt.closest('.week-ledger-row');
+    var source = event.detail.elt;
+    var row = source.closest('.week-ledger-row');
     if (!row) return;
     row.dataset.pendingRequests = String(
       Number(row.dataset.pendingRequests || 0) + 1
     );
-    row.dataset.requestFailed = 'false';
     syncWorkspace();
   });
   document.body.addEventListener('htmx:afterRequest', function (event) {
-    var row = event.detail.elt.closest('.week-ledger-row');
+    var source = event.detail.elt;
+    var row = source.closest('.week-ledger-row');
     if (!row) return;
     row.dataset.pendingRequests = String(Math.max(
       0, Number(row.dataset.pendingRequests || 0) - 1
     ));
-    row.dataset.requestFailed = event.detail.successful ? 'false' : 'true';
-    if (!event.detail.successful) {
+    source.dataset.requestFailed = event.detail.successful ? 'false' : 'true';
+    if (event.detail.successful) {
+      setRequestError(source, '');
+    } else {
+      var response = event.detail.xhr && event.detail.xhr.responseText;
+      setRequestError(source, response ? response.trim() : '请求失败');
       var status = row.querySelector('[data-ledger-status]');
       status.className = 'ledger-status is-unresolved';
       status.textContent = '保存失败 · 待处理';

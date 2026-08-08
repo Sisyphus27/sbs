@@ -205,7 +205,8 @@ def _v1_plan_by_day(conn):
             target=slot["planned_target"],
             streak=slot["state_streak"],
             set_entries=set_entries,
-            is_logged=progression_driver is not None,
+            is_logged=final_entry.reps is not None,
+            is_settlement_ready=progression_driver is not None,
             is_zero=(
                 progression_driver is not None
                 and progression_driver.reps == 0
@@ -223,7 +224,7 @@ def view():
     conn = get_db()
     week, by_day = _v1_plan_by_day(conn)
     items = [item for _day, day_items in by_day for item in day_items]
-    handled_count = sum(item.is_logged for item in items)
+    handled_count = sum(item.is_settlement_ready for item in items)
     due, _cyc = due_lifts(conn)
     return render_template("plan.html", week=week, by_day=by_day,
                            due_reseeds=[r["name"] for r, _st in due],

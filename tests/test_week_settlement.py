@@ -1,5 +1,7 @@
 """Public Web contracts for complete and atomic Program-week settlement."""
 
+import pytest
+
 
 def _save_driver(client, slot_id, *, set_number, reps, weight):
     return client.post(
@@ -159,6 +161,51 @@ def test_final_review_is_read_only_and_confirm_applies_logged_and_skipped(
     assert "待处理" in next_week_row
 
 
+@pytest.mark.parametrize(
+    ("lift", "set_number", "reps", "weight", "markers"),
+    (
+        (
+            {"name": "Squat", "mode": "sbs", "max": 100.0,
+             "lift_kind": "main", "sets": 5},
+            5, 10, 70.0, ("Training Max", "下一周 Working Weight"),
+        ),
+        (
+            {"name": "Dip", "load_model": "bodyweight", "mode": "linear_t2",
+             "start": 10.0, "bodyweight_pct": 1.0, "sets": 3},
+            3, 8, 10.0, ("Added weight", "目标", "streak"),
+        ),
+        (
+            {"name": "Curl", "mode": "linear_t3", "start": 30.0,
+             "sets": 3},
+            3, 15, 30.0, ("Working Weight", "目标"),
+        ),
+        (
+            {"name": "Push-up", "load_model": "pure_bodyweight", "mode": "none",
+             "start": 0.0, "bodyweight_pct": 1.0, "sets": 3},
+            3, 10, 0.0, ("record-only",),
+        ),
+    ),
+)
+def test_focus_and_review_share_progression_outcome_contract(
+        client, make_lift, lift, set_number, reps, weight, markers):
+    slot_id = make_lift(**lift)
+
+    saved = _save_driver(
+        client, slot_id, set_number=set_number, reps=reps, weight=weight
+    )
+    assert saved.status_code == 200
+    focus = saved.get_data(as_text=True)
+    review = client.post(
+        "/log/review", data={"expected_week": "1"}
+    ).get_data(as_text=True)
+
+    assert focus.count('class="progression-outcome"') == 1
+    assert review.count('class="progression-outcome"') == 1
+    for marker in markers:
+        assert marker in focus
+        assert marker in review
+
+
 def test_skipped_lift_keeps_state_even_with_a_qualified_non_driver_fact(
         client, make_lift, db_conn):
     slot_id = make_lift(
@@ -280,6 +327,39 @@ def test_workspace_logged_state_uses_the_confirmed_progression_driver(
         },
     )
     assert review.status_code == 200
+
+
+def test_earlier_driver_can_settle_while_offline_export_keeps_final_set_debt(
+        client, make_lift):
+    slot_id = make_lift(
+        name="Curl", mode="linear_t3", start=30.0, sets=3
+    )
+    saved = client.post(
+        "/training/sets/full",
+        data={
+            "expected_week": "1",
+            "slot_id": str(slot_id),
+            "set_number": "1",
+            "actual_added_weight": "30",
+            "reps": "15",
+            "warmup": "0",
+            "drives_progression": "1",
+            "e1rm_qualified": "0",
+        },
+    )
+    assert saved.status_code == 200
+
+    workspace = client.get("/").get_data(as_text=True)
+    row = workspace.split(
+        f'id="ledger-row-{slot_id}"', 1
+    )[1].split("</tr>", 1)[0]
+    offline_export = client.get("/export/week.html").get_data(as_text=True)
+
+    assert 'data-settlement-state="logged"' in row
+    assert 'class="name">Curl' in offline_export
+    assert 'class="name done">✓ Curl' not in offline_export
+    assert '<details data-day="1" class="st-empty" open>' in offline_export
+    assert ">0/1<" in offline_export
 
 
 def test_workspace_reopens_driver_saved_before_a_training_mode_switch(

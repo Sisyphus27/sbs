@@ -1,26 +1,32 @@
 <tr id="ledger-row-{{ it.id }}"
     data-slot-id="{{ it.id }}"
-    data-settlement-state="{{ 'logged' if it.is_logged else 'unresolved' }}"
-    class="week-ledger-row {{ 'is-logged' if it.is_logged else 'is-unresolved' }}{{ ' is-zero' if it.is_zero else '' }}">
+    data-settlement-state="{{ 'logged' if it.is_settlement_ready else 'unresolved' }}"
+    class="week-ledger-row {{ 'is-logged' if it.is_settlement_ready else 'is-unresolved' }}{{ ' is-zero' if it.is_zero else '' }}">
   <td>
     {% include '_plan_lift_status.html' %}
     <input type="hidden" name="skipped_slot_ids" value="{{ it.id }}" disabled>
     <button type="button" class="btn-ghost settlement-skip"
             name="intent" value="skip" data-skip-toggle
+            data-request-error-id="request-error-skip-{{ it.id }}"
             hx-post="{{ url_for('plan.preview_log', lid=it.id) }}"
             hx-trigger="settlement-preview"
             hx-include="[name='expected_week']"
             hx-target="#focus-inspector" hx-swap="outerHTML"
-            {% if it.is_logged %}hidden disabled{% endif %}>本周跳过</button>
+            {% if it.is_settlement_ready %}hidden disabled{% endif %}>本周跳过</button>
+    <span id="request-error-skip-{{ it.id }}" class="save-error num"
+          role="alert"></span>
   </td>
   <td class="num">Day {{ it.day }}</td>
   <td>
     <strong>{{ it.name }}</strong>
     <button type="button" class="btn-ghost focus-lift"
             name="intent" value="focus"
+            data-request-error-id="request-error-focus-{{ it.id }}"
             hx-post="{{ url_for('plan.preview_log', lid=it.id) }}"
             hx-include="closest tr, [name='expected_week']"
             hx-target="#focus-inspector" hx-swap="outerHTML">聚焦</button>
+    <span id="request-error-focus-{{ it.id }}" class="save-error num"
+          role="alert"></span>
     <span class="ledger-plan meta num">{{ it.mode }} |
       {%- if it.is_bodyweight %} +{{ it.weight }} ({{ it.working_weight }}){% else %} {{ it.weight }}{% endif %} kg
       {% if it.mode=='sbs' %} x {{ it.reps }} x {{ it.sets }} | rep-out {{ it.repout }}
@@ -41,11 +47,14 @@
       <input type="number" name="actual_added_weight_{{ it.id }}"
              value="{{ it.actual_added_weight }}"
              min="0" step="0.5"
+             data-request-error-id="request-error-weight-{{ it.id }}"
              hx-post="{{ url_for('plan.save_log', lid=it.id, set_number=driver.number) }}"
              hx-trigger="change"
              hx-include="[name='expected_week'], [name='set_{{ it.id }}_{{ driver.number }}']"
              hx-target="#save-{{ it.id }}-{{ driver.number }}" hx-swap="outerHTML"
              hx-sync="closest tr:queue all">
+      <span id="request-error-weight-{{ it.id }}" class="save-error num"
+            role="alert"></span>
     </label>
     {% endif %}
     {% include '_plan_working_weight.html' %}

@@ -577,3 +577,49 @@ test("wrong identities are ignored and authoritative stale week stops requests",
     value: 9,
   }), []);
 });
+
+
+test("authoritative inspector stale week stops after focus moves", function () {
+  const handle = createWeekWorkspace({
+    expectedWeek: 7,
+    focusedSlotId: 11,
+    lifts: [
+      {
+        slotId: 11,
+        driverSetNumber: 3,
+        draft: {addedWeight: 30, driverReps: "", earlierSetReps: {}},
+        serverSnapshot: {settlementReady: false, coverage: []},
+      },
+      {
+        slotId: 12,
+        driverSetNumber: 3,
+        draft: {addedWeight: 40, driverReps: "", earlierSetReps: {}},
+        serverSnapshot: {settlementReady: false, coverage: []},
+      },
+    ],
+  });
+
+  handle({type: "focus", expectedWeek: 7, slotId: 12});
+  const stale = handle({
+    type: "inspectorResult",
+    expectedWeek: 7,
+    slotId: 11,
+    focusSequence: 0,
+    success: false,
+    staleWeek: true,
+  });
+
+  assert.deepEqual(stale, [{
+    type: "render",
+    role: "reload",
+    expectedWeek: 7,
+    reason: "stale-week",
+  }]);
+  assert.deepEqual(handle({
+    type: "change",
+    expectedWeek: 7,
+    slotId: 12,
+    field: "driverReps",
+    value: 8,
+  }), []);
+});

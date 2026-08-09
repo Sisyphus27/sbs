@@ -94,25 +94,30 @@ def test_homepage_renders_week_ledger_in_day_and_plan_order(client, make_lift):
     assert "variant=" not in html and "flow=" not in html
 
 
-def test_week_ledger_defaults_to_weight_and_driver_then_discloses_earlier_sets(
+def test_week_ledger_defaults_to_weight_and_driver_then_popovers_earlier_sets(
         client, make_lift):
     lid = make_lift(name="Curl", sets=4, start=30.0)
 
     html = client.get("/").get_data(as_text=True)
     row = html[html.index(f'id="ledger-row-{lid}"'):]
     row = row[:row.index("</tr>")]
-    disclosure_marker = f'<details id="earlier-sets-{lid}"'
-    default_controls, marker, earlier_sets = row.partition(disclosure_marker)
+    popover_marker = f'<div id="earlier-sets-{lid}"'
+    default_controls, marker, earlier_sets = row.partition(popover_marker)
 
     assert marker
     assert f'name="actual_added_weight_{lid}"' in default_controls
     assert f'name="set_{lid}_4"' in default_controls
-    assert "补录前 3 组" in earlier_sets
+    assert f'popovertarget="earlier-sets-{lid}"' in default_controls
+    assert f'id="earlier-progress-{lid}"' in default_controls
+    assert "补录 0/3" in default_controls
+    assert 'popover="auto"' in earlier_sets
+    assert "前置组补录" in earlier_sets
     assert all(
         f'name="set_{lid}_{set_number}"' in earlier_sets
         for set_number in (1, 2, 3)
     )
     assert f'name="set_{lid}_4"' not in earlier_sets
+    assert "<details" not in row
 
 
 def test_week_ledger_saves_weight_and_reps_for_driver_and_earlier_sets(
@@ -242,11 +247,13 @@ def test_week_ledger_renders_zero_reps_as_a_logged_failure(client, make_lift):
 
 def test_plan_renders_duplicate_names_with_distinct_state(client, make_lift):
     """Same name on two days must render each day's own weight (id-keyed, not clobbered)."""
-    make_lift(name="Face Pull", day=2, start=30.0)
-    make_lift(name="Face Pull", day=4, start=45.0)
+    first_id = make_lift(name="Face Pull", day=2, start=30.0)
+    second_id = make_lift(name="Face Pull", day=4, start=45.0)
     html = client.get("/").get_data(as_text=True)
-    assert html.count("Face Pull") == 2
-    assert "30.0 kg" in html and "45.0 kg" in html   # each day keeps its own weight
+    first_row = html.split(f'id="ledger-row-{first_id}"', 1)[1].split("</tr>", 1)[0]
+    second_row = html.split(f'id="ledger-row-{second_id}"', 1)[1].split("</tr>", 1)[0]
+    assert "Face Pull" in first_row and "30.0 kg" in first_row
+    assert "Face Pull" in second_row and "45.0 kg" in second_row
 
 
 def test_plan_and_export_hide_slots_outside_days_per_week(client, make_lift):
@@ -542,6 +549,26 @@ def test_plan_view_prefills_every_saved_set(client, make_lift):
     assert html.count("已保存") == 3
     assert html.count('value="15"') == 2
     assert 'value="18"' in html
+
+
+def test_earlier_set_zero_updates_confirmed_progress(client, make_lift):
+    lid = make_lift(name="Curl", sets=3, start=30.0)
+
+    first = _save_set(client, lid, 1, 0)
+
+    assert first.status_code == 200
+    first_fragment = first.get_data(as_text=True)
+    assert f'id="earlier-progress-{lid}"' in first_fragment
+    assert "补录 1/2" in first_fragment
+    assert "补录 1/2" in client.get("/").get_data(as_text=True)
+
+    completed = _save_set(client, lid, 2, 8)
+
+    assert completed.status_code == 200
+    completed_fragment = completed.get_data(as_text=True)
+    assert f'id="earlier-progress-{lid}"' in completed_fragment
+    assert "✓ 补录完成 2/2" in completed_fragment
+    assert "✓ 补录完成 2/2" in client.get("/").get_data(as_text=True)
 
 
 def test_save_returns_identity_tagged_inert_fragments_for_driver_and_earlier_set(

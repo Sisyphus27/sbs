@@ -63,6 +63,74 @@
   var handled = workspace.querySelector('[data-handled-count]');
   var pending = workspace.querySelector('[data-pending-count]');
   var next = workspace.querySelector('[data-next-unresolved]');
+  var openEarlierPopover = null;
+
+  function triggerForPopover(popover) {
+    return workspace.querySelector('[popovertarget="' + popover.id + '"]');
+  }
+
+  function positionEarlierPopover(popover) {
+    var trigger = triggerForPopover(popover);
+    if (!trigger) return;
+    var triggerRect = trigger.getBoundingClientRect();
+    var gap = 8;
+    var edge = 16;
+    var left = Math.min(
+      triggerRect.right - popover.offsetWidth,
+      window.innerWidth - popover.offsetWidth - edge
+    );
+    left = Math.max(edge, left);
+    var top = triggerRect.bottom + gap;
+    if (top + popover.offsetHeight > window.innerHeight - edge) {
+      top = Math.max(edge, triggerRect.top - popover.offsetHeight - gap);
+    }
+    popover.style.left = left + 'px';
+    popover.style.top = top + 'px';
+  }
+
+  function keepEarlierPopoverAnchored() {
+    if (!openEarlierPopover) return;
+    var trigger = triggerForPopover(openEarlierPopover);
+    if (!trigger) return;
+    var rect = trigger.getBoundingClientRect();
+    var sourceIsVisible = rect.bottom > 0 && rect.top < window.innerHeight
+      && rect.right > 0 && rect.left < window.innerWidth;
+    if (!sourceIsVisible) {
+      openEarlierPopover.hidePopover();
+      return;
+    }
+    positionEarlierPopover(openEarlierPopover);
+  }
+
+  workspace.querySelectorAll('.ledger-earlier-popover').forEach(
+    function (popover) {
+      popover.addEventListener('beforetoggle', function (event) {
+        if (event.newState === 'open') {
+          openEarlierPopover = popover;
+          window.requestAnimationFrame(function () {
+            positionEarlierPopover(popover);
+          });
+        } else if (openEarlierPopover === popover) {
+          openEarlierPopover = null;
+        }
+      });
+    }
+  );
+  window.addEventListener('scroll', keepEarlierPopoverAnchored, true);
+  window.addEventListener('resize', keepEarlierPopoverAnchored);
+  document.addEventListener('click', function (event) {
+    if (!openEarlierPopover) return;
+    var trigger = triggerForPopover(openEarlierPopover);
+    if (!openEarlierPopover.contains(event.target)
+        && (!trigger || !trigger.contains(event.target))) {
+      openEarlierPopover.hidePopover();
+    }
+  });
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && openEarlierPopover) {
+      openEarlierPopover.hidePopover();
+    }
+  });
 
   function rowFor(slotId) {
     return document.getElementById('ledger-row-' + slotId);
@@ -83,10 +151,10 @@
             lift.state === 'skipped' ? 'is-skipped' : 'is-unresolved'
         );
         if (lift.failedZero) status.classList.add('is-zero');
-        status.textContent = lift.saving ? '保存中 · 待处理' :
-          lift.error ? '保存失败 · 待处理' :
-            lift.failedZero ? '已补录 · 0 次失败' :
-              lift.state === 'logged' ? '已补录' :
+        status.textContent = lift.failedZero ? '已补录 · 0 次失败' :
+          lift.state === 'logged' ? '已补录' :
+            lift.saving ? '保存中 · 待处理' :
+              lift.error ? '保存失败 · 待处理' :
                 lift.state === 'skipped' ? '本周跳过' : '待处理';
       }
 

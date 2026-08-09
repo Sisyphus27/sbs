@@ -51,8 +51,20 @@
   </td>
   <td>
     {% if it.sets > 1 %}
-    <details id="earlier-sets-{{ it.id }}" class="ledger-earlier-sets">
-      <summary>补录前 {{ it.sets - 1 }} 组</summary>
+    <button type="button" class="ledger-earlier-trigger"
+            popovertarget="earlier-sets-{{ it.id }}">
+      {% include '_plan_earlier_progress.html' %}
+    </button>
+    <div id="earlier-sets-{{ it.id }}" class="ledger-earlier-popover" popover="auto">
+      <header class="ledger-earlier-header">
+        <div>
+          <span class="meta">前置组补录</span>
+          <strong>{{ it.name }}</strong>
+        </div>
+        <button type="button" class="btn-ghost"
+                popovertarget="earlier-sets-{{ it.id }}"
+                popovertargetaction="hide" aria-label="关闭 {{ it.name }} 前置组补录">×</button>
+      </header>
       <div class="ledger-earlier-grid">
         {% for entry in it.set_entries if not entry.is_last %}
         <label class="ledger-control">第 {{ entry.number }} 组
@@ -60,7 +72,7 @@
         </label>
         {% endfor %}
       </div>
-    </details>
+    </div>
     {% endif %}
   </td>
 </tr>

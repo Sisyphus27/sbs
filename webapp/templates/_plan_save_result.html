@@ -1,2 +1,3 @@
 <span id="save-{{ it.id }}-{{ set_number }}" class="save-ok num">已保存</span>
+{% if it.earlier_sets_total %}{% include '_plan_earlier_progress.html' %}{% endif %}
 {% include '_plan_working_weight.html' %}

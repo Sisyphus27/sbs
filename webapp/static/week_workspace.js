@@ -87,6 +87,15 @@
       return lift.queue.length + (lift.inFlight ? 1 : 0);
     }
 
+    function attemptAffectsSettlement(attempt) {
+      return Object.prototype.hasOwnProperty.call(attempt.coverage, "driverReps");
+    }
+
+    function hasSettlementSavePending(lift) {
+      return Boolean(lift.inFlight && attemptAffectsSettlement(lift.inFlight))
+        || lift.queue.some(attemptAffectsSettlement);
+    }
+
     function relevantError(lift) {
       if (lift.settlementIntent !== "record" || pendingCount(lift) > 0) {
         return null;
@@ -99,11 +108,15 @@
       return null;
     }
 
-    function draftIsCovered(lift) {
+    function settlementDraftIsCovered(lift) {
       if (lift.acceptedRevisions.addedWeight
           !== lift.fieldRevisions.addedWeight) return false;
-      if (lift.acceptedRevisions.driverReps
-          !== lift.fieldRevisions.driverReps) return false;
+      return lift.acceptedRevisions.driverReps
+        === lift.fieldRevisions.driverReps;
+    }
+
+    function allDraftIsCovered(lift) {
+      if (!settlementDraftIsCovered(lift)) return false;
       return Object.keys(lift.fieldRevisions.earlierSetReps).every(
         function (setNumber) {
           var path = "earlierSetReps." + setNumber;
@@ -114,12 +127,14 @@
     }
 
     function settlementState(lift) {
-      if (pendingCount(lift) > 0) return "unresolved";
+      if (hasSettlementSavePending(lift)) return "unresolved";
       if (lift.settlementIntent === "skip") {
         return lift.serverSnapshot.hasDriverFact ? "logged" : "skipped";
       }
-      if (relevantError(lift)) return "unresolved";
-      return lift.serverSnapshot.settlementReady && draftIsCovered(lift)
+      if (relevantError(lift) && lift.lastTerminal.affectsSettlement) {
+        return "unresolved";
+      }
+      return lift.serverSnapshot.settlementReady && settlementDraftIsCovered(lift)
         ? "logged"
         : "unresolved";
     }
@@ -155,6 +170,12 @@
       var handled = projected.filter(function (lift) {
         return lift.state !== "unresolved";
       }).length;
+      var allSavesSettled = order.every(function (key) {
+        var lift = liftsBySlotId[key];
+        if (pendingCount(lift) > 0) return false;
+        if (lift.settlementIntent === "skip") return true;
+        return allDraftIsCovered(lift) && !relevantError(lift);
+      });
       var nextLift = nextActionableLift();
       return {
         type: "render",
@@ -167,7 +188,7 @@
           handled: handled,
           pending: projected.length - handled,
           nextUnresolvedSlotId: nextLift ? nextLift.slotId : null,
-          reviewEligible: handled === projected.length,
+          reviewEligible: handled === projected.length && allSavesSettled,
         },
       };
     }
@@ -348,6 +369,7 @@
           sequence: attempt.sequence,
           status: "failed",
           error: event.error || "请求失败",
+          affectsSettlement: attemptAffectsSettlement(attempt),
         };
       }
       var request = startNextSave(lift);

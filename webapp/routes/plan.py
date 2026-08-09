@@ -214,6 +214,10 @@ def _v1_plan_by_day(conn):
             target=slot["planned_target"],
             streak=slot["state_streak"],
             set_entries=set_entries,
+            earlier_sets_completed=sum(
+                entry.confirmed for entry in set_entries[:-1]
+            ),
+            earlier_sets_total=len(set_entries) - 1,
             driver_set_number=final_entry.number,
             workspace_coverage=coverage,
             progression_driver_reps=(

@@ -504,6 +504,194 @@ test("earlier-set and blank changes each freeze exactly one set request", functi
 });
 
 
+test("earlier-set save keeps a logged Lift handled while review waits", function () {
+  const handle = createWeekWorkspace({
+    expectedWeek: 7,
+    focusedSlotId: 11,
+    lifts: [{
+      slotId: 11,
+      driverSetNumber: 3,
+      draft: {
+        addedWeight: 30,
+        driverReps: 8,
+        earlierSetReps: {1: ""},
+      },
+      serverSnapshot: {
+        settlementReady: true,
+        hasDriverFact: true,
+        driverReps: 8,
+        coverage: ["addedWeight", "driverReps"],
+      },
+    }],
+  });
+
+  const saving = handle({
+    type: "change",
+    expectedWeek: 7,
+    slotId: 11,
+    field: "earlierSetReps",
+    setNumber: 1,
+    value: 6,
+  });
+
+  assert.equal(liftView(saving, 11).state, "logged");
+  assert.equal(liftView(saving, 11).saving, true);
+  assert.equal(workspaceView(saving).handled, 1);
+  assert.equal(workspaceView(saving).pending, 0);
+  assert.equal(workspaceView(saving).reviewEligible, false);
+
+  const saved = handle({
+    type: "saveResult",
+    expectedWeek: 7,
+    slotId: 11,
+    saveSequence: 1,
+    success: true,
+    serverSnapshot: {settlementReady: true},
+  });
+
+  assert.equal(liftView(saved, 11).state, "logged");
+  assert.equal(workspaceView(saved).reviewEligible, true);
+
+  const driverSaving = handle({
+    type: "change",
+    expectedWeek: 7,
+    slotId: 11,
+    field: "driverReps",
+    value: 9,
+  });
+
+  assert.equal(liftView(driverSaving, 11).state, "unresolved");
+  assert.equal(workspaceView(driverSaving).handled, 0);
+  assert.equal(workspaceView(driverSaving).reviewEligible, false);
+});
+
+
+test("failed earlier-set save preserves logged state and blocks review", function () {
+  const handle = createWeekWorkspace({
+    expectedWeek: 7,
+    focusedSlotId: 11,
+    lifts: [{
+      slotId: 11,
+      driverSetNumber: 3,
+      draft: {
+        addedWeight: 30,
+        driverReps: 8,
+        earlierSetReps: {1: ""},
+      },
+      serverSnapshot: {
+        settlementReady: true,
+        hasDriverFact: true,
+        driverReps: 8,
+        coverage: ["addedWeight", "driverReps"],
+      },
+    }],
+  });
+
+  handle({
+    type: "change",
+    expectedWeek: 7,
+    slotId: 11,
+    field: "earlierSetReps",
+    setNumber: 1,
+    value: 6,
+  });
+  const failed = handle({
+    type: "saveResult",
+    expectedWeek: 7,
+    slotId: 11,
+    saveSequence: 1,
+    success: false,
+    error: "save failed",
+  });
+
+  assert.equal(liftView(failed, 11).state, "logged");
+  assert.equal(liftView(failed, 11).error, "save failed");
+  assert.equal(workspaceView(failed).handled, 1);
+  assert.equal(workspaceView(failed).pending, 0);
+  assert.equal(workspaceView(failed).reviewEligible, false);
+});
+
+
+test("later earlier-set success cannot hide another set's uncovered failure", function () {
+  const handle = createWeekWorkspace({
+    expectedWeek: 7,
+    focusedSlotId: 11,
+    lifts: [{
+      slotId: 11,
+      driverSetNumber: 3,
+      draft: {
+        addedWeight: 30,
+        driverReps: 8,
+        earlierSetReps: {1: "", 2: ""},
+      },
+      serverSnapshot: {
+        settlementReady: true,
+        hasDriverFact: true,
+        driverReps: 8,
+        coverage: ["addedWeight", "driverReps"],
+      },
+    }],
+  });
+
+  handle({
+    type: "change",
+    expectedWeek: 7,
+    slotId: 11,
+    field: "earlierSetReps",
+    setNumber: 1,
+    value: 6,
+  });
+  handle({
+    type: "change",
+    expectedWeek: 7,
+    slotId: 11,
+    field: "earlierSetReps",
+    setNumber: 2,
+    value: 7,
+  });
+  handle({
+    type: "saveResult",
+    expectedWeek: 7,
+    slotId: 11,
+    saveSequence: 1,
+    success: false,
+    error: "set 1 failed",
+  });
+  const secondSaved = handle({
+    type: "saveResult",
+    expectedWeek: 7,
+    slotId: 11,
+    saveSequence: 2,
+    success: true,
+    serverSnapshot: {settlementReady: true},
+  });
+
+  assert.equal(liftView(secondSaved, 11).state, "logged");
+  assert.equal(workspaceView(secondSaved).handled, 1);
+  assert.equal(workspaceView(secondSaved).reviewEligible, false);
+
+  handle({
+    type: "change",
+    expectedWeek: 7,
+    slotId: 11,
+    field: "earlierSetReps",
+    setNumber: 1,
+    value: 8,
+  });
+  const corrected = handle({
+    type: "saveResult",
+    expectedWeek: 7,
+    slotId: 11,
+    saveSequence: 3,
+    success: true,
+    serverSnapshot: {settlementReady: true},
+  });
+
+  assert.equal(liftView(corrected, 11).state, "logged");
+  assert.equal(workspaceView(corrected).reviewEligible, true);
+});
+
+
 test("wrong identities are ignored and authoritative stale week stops requests", function () {
   const handle = createWeekWorkspace({
     expectedWeek: 7,

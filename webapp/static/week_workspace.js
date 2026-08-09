@@ -324,18 +324,20 @@
       }
     }
 
+    function stopForStaleWeek() {
+      requestsStopped = true;
+      return [{
+        type: "render",
+        role: "reload",
+        expectedWeek: expectedWeek,
+        reason: "stale-week",
+      }];
+    }
+
     function saveResult(lift, event) {
       if (!lift.inFlight
           || lift.inFlight.sequence !== Number(event.saveSequence)) return [];
-      if (event.staleWeek) {
-        requestsStopped = true;
-        return [{
-          type: "render",
-          role: "reload",
-          expectedWeek: expectedWeek,
-          reason: "stale-week",
-        }];
-      }
+      if (event.staleWeek) return stopForStaleWeek();
       var attempt = lift.inFlight;
       lift.inFlight = null;
       if (event.success) {
@@ -377,17 +379,9 @@
     }
 
     function inspectorResult(lift, event) {
+      if (event.staleWeek) return stopForStaleWeek();
       if (slotKey(lift.slotId) !== slotKey(focus.slotId)
           || Number(event.focusSequence) !== focus.sequence) return [];
-      if (event.staleWeek) {
-        requestsStopped = true;
-        return [{
-          type: "render",
-          role: "reload",
-          expectedWeek: expectedWeek,
-          reason: "stale-week",
-        }];
-      }
       var effect = {
         type: "render",
         role: "inspector",

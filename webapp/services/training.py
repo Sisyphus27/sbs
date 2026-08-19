@@ -425,7 +425,6 @@ def _observation_peaks(conn: sqlite3.Connection, expected_week: int,
             and row["finalized_at"] is None
             and row["mode"] == "linear_t2"
             and row["load_model"] == "barbell"
-            and row["e1rm_qualified"]
         ):
             peaks = t2_peaks
         else:

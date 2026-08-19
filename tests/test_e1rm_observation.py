@@ -242,7 +242,6 @@ def test_loadable_t2_keeps_one_peak_through_the_complete_reset_cycle(tmp_path):
         test_config={"TESTING": True},
     )
     with sqlite3.connect(db_path) as conn:
-        conn.execute("UPDATE settings SET incr = 2.5, t2_fail = 1 WHERE id = 1")
         slot_id = insert_v1_slot(
             conn,
             name="Row",
@@ -271,26 +270,48 @@ def test_loadable_t2_keeps_one_peak_through_the_complete_reset_cycle(tmp_path):
             (slot_id,),
         ).fetchone() == ("linear_t2", 105.0, 8, 0, None)
 
-    for week, driver_weight, driver_reps, expected_state in (
-        (1, 200.0, 7, (105.0, 6, 1, 200.0)),
-        (2, 60.0, 5, (105.0, 4, 2, 200.0)),
-        (3, 60.0, 3, (98.0, 8, 0, None)),
+    for week, driver_weight, supplementary_reps, driver_reps, expected_state in (
+        (1, 80.0, 10, 7, (105.0, 6, 1, 107.04356430622721)),
+        (2, 60.0, None, 5, (105.0, 4, 2, 107.04356430622721)),
+        (3, 100.0, 10, 3, (98.0, 8, 0, None)),
     ):
         with app.test_client() as client:
-            if week == 1:
+            if supplementary_reps is not None:
                 assert client.post(
                     "/training/sets/full",
                     data={
-                        "expected_week": "1",
+                        "expected_week": str(week),
                         "slot_id": str(slot_id),
                         "set_number": "1",
-                        "actual_added_weight": "200",
-                        "reps": "1",
+                        "actual_added_weight": str(driver_weight),
+                        "reps": str(supplementary_reps),
                         "warmup": "0",
                         "drives_progression": "0",
-                        "e1rm_qualified": "1",
                     },
                 ).status_code == 200
+            with sqlite3.connect(db_path) as conn:
+                before_weight, before_target = conn.execute(
+                    "SELECT weight, target FROM strength_state "
+                    "WHERE slot_id = ?",
+                    (slot_id,),
+                ).fetchone()
+            preview = client.post(
+                f"/log/preview?lid={slot_id}",
+                data={
+                    "expected_week": str(week),
+                    "slot_id": str(slot_id),
+                    "focus_sequence": "1",
+                    f"actual_added_weight_{slot_id}": str(driver_weight),
+                    f"set_{slot_id}_3": str(driver_reps),
+                },
+            )
+            assert preview.status_code == 200
+            preview_html = preview.get_data(as_text=True)
+            assert f"目标 {before_target} → {expected_state[1]}" in preview_html
+            assert (
+                f"Working Weight {before_weight} → {expected_state[0]} kg"
+                in preview_html
+            )
             assert client.post(
                 "/training/sets/full",
                 data={
@@ -327,7 +348,6 @@ def test_loadable_t2_keeps_one_peak_through_the_complete_reset_cycle(tmp_path):
                 "reps": "1",
                 "warmup": "0",
                 "drives_progression": "0",
-                "e1rm_qualified": "1",
             },
         ).status_code == 200
         assert client.post(
@@ -353,4 +373,6 @@ def test_loadable_t2_keeps_one_peak_through_the_complete_reset_cycle(tmp_path):
             "SELECT weight, target, streak, est1rm FROM strength_state "
             "WHERE slot_id = ?",
             (slot_id,),
-        ).fetchone() == pytest.approx((105.0, 8, 0, 80.0))
+        ).fetchone() == pytest.approx(
+            (105.0, 8, 0, 100.92693780842751)
+        )

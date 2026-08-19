@@ -54,16 +54,14 @@ def _e1rm_values(weight, reps: int, canonical_eligible: bool):
     return canonical, display
 
 
-def _project_training_fact(row, *, canonical_eligible: bool) -> dict:
+def _project_training_fact(row) -> dict:
     weight = actual_working_weight(
         load_model=row["load_model"],
         actual_added_weight=row["actual_added_weight"],
         session_bodyweight=row["bodyweight_kg"],
         bodyweight_pct=row["bodyweight_pct"],
     )
-    canonical, display = _e1rm_values(
-        weight, row["reps"], canonical_eligible
-    )
+    canonical, display = _e1rm_values(weight, row["reps"], not row["warmup"])
     item = dict(row)
     item.update(
         actual_working_weight=weight,
@@ -79,9 +77,7 @@ def training_history(conn: sqlite3.Connection) -> list[dict]:
     volumes = {}
     unavailable = set()
     for row in repo.list_training_facts(conn):
-        item = _project_training_fact(
-            row, canonical_eligible=bool(row["e1rm_qualified"])
-        )
+        item = _project_training_fact(row)
         key = (row["session_id"], row["slot_id"])
         volumes.setdefault(key, 0.0)
         if not row["warmup"]:
@@ -242,6 +238,22 @@ def save_draft_set(conn: sqlite3.Connection, *, expected_week: int, slot_id: int
                 conn,
                 {"session_id": session_id, "slot_id": slot_id, **snapshot},
             )
+            if not warmup:
+                if not drives_progression:
+                    driver = next((
+                        row for row in repo.list_progression_drivers(
+                            conn, program_week=expected_week
+                        )
+                        if row["slot_id"] == slot_id
+                    ), None)
+                    if driver is not None:
+                        actual_added_weight = driver["actual_added_weight"]
+                repo.update_work_set_added_weights(
+                    conn,
+                    session_id=session_id,
+                    slot_id=slot_id,
+                    actual_added_weight=actual_added_weight,
+                )
             if drives_progression:
                 repo.clear_progression_driver(
                     conn, session_id=session_id, slot_id=slot_id
@@ -389,7 +401,6 @@ def _observation_peaks(conn: sqlite3.Connection, expected_week: int,
         if (
             row["program_week"] != expected_week
             or row["finalized_at"] is not None
-            or not row["e1rm_qualified"]
             or (
                 allowed_slot_ids is not None
                 and row["slot_id"] not in allowed_slot_ids
@@ -398,13 +409,15 @@ def _observation_peaks(conn: sqlite3.Connection, expected_week: int,
             continue
         if row["mode"] == "sbs":
             peaks = sbs_peaks
-        elif row["mode"] == "linear_t2" and row["load_model"] == "barbell":
+        elif (
+            row["mode"] == "linear_t2"
+            and row["load_model"] == "barbell"
+            and row["e1rm_qualified"]
+        ):
             peaks = t2_peaks
         else:
             continue
-        projected = _project_training_fact(
-            row, canonical_eligible=True
-        )
+        projected = _project_training_fact(row)
         canonical_e1rm = projected["canonical_e1rm"]
         if canonical_e1rm is not None:
             peaks[row["slot_id"]] = max(
@@ -477,13 +490,7 @@ def finalize_week(conn: sqlite3.Connection, *, expected_week: int,
                     row["mode"] == "linear_t2"
                     and row["load_model"] == "barbell"
                 )
-                projected_driver = _project_training_fact(
-                    row,
-                    canonical_eligible=(
-                        bool(row["e1rm_qualified"])
-                        if is_sbs or is_loadable_t2 else True
-                    ),
-                )
+                projected_driver = _project_training_fact(row)
                 working_weight = projected_driver["actual_working_weight"]
                 canonical_e1rm = projected_driver["canonical_e1rm"]
                 models = _progression_models(

@@ -450,7 +450,7 @@ def test_cli_uses_same_command_and_moves_the_progression_driver(tmp_path):
         session = conn.execute(
             "SELECT training_date, bodyweight_kg FROM training_session"
         ).fetchone()
-    assert rows == [(2, 31.0, 1), (3, 30.0, 0)]
+    assert rows == [(2, 31.0, 1), (3, 31.0, 0)]
     assert session == (None, None)
 
 

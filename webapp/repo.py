@@ -409,6 +409,15 @@ def clear_progression_driver(conn: sqlite3.Connection, *, session_id: int,
     )
 
 
+def update_work_set_added_weights(conn: sqlite3.Connection, *, session_id: int,
+                                  slot_id: int, actual_added_weight: float) -> None:
+    conn.execute(
+        "UPDATE set_log SET actual_added_weight = ? "
+        "WHERE session_id = ? AND slot_id = ? AND warmup = 0",
+        (actual_added_weight, session_id, slot_id),
+    )
+
+
 def upsert_training_set(conn: sqlite3.Connection, *, session_id: int, slot_id: int,
                         set_number: int, actual_added_weight: float, reps: int,
                         warmup: bool, drives_progression: bool,
@@ -450,7 +459,7 @@ def list_progression_drivers(conn: sqlite3.Connection, *, program_week: int):
     return conn.execute(
         "SELECT ts.id AS session_id, ts.program_week, ts.day, ts.bodyweight_kg, "
         "sl.slot_id, sl.set_number, sl.actual_added_weight, sl.reps, "
-        "sl.e1rm_qualified, "
+        "sl.warmup, sl.e1rm_qualified, "
         "e.name, e.load_model, "
         "ps.lift_kind, ps.mode AS current_slot_mode, "
         "ss.mode AS current_state_mode, pe.mode, pe.planned_sets, pe.planned_reps, "

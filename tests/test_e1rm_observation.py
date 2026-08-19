@@ -8,7 +8,7 @@ from webapp.db import connect
 from webapp.migration import migrate_v0_to_v1
 
 
-def test_sbs_qualified_observations_survive_v2_upgrade_and_keep_historical_peak(
+def test_sbs_work_sets_automatically_keep_the_historical_peak(
     tmp_path,
 ):
     db_path = tmp_path / "e1rm-observation.db"
@@ -100,20 +100,20 @@ def test_sbs_qualified_observations_survive_v2_upgrade_and_keep_historical_peak(
                 "e1rm_qualified": "0",
             },
         )
-        qualified_observation = client.post(
+        supplementary = client.post(
             "/training/sets/full",
             data={
                 "expected_week": "1",
                 "slot_id": str(slot_id),
                 "set_number": "1",
                 "actual_added_weight": "150",
-                "reps": "1",
+                "reps": "10",
                 "warmup": "0",
                 "drives_progression": "0",
-                "e1rm_qualified": "1",
+                "e1rm_qualified": "0",
             },
         )
-        ordinary = client.post(
+        warmup = client.post(
             "/training/sets/full",
             data={
                 "expected_week": "1",
@@ -121,9 +121,9 @@ def test_sbs_qualified_observations_survive_v2_upgrade_and_keep_historical_peak(
                 "set_number": "2",
                 "actual_added_weight": "300",
                 "reps": "1",
-                "warmup": "0",
+                "warmup": "1",
                 "drives_progression": "0",
-                "e1rm_qualified": "0",
+                "e1rm_qualified": "1",
             },
         )
         observation_slot_driver = client.post(
@@ -139,28 +139,13 @@ def test_sbs_qualified_observations_survive_v2_upgrade_and_keep_historical_peak(
                 "e1rm_qualified": "0",
             },
         )
-        second_slot_observation = client.post(
-            "/training/sets/full",
-            data={
-                "expected_week": "1",
-                "slot_id": str(observation_only_slot_id),
-                "set_number": "1",
-                "actual_added_weight": "120",
-                "reps": "1",
-                "warmup": "0",
-                "drives_progression": "0",
-                "e1rm_qualified": "1",
-            },
-        )
 
     assert [
         driver_only.status_code,
-        qualified_observation.status_code,
-        ordinary.status_code,
+        supplementary.status_code,
+        warmup.status_code,
         observation_slot_driver.status_code,
-        second_slot_observation.status_code,
     ] == [
-        200,
         200,
         200,
         200,
@@ -185,21 +170,26 @@ def test_sbs_qualified_observations_survive_v2_upgrade_and_keep_historical_peak(
     assert current_rows[3]["e1rm_qualified"] == 0
     assert current_rows[3]["canonical_e1rm"] is None
     assert current_rows[1]["drives_progression"] == 0
-    assert current_rows[1]["e1rm_qualified"] == 1
-    assert current_rows[1]["canonical_e1rm"] == pytest.approx(150.0)
+    assert current_rows[1]["e1rm_qualified"] == 0
+    assert current_rows[1]["canonical_e1rm"] == pytest.approx(93.6631187679488)
+    assert current_rows[2]["warmup"] == 1
     assert current_rows[2]["canonical_e1rm"] is None
     assert finalized.status_code == 200
-    assert plan["slots"][0]["historical_peak_e1rm"] == pytest.approx(150.0)
-    assert plan["slots"][1]["historical_peak_e1rm"] == pytest.approx(120.0)
+    assert plan["slots"][0]["historical_peak_e1rm"] == pytest.approx(
+        93.6631187679488
+    )
+    assert plan["slots"][1]["historical_peak_e1rm"] == pytest.approx(
+        74.93049501435905
+    )
 
     with sqlite3.connect(db_path) as after_first_week:
         assert after_first_week.execute(
             "SELECT tm, est1rm FROM strength_state WHERE slot_id = ?", (slot_id,)
-        ).fetchone() == pytest.approx((101.0, 150.0))
+        ).fetchone() == pytest.approx((101.0, 93.6631187679488))
         assert after_first_week.execute(
             "SELECT tm, est1rm FROM strength_state WHERE slot_id = ?",
             (observation_only_slot_id,),
-        ).fetchone() == pytest.approx((80.0, 120.0))
+        ).fetchone() == pytest.approx((80.0, 74.93049501435905))
 
     with restarted.test_client() as client:
         assert client.post(
@@ -209,7 +199,7 @@ def test_sbs_qualified_observations_survive_v2_upgrade_and_keep_historical_peak(
                 "slot_id": str(slot_id),
                 "set_number": "3",
                 "actual_added_weight": "72.5",
-                "reps": "10",
+                "reps": "1",
                 "warmup": "0",
                 "drives_progression": "1",
                 "e1rm_qualified": "0",
@@ -225,7 +215,7 @@ def test_sbs_qualified_observations_survive_v2_upgrade_and_keep_historical_peak(
                 "reps": "1",
                 "warmup": "0",
                 "drives_progression": "0",
-                "e1rm_qualified": "1",
+                "e1rm_qualified": "0",
             },
         ).status_code == 200
         finalized = client.post(
@@ -239,8 +229,8 @@ def test_sbs_qualified_observations_survive_v2_upgrade_and_keep_historical_peak(
     assert finalized.status_code == 200
     with sqlite3.connect(db_path) as after_second_week:
         assert after_second_week.execute(
-            "SELECT tm, est1rm FROM strength_state WHERE slot_id = ?", (slot_id,)
-        ).fetchone() == pytest.approx((101.0, 150.0))
+            "SELECT est1rm FROM strength_state WHERE slot_id = ?", (slot_id,)
+        ).fetchone() == pytest.approx((93.6631187679488,))
 
 
 def test_loadable_t2_keeps_one_peak_through_the_complete_reset_cycle(tmp_path):
@@ -281,10 +271,10 @@ def test_loadable_t2_keeps_one_peak_through_the_complete_reset_cycle(tmp_path):
             (slot_id,),
         ).fetchone() == ("linear_t2", 105.0, 8, 0, None)
 
-    for week, driver_reps, expected_state in (
-        (1, 7, (105.0, 6, 1, 200.0)),
-        (2, 5, (105.0, 4, 2, 200.0)),
-        (3, 3, (98.0, 8, 0, None)),
+    for week, driver_weight, driver_reps, expected_state in (
+        (1, 200.0, 7, (105.0, 6, 1, 200.0)),
+        (2, 60.0, 5, (105.0, 4, 2, 200.0)),
+        (3, 60.0, 3, (98.0, 8, 0, None)),
     ):
         with app.test_client() as client:
             if week == 1:
@@ -307,11 +297,11 @@ def test_loadable_t2_keeps_one_peak_through_the_complete_reset_cycle(tmp_path):
                     "expected_week": str(week),
                     "slot_id": str(slot_id),
                     "set_number": "3",
-                    "actual_added_weight": "60",
+                    "actual_added_weight": str(driver_weight),
                     "reps": str(driver_reps),
                     "warmup": "0",
                     "drives_progression": "1",
-                    "e1rm_qualified": "1",
+                    "e1rm_qualified": "0",
                 },
             ).status_code == 200
             finalized = client.post(
@@ -346,7 +336,7 @@ def test_loadable_t2_keeps_one_peak_through_the_complete_reset_cycle(tmp_path):
                 "expected_week": "4",
                 "slot_id": str(slot_id),
                 "set_number": "3",
-                "actual_added_weight": "60",
+                "actual_added_weight": "80",
                 "reps": "8",
                 "warmup": "0",
                 "drives_progression": "1",

@@ -81,8 +81,17 @@ def _v1_comparisons(history, expected_week):
         summary["volume"] = row["recorded_volume"]
         if row["drives_progression"] and not row["warmup"]:
             summary["has_driver"] = True
-            if row["mode"] is not None:
+            if row["mode"] not in (None, "sbs"):
                 summary["e1rm"] = row["display_e1rm"]
+        if (
+            not row["warmup"]
+            and row["mode"] == "sbs"
+            and row["display_e1rm"] is not None
+        ):
+            summary["e1rm"] = max(
+                value for value in (summary["e1rm"], row["display_e1rm"])
+                if value is not None
+            )
 
     comparisons = {}
     current_slots = {

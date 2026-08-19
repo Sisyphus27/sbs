@@ -120,7 +120,7 @@ def test_week_ledger_defaults_to_weight_and_driver_then_popovers_earlier_sets(
     assert "<details" not in row
 
 
-def test_week_ledger_saves_weight_and_reps_for_driver_and_earlier_sets(
+def test_week_ledger_shares_confirmed_weight_with_earlier_sets(
         client, make_lift, db_conn):
     lid = make_lift(name="Curl", mode="linear_t3", sets=3, start=30.0)
 
@@ -130,9 +130,13 @@ def test_week_ledger_saves_weight_and_reps_for_driver_and_earlier_sets(
     driver = _save_set(
         client, lid, 3, 0, actual_added_weight=35.0
     )
+    edited_driver = _save_set(
+        client, lid, 3, 0, actual_added_weight=37.5
+    )
 
     assert earlier.status_code == 200
     assert driver.status_code == 200
+    assert edited_driver.status_code == 200
     assert [
         (
             row["set_number"],
@@ -142,8 +146,8 @@ def test_week_ledger_saves_weight_and_reps_for_driver_and_earlier_sets(
         )
         for row in _slot_facts(db_conn, lid)
     ] == [
-        (1, 30.0, 8, 0),
-        (3, 35.0, 0, 1),
+        (1, 37.5, 8, 0),
+        (3, 37.5, 0, 1),
     ]
 
 
@@ -883,6 +887,46 @@ def test_focus_inspector_compares_recorded_volume_and_display_e1rm_to_last_week(
     page = client.get("/").get_data(as_text=True)
     assert "Training volume" not in page
     assert "est1RM" not in page
+
+
+def test_sbs_supplement_updates_session_best_but_not_the_driver(
+        client, make_lift, db_conn):
+    lid = make_lift(
+        name="Squat", mode="sbs", max=100.0, lift_kind="main", sets=3
+    )
+    with db_conn:
+        db_conn.execute(
+            "UPDATE sbs_schedule SET intensity = .7, reps = 5, repout = 10 "
+            "WHERE kind = 'main' AND week IN (1, 2)"
+        )
+
+    assert _save_set(
+        client, lid, 3, 0, week=1, actual_added_weight=70.0
+    ).status_code == 200
+    stronger = _save_set(client, lid, 1, 10, week=1)
+
+    assert stronger.status_code == 200
+    first_preview = stronger.get_data(as_text=True)
+    assert "Program week 2" in first_preview
+    assert "est1RM 93.66 kg" in first_preview
+    assert client.post("/log", data={"expected_week": "1"}).status_code == 302
+    first_state = repo.get_training_state(db_conn, lid)
+    assert first_state["tm"] == pytest.approx(95.0)
+    assert first_state["est1rm"] == pytest.approx(93.6631187679488)
+
+    assert _save_set(
+        client, lid, 3, 0, week=2, actual_added_weight=65.0
+    ).status_code == 200
+    weaker = _save_set(client, lid, 1, 1, week=2)
+
+    assert weaker.status_code == 200
+    second_preview = weaker.get_data(as_text=True)
+    assert "est1RM 65.00 kg" in second_preview
+    assert "↘-28.66 kg" in second_preview
+    assert client.post("/log", data={"expected_week": "2"}).status_code == 302
+    second_state = repo.get_training_state(db_conn, lid)
+    assert second_state["tm"] == pytest.approx(90.25)
+    assert second_state["est1rm"] == pytest.approx(93.6631187679488)
 
 
 def test_save_log_rejects_blank_without_erasing_the_fact(

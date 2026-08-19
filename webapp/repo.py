@@ -492,18 +492,6 @@ def save_training_state(conn: sqlite3.Connection, slot_id: int, *, mode: str,
         raise sqlite3.IntegrityError("missing strength state")
 
 
-def save_sbs_historical_peak(conn: sqlite3.Connection, slot_id: int,
-                             peak_e1rm: float) -> None:
-    cursor = conn.execute(
-        "UPDATE strength_state SET est1rm = "
-        "CASE WHEN est1rm IS NULL OR est1rm < ? THEN ? ELSE est1rm END "
-        "WHERE slot_id = ? AND mode = 'sbs'",
-        (peak_e1rm, peak_e1rm, slot_id),
-    )
-    if cursor.rowcount != 1:
-        raise sqlite3.IntegrityError("missing SBS strength state")
-
-
 def finalize_training_sessions(conn: sqlite3.Connection, *, program_week: int,
                                finalized_at: str) -> None:
     conn.execute(

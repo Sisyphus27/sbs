@@ -15,6 +15,7 @@ from .. import repo
 from ..backup import make_snapshot_before_advance
 from ..db import get_db
 from ..services.training import (
+    HISTORICAL_PEAK_MODES,
     StaleTrainingWeekError,
     TrainingInputError,
     finalize_week,
@@ -81,11 +82,14 @@ def _v1_comparisons(history, expected_week):
         summary["volume"] = row["recorded_volume"]
         if row["drives_progression"] and not row["warmup"]:
             summary["has_driver"] = True
-            if row["mode"] not in (None, "sbs"):
+            if (
+                row["mode"] is not None
+                and row["mode"] not in HISTORICAL_PEAK_MODES
+            ):
                 summary["e1rm"] = row["display_e1rm"]
         if (
             not row["warmup"]
-            and row["mode"] == "sbs"
+            and row["mode"] in HISTORICAL_PEAK_MODES
             and row["display_e1rm"] is not None
         ):
             summary["e1rm"] = max(

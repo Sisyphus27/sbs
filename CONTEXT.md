@@ -88,12 +88,12 @@ _Avoid_: AMRAP target
 
 **est1RM**:
 Estimated one-rep max — the mean of the Epley, Brzycki, and Wathan formulas. A recorded set from
-1–20 reps may produce a display est1RM. For sbs, once the explicit progression driver exists,
-the plan view compares the session-best non-warmup set with the same Lift's previous program
-week; other modes compare the driver. Every reliably projectable non-warmup set of at most 10
-reps produces canonical est1RM independently of `e1rm_qualified`; sbs retains the historical
-peak while progression still reads only the explicit driver. Full-precision in storage;
-displayed to 2 decimals.
+1–20 reps may produce a display est1RM. For sbs and linear_t3, once the explicit progression
+driver exists, the plan view compares the session-best non-warmup set with the same Lift's
+previous program week. Every reliably projectable non-warmup set of at most 10 reps produces
+canonical est1RM independently of `e1rm_qualified`; sbs and linear_t3 share the Lift's
+historical peak while progression still reads only the explicit driver. Full-precision in
+storage; displayed to 2 decimals.
 _Avoid_: 1RM (that denotes an actual, measured max — a different concept)
 
 **Training volume (tonnage)**:

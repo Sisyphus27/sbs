@@ -882,7 +882,7 @@ def test_focus_inspector_compares_recorded_volume_and_display_e1rm_to_last_week(
     assert response.status_code == 200
     fragment = response.get_data(as_text=True)
     assert "Training volume 1300 kg" in fragment and "↗+14%" in fragment
-    assert "est1RM 43.49 kg" in fragment and "↗+6.03 kg" in fragment
+    assert "est1RM 50.33 kg" in fragment and "↗+0.00 kg" in fragment
 
     page = client.get("/").get_data(as_text=True)
     assert "Training volume" not in page
@@ -927,6 +927,68 @@ def test_sbs_supplement_updates_session_best_but_not_the_driver(
     second_state = repo.get_training_state(db_conn, lid)
     assert second_state["tm"] == pytest.approx(90.25)
     assert second_state["est1rm"] == pytest.approx(93.6631187679488)
+
+
+def test_t3_supplement_drives_shared_peak_but_not_progression(
+        client, make_lift, db_conn):
+    with db_conn:
+        db_conn.execute("UPDATE settings SET t3_target = 8 WHERE id = 1")
+    lid = make_lift(
+        name="Curl", mode="linear_t3", start=50.0, sets=3, lift_kind="main"
+    )
+
+    assert _save_set(
+        client, lid, 3, 5, actual_added_weight=50.0
+    ).status_code == 200
+    stronger = _save_set(client, lid, 1, 10)
+
+    assert stronger.status_code == 200
+    assert "est1RM 66.90 kg" in stronger.get_data(as_text=True)
+    assert client.post("/log", data={"expected_week": "1"}).status_code == 302
+    state = repo.get_training_state(db_conn, lid)
+    assert state["weight"] == 50.0
+    assert state["est1rm"] == pytest.approx(66.902227691392)
+
+    with db_conn:
+        db_conn.execute(
+            "UPDATE strength_state SET est1rm = 50, weight = 200 WHERE slot_id = ?",
+            (lid,),
+        )
+        db_conn.execute(
+            "UPDATE program_slot SET start_weight = 200 WHERE id = ?", (lid,)
+        )
+    assert client.post(
+        f"/lifts/{lid}/mode", data={"mode": "sbs"}
+    ).status_code == 302
+    state = repo.get_training_state(db_conn, lid)
+    assert state["tm"] == pytest.approx(66.902227691392)
+    assert state["est1rm"] == pytest.approx(66.902227691392)
+
+    assert _save_set(
+        client, lid, 3, 5, week=2, actual_added_weight=60.0
+    ).status_code == 200
+    assert client.post("/log", data={"expected_week": "2"}).status_code == 302
+    assert repo.get_training_state(db_conn, lid)["est1rm"] > 66.902227691392
+
+    with db_conn:
+        db_conn.execute(
+            "UPDATE strength_state SET est1rm = 80 WHERE slot_id = ?", (lid,)
+        )
+    assert client.post(
+        f"/lifts/{lid}/mode", data={"mode": "linear_t3"}
+    ).status_code == 302
+    assert repo.get_training_state(db_conn, lid)["est1rm"] == 80.0
+
+    assert _save_set(
+        client, lid, 3, 1, week=3, actual_added_weight=20.0
+    ).status_code == 200
+    assert client.post("/log", data={"expected_week": "3"}).status_code == 302
+    assert repo.get_training_state(db_conn, lid)["est1rm"] == 80.0
+
+    assert client.post(
+        f"/lifts/{lid}/mode", data={"mode": "linear_t2"}
+    ).status_code == 302
+    assert repo.get_training_state(db_conn, lid)["est1rm"] is None
 
 
 def test_save_log_rejects_blank_without_erasing_the_fact(

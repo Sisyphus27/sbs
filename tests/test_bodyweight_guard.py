@@ -57,7 +57,7 @@ def test_guard_mode_switch_derive_state_is_bodyweight_driven():
     derived = derive_state(conn, lid, "linear_t2", settings)
     # Load-bearing claim: est1rm is bodyweight-driven, not 0.
     assert derived["est1rm"] == estimate_1rm(75.0, 5)
-    # User-visible consequence: the linear_t2 reset/start weight snaps onto a
-    # bodyweight-scale grid, NOT 0. (estimate_1rm(75,5)*0.75 ~= 65.)
-    assert derived["weight"] > 50.0
+    # Bodyweight T2 keeps its configured added weight; the historical estimate
+    # is observation state, not a loadable-T2 reset input.
+    assert derived["weight"] == 0.0
     conn.close()

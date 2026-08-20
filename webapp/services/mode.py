@@ -5,7 +5,7 @@ from sbs_cli.engine.onerm import est1rm_from_history
 from sbs_cli.engine.modes import get_mode
 from .. import repo
 from .rows import lift_from_row
-from .training import HISTORICAL_PEAK_MODES, historical_e1rm_peak
+from .training import historical_e1rm_peak, uses_historical_peak
 
 
 def _derive_start(lift, new_mode: str, settings, est1rm) -> dict:
@@ -52,10 +52,10 @@ def derive_slot_state(conn: sqlite3.Connection, slot_id: int, new_mode: str,
     if slot is None or current_state is None:
         raise ValueError("unknown training slot")
     est1rm = current_state["est1rm"]
-    if new_mode in HISTORICAL_PEAK_MODES:
+    if uses_historical_peak(new_mode, slot["load_model"]):
         history_peak = historical_e1rm_peak(conn, slot_id)
         peak_candidates = [history_peak]
-        if current_state["mode"] in HISTORICAL_PEAK_MODES:
+        if uses_historical_peak(current_state["mode"], slot["load_model"]):
             peak_candidates.append(est1rm)
         est1rm = max(
             (value for value in peak_candidates if value is not None), default=None

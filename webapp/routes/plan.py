@@ -15,7 +15,6 @@ from .. import repo
 from ..backup import make_snapshot_before_advance
 from ..db import get_db
 from ..services.training import (
-    HISTORICAL_PEAK_MODES,
     StaleTrainingWeekError,
     TrainingInputError,
     finalize_week,
@@ -24,6 +23,7 @@ from ..services.training import (
     save_draft_set,
     training_history,
     training_plan,
+    uses_historical_peak,
 )
 from ._forms import skipped_slot_ids
 
@@ -84,12 +84,12 @@ def _v1_comparisons(history, expected_week):
             summary["has_driver"] = True
             if (
                 row["mode"] is not None
-                and row["mode"] not in HISTORICAL_PEAK_MODES
+                and not uses_historical_peak(row["mode"], row["load_model"])
             ):
                 summary["e1rm"] = row["display_e1rm"]
         if (
             not row["warmup"]
-            and row["mode"] in HISTORICAL_PEAK_MODES
+            and uses_historical_peak(row["mode"], row["load_model"])
             and row["display_e1rm"] is not None
         ):
             summary["e1rm"] = max(

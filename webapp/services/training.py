@@ -30,7 +30,12 @@ class StaleTrainingWeekError(TrainingInputError):
 
 
 UNCHANGED = object()
-HISTORICAL_PEAK_MODES = {"sbs", "linear_t3"}
+
+
+def uses_historical_peak(mode, load_model):
+    return mode in {"sbs", "linear_t3"} or (
+        mode == "linear_t2" and load_model == "bodyweight"
+    )
 
 
 def actual_working_weight(*, load_model: str, actual_added_weight,
@@ -94,13 +99,13 @@ def training_history(conn: sqlite3.Connection) -> list[dict]:
 
 
 def historical_e1rm_peak(conn: sqlite3.Connection, slot_id: int):
-    """Best reliable SBS/T3 fact for one Lift, independent of current mode."""
+    """Best reliable non-reset fact for one Lift, independent of current mode."""
     return max(
         (
             row["canonical_e1rm"]
             for row in training_history(conn)
             if row["slot_id"] == slot_id
-            and row["mode"] in HISTORICAL_PEAK_MODES
+            and uses_historical_peak(row["mode"], row["load_model"])
             and row["canonical_e1rm"] is not None
         ),
         default=None,
@@ -418,7 +423,7 @@ def _observation_peaks(conn: sqlite3.Connection, expected_week: int,
             and row["slot_id"] not in allowed_slot_ids
         ):
             continue
-        if row["mode"] in HISTORICAL_PEAK_MODES:
+        if uses_historical_peak(row["mode"], row["load_model"]):
             peaks = historical_peaks
         elif (
             row["program_week"] == expected_week
@@ -497,7 +502,9 @@ def finalize_week(conn: sqlite3.Connection, *, expected_week: int,
                 allowed_slot_ids={row["slot_id"] for row in drivers},
             )
             for row in drivers:
-                uses_historical_peak = row["mode"] in HISTORICAL_PEAK_MODES
+                keeps_historical_peak = uses_historical_peak(
+                    row["mode"], row["load_model"]
+                )
                 is_loadable_t2 = (
                     row["mode"] == "linear_t2"
                     and row["load_model"] == "barbell"
@@ -508,10 +515,10 @@ def finalize_week(conn: sqlite3.Connection, *, expected_week: int,
                 models = _progression_models(
                     row,
                     expected_week,
-                    None if uses_historical_peak else canonical_e1rm,
+                    None if keeps_historical_peak else canonical_e1rm,
                     projection_available=(
                         working_weight is not None
-                        and not uses_historical_peak
+                        and not keeps_historical_peak
                         and not is_loadable_t2
                     ),
                 )
@@ -551,7 +558,7 @@ def finalize_week(conn: sqlite3.Connection, *, expected_week: int,
                     )
                     aggregate_e1rm = (
                         historical_peaks.get(row["slot_id"])
-                        if uses_historical_peak
+                        if keeps_historical_peak
                         else canonical_e1rm
                     )
                     state.est1rm = prior_e1rm

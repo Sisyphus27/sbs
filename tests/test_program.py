@@ -281,7 +281,8 @@ def test_est1rm_from_history_ordinary_lift_unchanged():
 def test_recompute_state_t2_bodyweight_no_reset_mirrors_last_reps():
     # Chin-ups (linear_t2, pct 1.0). 自重 t2 不 reset/级联：weight 恒为 start，
     # target 镜像最后一次实做（夹 4~10）。est1rm 仍按 working weight（体重+added）算。
-    lift = Lift(name="Chin-ups", mode="linear_t2", day=2, start=0.0,
+    lift = Lift(name="Chin-ups", load_model="bodyweight", mode="linear_t2",
+                day=2, start=0.0,
                 bodyweight_pct=1.0, incr=2.5)
     profile = Profile(bodyweight=75.0, incr=2.5, t2_fail=3, t2_reset_pct=0.75)
     hist = [SetEntry(week=1, weight=0.0, reps=8),

@@ -72,7 +72,7 @@ def recompute_state(lift: Lift, history: List[SetEntry], profile: Profile) -> Li
         return LiftState(name=lift.name, mode="linear_t3", weight=weight, target=None,
                          streak=0, est1rm=est, history=history)
     if lift.mode == "linear_t2":
-        if lift.bodyweight_pct > 0:
+        if lift.load_model == "bodyweight":
             # 自重 t2: 不 reset/级联。目标次数 = 最后一次实做，夹 4~10；weight 恒为 start。
             target = 8
             for h in history:

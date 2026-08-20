@@ -20,12 +20,12 @@ every hit adds `incr` and climbs back. The lifter confirmed this is the desired 
 
 ## Defect 2 — bodyweight T2 reset is meaningless
 
-For a bodyweight lift (`bodyweight_pct > 0`, e.g. Chin-ups) the stored `weight` is the *added*
+For a bodyweight lift (`load_model = bodyweight`, e.g. Chin-ups) the stored `weight` is the *added*
 weight, normally `0`. There is no weight to deload, so "reset to est1RM × 0.75" is incoherent —
 and under the new anchor it would clamp the added weight to `0` anyway. The user ruled that a
 bodyweight T2 needs no miss/reset machinery at all, only an approximate rep target.
 
-Chosen behavior for `bodyweight_pct > 0` `linear_t2`:
+Chosen behavior for `load_model = bodyweight` `linear_t2`:
 
 - **No reset, no 8→6→4 cascade, no streak.** The ladder only ever lowers the target; with no
   climb-back it could never rise again, which the user flagged as wrong.
@@ -35,7 +35,7 @@ Chosen behavior for `bodyweight_pct > 0` `linear_t2`:
 - `weight` stays at `start` (added weight, typically 0); `est1rm` keeps using the working-weight
   seam unchanged.
 
-Barbell T2 (`bodyweight_pct == 0`) is unaffected and keeps the cascade + the Defect-1 anchored
+Barbell T2 (`load_model = barbell`) is unaffected and keeps the cascade + the Defect-1 anchored
 reset.
 
 ## Considered Options
@@ -53,6 +53,6 @@ reset.
 - `t2_next` signature unchanged; both the live path (`LinearT2Mode.advance`) and the replay path
   (`recompute_state`) pick up the anchor automatically because both call `t2_next`.
 - The bodyweight branch lives in `LinearT2Mode.advance` and `recompute_state`, keyed off
-  `lift.bodyweight_pct > 0`, and bypasses `t2_next` entirely.
-- `derive_on_switch` (mode-switch preview/apply) for bodyweight `linear_t2` still derives a
-  weight from `est1rm × t2_reset_pct`; unifying that with the mirror rule is explicitly deferred.
+  `lift.load_model`, and bypasses `t2_next` entirely.
+- `derive_on_switch` keeps a bodyweight `linear_t2` lift's configured added starting weight;
+  only loadable T2 derives a reset weight from `est1rm × t2_reset_pct`.

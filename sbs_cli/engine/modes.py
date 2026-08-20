@@ -81,7 +81,7 @@ class LinearT2Mode(Mode):
     def advance(self, profile, lift, state, actual, week):
         w = state.weight
         self._record(profile, lift, state, actual, week, w)
-        if lift.bodyweight_pct > 0:
+        if lift.load_model == "bodyweight":
             # 自重 t2: 无重量可降，不 reset/级联。目标次数镜像上次实做，夹在 4~10。
             if actual is not None:
                 state.target = clamp_bodyweight_target(actual)
@@ -100,8 +100,9 @@ class LinearT2Mode(Mode):
 
     def derive_on_switch(self, lift, history, settings, est1rm):
         eff_incr = lift.incr if lift.incr is not None else settings["incr"]
-        w = round_weight(est1rm * settings["t2_reset_pct"], eff_incr) \
-            if est1rm is not None else (lift.start or 0.0)
+        w = lift.start or 0.0
+        if lift.load_model == "barbell" and est1rm is not None:
+            w = round_weight(est1rm * settings["t2_reset_pct"], eff_incr)
         return {"mode": "linear_t2", "tm": None, "weight": w, "target": 8, "streak": 0}
 
 

@@ -129,6 +129,21 @@ def test_recompute_state_t2_one_miss_drops_to_6():
     assert ls.target == 6 and ls.streak == 1 and ls.weight == 50.0
 
 
+def test_recompute_state_t2_without_est1rm_falls_back_one_step():
+    p = Profile(
+        incr=5.0,
+        lifts=[Lift(name="Row", mode="linear_t2", day=1, start=50.0)],
+    )
+    history = [SetEntry(week, 50.0, 0) for week in range(1, 4)]
+    state = recompute_state(p.lift("Row"), history, p)
+    assert (state.weight, state.target, state.streak, state.est1rm) == (
+        45.0,
+        8,
+        0,
+        None,
+    )
+
+
 def test_recompute_state_empty_history_seeds_start():
     p = Profile(lifts=[
         Lift(name="Row", mode="linear_t2", day=1, start=65),

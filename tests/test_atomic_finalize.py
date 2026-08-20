@@ -472,6 +472,155 @@ def test_t2_reset_uses_saved_state_baseline_and_clears_cycle_peak(tmp_path):
     assert state == (97.5, 8, 0, None)
 
 
+@pytest.mark.parametrize(
+    ("failing_weight", "expected_weight"),
+    [(105.0, 98.0), (1.0, 0.0)],
+)
+def test_t2_reset_without_cycle_peak_falls_back_one_step(
+    tmp_path, failing_weight, expected_weight
+):
+    db_path = tmp_path / "t2-reset-without-peak.db"
+    app = create_app(
+        db_path=str(db_path),
+        backup_dir=str(tmp_path / "backups"),
+        test_config={"TESTING": True},
+    )
+    with sqlite3.connect(db_path) as conn:
+        slot_id = insert_v1_slot(
+            conn,
+            name="Row",
+            mode="linear_t2",
+            day=1,
+            sort_order=0,
+            sets=3,
+            start_weight=failing_weight,
+            increment=7.0,
+            weight=failing_weight,
+            target=4,
+            streak=2,
+            est1rm=None,
+        )
+        conn.commit()
+
+    with app.test_client() as client:
+        preview = client.post(
+            f"/log/preview?lid={slot_id}",
+            data={
+                "expected_week": "1",
+                "slot_id": str(slot_id),
+                "focus_sequence": "1",
+                f"actual_added_weight_{slot_id}": str(failing_weight),
+                f"set_{slot_id}_3": "0",
+            },
+        )
+        assert preview.status_code == 200
+        preview_html = preview.get_data(as_text=True)
+        assert "目标 4 → 8" in preview_html
+        assert (
+            f"Working Weight {failing_weight} → {expected_weight} kg"
+            in preview_html
+        )
+        assert client.post(
+            "/training/sets/quick",
+            data={
+                "expected_week": "1",
+                "slot_id": str(slot_id),
+                "set_number": "3",
+                "actual_added_weight": str(failing_weight),
+                "reps": "0",
+            },
+        ).status_code == 200
+        finalized = client.post(
+            "/training/finalize", data={"expected_week": "1"}
+        )
+
+    assert finalized.status_code == 200
+    with sqlite3.connect(db_path) as conn:
+        assert conn.execute(
+            "SELECT weight, target, streak, est1rm FROM strength_state "
+            "WHERE slot_id = ?",
+            (slot_id,),
+        ).fetchone() == (expected_weight, 8, 0, None)
+        assert conn.execute(
+            "SELECT finalized_at IS NOT NULL FROM training_session "
+            "WHERE program_week = 1"
+        ).fetchone() == (1,)
+        assert conn.execute(
+            "SELECT week FROM settings WHERE id = 1"
+        ).fetchone() == (2,)
+
+
+def test_loadable_t2_keeps_cached_peak_until_next_complete_reset(tmp_path):
+    db_path = tmp_path / "t2-cached-peak.db"
+    app = create_app(
+        db_path=str(db_path),
+        backup_dir=str(tmp_path / "backups"),
+        test_config={"TESTING": True},
+    )
+    with sqlite3.connect(db_path) as conn:
+        slot_id = insert_v1_slot(
+            conn,
+            name="Row",
+            mode="linear_t2",
+            day=1,
+            sort_order=0,
+            sets=3,
+            start_weight=100.0,
+            weight=100.0,
+            target=4,
+            streak=2,
+            est1rm=80.0,
+        )
+        conn.commit()
+
+    with app.test_client() as client:
+        assert client.post(
+            "/training/sets/full",
+            data={
+                "expected_week": "1",
+                "slot_id": str(slot_id),
+                "set_number": "1",
+                "actual_added_weight": "50",
+                "reps": "1",
+                "warmup": "0",
+                "drives_progression": "0",
+            },
+        ).status_code == 200
+        preview = client.post(
+            f"/log/preview?lid={slot_id}",
+            data={
+                "expected_week": "1",
+                "slot_id": str(slot_id),
+                "focus_sequence": "1",
+                f"actual_added_weight_{slot_id}": "50",
+                f"set_{slot_id}_3": "0",
+            },
+        )
+        assert preview.status_code == 200
+        assert "Working Weight 100.0 → 60.0 kg" in preview.get_data(as_text=True)
+        assert client.post(
+            "/training/sets/quick",
+            data={
+                "expected_week": "1",
+                "slot_id": str(slot_id),
+                "set_number": "3",
+                "actual_added_weight": "50",
+                "reps": "0",
+            },
+        ).status_code == 200
+        finalized = client.post(
+            "/training/finalize", data={"expected_week": "1"}
+        )
+
+    assert finalized.status_code == 200
+    with sqlite3.connect(db_path) as conn:
+        assert conn.execute(
+            "SELECT weight, target, streak, est1rm FROM strength_state "
+            "WHERE slot_id = ?",
+            (slot_id,),
+        ).fetchone() == (60.0, 8, 0, None)
+
+
 def test_finalize_rejects_a_mode_changed_after_the_snapshot(tmp_path):
     app, db_path, _, slot_id = _app_with_t3_slot(tmp_path)
     with app.test_client() as client:

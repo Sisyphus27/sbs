@@ -105,7 +105,8 @@ _Avoid_: load (the weight on the bar for a single set), intensity
 
 **Progression Mode (mode)**:
 Which progression rule a lift follows: `sbs` (TM autoregulation by rep-out), `linear_t2`
-(1-strike rep cascade with est1RM-based reset), `linear_t3` (threshold accessories), or `none`
+(1-strike rep cascade with cycle-est1RM reset and a one-step fallback when unavailable),
+`linear_t3` (threshold accessories), or `none`
 (record-only — no automatic progression, used for pure-bodyweight lifts). A lift can be
 switched between modes within the same load-model family; history is preserved across switches.
 Replaces the old `tier` + `progression` pair (which overlapped: `progression="none"` was a
@@ -168,7 +169,8 @@ mechanism, not the cycle-boundary event)
 **1-strike cascade (T2)**:
 The T2 progression rule: each rep miss drops the target one level (8 → 6 → 4); after a
 configurable number of consecutive misses the lift resets to target 8 at a lower weight derived
-from est1RM. A hit adds weight and stays at the current level. Replaces an earlier 3-strike
+from cycle est1RM, or one effective step below the failing weight when no canonical peak exists.
+A hit adds weight and stays at the current level. Replaces an earlier 3-strike
 per-level cascade.
 _Avoid_: GZCLP cascade (ambiguous — several variants exist)
 

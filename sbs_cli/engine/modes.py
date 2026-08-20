@@ -87,8 +87,8 @@ class LinearT2Mode(Mode):
                 state.target = clamp_bodyweight_target(actual)
             return
         eff_incr = lift.incr if lift.incr is not None else profile.incr
-        est = state.est1rm if state.est1rm is not None else 0.0
-        ns = t2_next(T2State(state.target, state.streak, state.weight), actual, est,
+        ns = t2_next(T2State(state.target, state.streak, state.weight), actual,
+                     state.est1rm,
                      fail=profile.t2_fail, incr=eff_incr,
                      reset_pct=profile.t2_reset_pct, quantum=eff_incr)
         state.target, state.streak, state.weight = ns.target, ns.streak, ns.weight

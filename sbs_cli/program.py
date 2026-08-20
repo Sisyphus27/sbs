@@ -81,7 +81,7 @@ def recompute_state(lift: Lift, history: List[SetEntry], profile: Profile) -> Li
                              target=target, streak=0, est1rm=est, history=history)
         target, streak, weight = 8, 0, lift.start or 0.0
         for k, h in enumerate(history):
-            est_k = est1rm_from_history(history[:k + 1], bw, pct) or 0.0
+            est_k = est1rm_from_history(history[:k + 1], bw, pct)
             ns = t2_next(T2State(target, streak, weight), h.reps, est_k,
                          fail=profile.t2_fail, incr=eff_incr,
                          reset_pct=profile.t2_reset_pct, quantum=eff_incr)

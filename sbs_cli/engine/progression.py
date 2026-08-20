@@ -1,6 +1,7 @@
 """Per-tier progression rules. Pure functions; the spec source of truth."""
 import math
 from dataclasses import dataclass
+from typing import Optional
 
 
 def round_weight(w: float, quantum: float = 2.5) -> float:
@@ -69,16 +70,14 @@ class T2State:
     weight: float
 
 
-def t2_next(state: T2State, actual, est1rm: float, fail: int = 3,
+def t2_next(state: T2State, actual, est1rm: Optional[float], fail: int = 3,
             incr: float = 2.5, reset_pct: float = 0.75, quantum: float = 2.5) -> T2State:
     """T2 1-strike cascade: each miss drops one rep level (8 -> 6 -> 4); after `fail`
-    consecutive misses, reset to target 8 at round(min(est1rm*reset_pct, weight-incr), quantum).
+    consecutive misses, reset below the failing weight; a missing est1rm falls back one step.
     A hit adds `incr` and stays at the current level (no climb-back).
 
-    The reset is anchored below the failing weight: est1rm comes from the best of the
-    WHOLE history (an old peak), so est1rm*reset_pct can stay at/above the weight that
-    just failed `fail` times — resetting to it would loop forever. min() with
-    (weight - incr) guarantees the reset is strictly lighter than what just failed."""
+    The reset is anchored below the failing weight so an old peak cannot reset to
+    the weight that just failed. Without a cycle peak, that anchor is the fallback."""
     if actual is None:
         return state
     if actual >= state.target:                                   # HIT — pure arithmetic (ADR 0003)
@@ -86,7 +85,8 @@ def t2_next(state: T2State, actual, est1rm: float, fail: int = 3,
     new_streak = state.streak + 1                                # MISS
     if new_streak >= fail:                                       # Nth consecutive miss -> reset
         anchor = max(state.weight - incr, 0.0)                   # 防负 (ADR: B1 共识)
-        return T2State(8, 0, round_weight(min(est1rm * reset_pct, anchor), quantum))
+        candidate = anchor if est1rm is None else min(est1rm * reset_pct, anchor)
+        return T2State(8, 0, round_weight(candidate, quantum))
     ladder = [8, 6, 4]
     idx = ladder.index(state.target) if state.target in ladder else 0
     next_target = ladder[min(idx + 1, len(ladder) - 1)]          # drop one level, floor at 4

@@ -88,6 +88,16 @@ def test_linear_t2_plan_fields_reads_state_target_streak():
     assert f["streak"] == 2
 
 
+def test_linear_t2_advance_without_est1rm_falls_back_one_step():
+    p = Profile(incr=5.0, t2_fail=3)
+    l = Lift(name="Row", day=1, load_model="barbell", mode="linear_t2")
+    s = LiftState(
+        name="Row", mode="linear_t2", weight=50.0, target=4, streak=2
+    )
+    get_mode("linear_t2").advance(p, l, s, 0, week=1)
+    assert (s.weight, s.target, s.streak, s.est1rm) == (45.0, 8, 0, None)
+
+
 def test_linear_t3_plan_fields_uses_profile_target():
     p = Profile(t3_target=15)
     l = Lift(name="Curl", day=1, load_model="barbell", mode="linear_t3")

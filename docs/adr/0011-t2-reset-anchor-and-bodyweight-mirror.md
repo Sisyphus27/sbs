@@ -18,6 +18,10 @@ reset = round(min(est1rm × reset_pct, max(weight − incr, 0)), quantum)
 No lower-bound floor is applied beyond the `≥ 0` guard: a too-light reset is harmless because
 every hit adds `incr` and climbs back. The lifter confirmed this is the desired behavior.
 
+When the reset cycle has no canonical est1RM, the individualized term is unavailable. In that
+case the reset uses the anchor itself: `round(max(weight − incr, 0), quantum)`. It does not
+synthesize an est1RM; callers preserve the unavailable value for the new cycle.
+
 ## Defect 2 — bodyweight T2 reset is meaningless
 
 For a bodyweight lift (`load_model = bodyweight`, e.g. Chin-ups) the stored `weight` is the *added*
@@ -50,8 +54,8 @@ reset.
 
 ## Consequences
 
-- `t2_next` signature unchanged; both the live path (`LinearT2Mode.advance`) and the replay path
-  (`recompute_state`) pick up the anchor automatically because both call `t2_next`.
+- `t2_next` accepts an unavailable est1RM; both the live path (`LinearT2Mode.advance`) and the
+  replay path (`recompute_state`) preserve that value and pick up the anchor fallback.
 - The bodyweight branch lives in `LinearT2Mode.advance` and `recompute_state`, keyed off
   `lift.load_model`, and bypasses `t2_next` entirely.
 - `derive_on_switch` keeps a bodyweight `linear_t2` lift's configured added starting weight;

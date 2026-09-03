@@ -4,14 +4,18 @@
     data-inspector-url="{{ url_for('plan.preview_log', lid=it.id) }}"
     class="week-ledger-row {{ 'is-logged' if it.is_settlement_ready else 'is-unresolved' }}{{ ' is-zero' if it.is_zero else '' }}">
   <td>
+    <div class="ledger-state">
     {% include '_plan_lift_status.html' %}
     <span class="save-error num" data-workspace-error role="alert"></span>
+    <div class="ledger-actions">
     <input type="hidden" name="skipped_slot_ids" value="{{ it.id }}" disabled>
     <button type="button" class="btn-ghost settlement-skip"
             data-skip-lift
             {% if it.is_settlement_ready %}hidden disabled{% endif %}>本周跳过</button>
     <button type="button" class="btn-ghost settlement-skip"
             data-resume-lift hidden>恢复补录</button>
+    </div>
+    </div>
   </td>
   <td class="num">Day {{ it.day }}</td>
   <td>

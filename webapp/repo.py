@@ -464,6 +464,7 @@ def list_progression_drivers(conn: sqlite3.Connection, *, program_week: int):
         "ps.lift_kind, ps.mode AS current_slot_mode, "
         "ss.mode AS current_state_mode, pe.mode, pe.planned_sets, pe.planned_reps, "
         "pe.planned_repout, pe.planned_target, pe.planned_intensity, "
+        "pe.planned_added_weight, "
         "pe.bodyweight_pct, pe.state_tm, pe.state_weight, pe.state_target, "
         "pe.state_streak, COALESCE(pe.state_est1rm, ss.est1rm) AS state_est1rm, "
         "pe.rounding, pe.increment, pe.t2_reset_pct, pe.t2_fail, pe.t3_target "

@@ -57,11 +57,11 @@
         <div class="top">
           <span class="name{% if it.is_logged %} done{% endif %}">{% if it.is_logged %}✓ {% endif %}{{ it.name }}</span>
           {% if it.is_bodyweight and it.mode != 'none' %}
-            <span class="wt">+{{ it.weight }}<span class="unit">kg</span></span>
+            <span class="wt">+{{ it.export_added_weight }}<span class="unit">kg</span></span>
           {% elif it.mode == 'none' %}
             {# 纯体重：无大数字 #}
           {% else %}
-            <span class="wt">{{ it.weight }}<span class="unit">kg</span></span>
+            <span class="wt">{{ it.export_added_weight }}<span class="unit">kg</span></span>
           {% endif %}
         </div>
         <div class="scheme">

@@ -8,6 +8,7 @@
   --mono:ui-monospace,"SF Mono","Cascadia Code",Consolas,monospace;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;font-family:var(--font);font-size:15px;line-height:1.5;color:var(--ink);background:var(--bg)}
 h1{font-size:1.4em;margin:0 0 .5em}
 h2{font-size:1.2em;margin:1.4em 0 .5em;border-bottom:1px solid var(--line);padding-bottom:.2em}
@@ -76,7 +77,12 @@ body{display:flex;min-height:100vh}
 
 /* production Week Ledger */
 .week-ledger-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);margin-bottom:16px}
-.week-ledger{width:100%;border-collapse:collapse}
+.week-ledger{width:100%;min-width:760px;table-layout:fixed;border-collapse:collapse}
+.week-ledger th:nth-child(1){width:160px}
+.week-ledger th:nth-child(2){width:70px}
+.week-ledger th:nth-child(4){width:145px}
+.week-ledger th:nth-child(5){width:100px}
+.week-ledger th:nth-child(6){width:95px}
 .week-ledger th,.week-ledger td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
 .week-ledger th{font-size:.82em;color:var(--muted);font-weight:normal;background:#fafafa}
 .week-ledger-row:last-child td{border-bottom:0}
@@ -89,13 +95,18 @@ body{display:flex;min-height:100vh}
 .ledger-status.is-unresolved{color:var(--accent)}
 .ledger-status.is-zero{color:var(--down)}
 .ledger-status.is-skipped{color:var(--muted)}
+.ledger-state{display:grid;grid-template-rows:20px 36px 30px}
+.ledger-state .save-error{margin:0;overflow:auto;overflow-wrap:anywhere}
+.ledger-actions{white-space:nowrap}
 .ledger-plan{display:block;margin-top:2px}
 .ledger-control{display:flex;align-items:center;gap:5px;white-space:nowrap}
 .ledger-control input{width:72px;padding:5px 7px;border:1px solid var(--line);border-radius:var(--radius)}
 .ledger-control input:focus{outline:none;border-color:var(--accent)}
 .ledger-control-label{font-size:.82em;color:var(--muted)}
-.ledger-working{display:block;margin-top:3px;white-space:nowrap}
-.ledger-fixed-weight{white-space:nowrap}
+.week-ledger-row>td:nth-child(5)>.ledger-control{flex-direction:column;align-items:flex-start;gap:3px}
+.week-ledger .save-ok{min-height:1.5em;margin-left:0}
+.ledger-working{display:block;margin-top:3px;height:4.5em;overflow:auto;overflow-wrap:anywhere}
+.ledger-fixed-weight{display:block}
 .ledger-earlier-trigger{border:0;background:transparent;padding:0;cursor:pointer;
   white-space:nowrap;color:var(--muted);font-size:.88em}
 .ledger-earlier-trigger:hover{color:var(--accent)}

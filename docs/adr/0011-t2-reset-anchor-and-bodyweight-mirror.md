@@ -36,8 +36,10 @@ Chosen behavior for `load_model = bodyweight` `linear_t2`:
 - **Target reps mirror the last logged set, clamped to `[4, 10]`** (`clamp_bodyweight_target`).
   This self-adjusts both down (bad day → lower target) and up (recovery → higher target), which
   a pure descend-only cascade cannot.
-- `weight` stays at `start` (added weight, typically 0); `est1rm` keeps using the working-weight
-  seam unchanged.
+- In current-week settlement, `weight` retains the confirmed driver's actual added weight
+  (typically 0); `est1rm` keeps using the working-weight seam unchanged. This narrows the
+  original fixed-`start` behavior for live training (issue #95, 2026-09-03); legacy replay
+  still starts from the configured weight.
 
 Barbell T2 (`load_model = barbell`) is unaffected and keeps the cascade + the Defect-1 anchored
 reset.

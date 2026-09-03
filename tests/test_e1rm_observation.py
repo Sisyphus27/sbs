@@ -270,10 +270,12 @@ def test_loadable_t2_keeps_one_peak_through_the_complete_reset_cycle(tmp_path):
             (slot_id,),
         ).fetchone() == ("linear_t2", 105.0, 8, 0, None)
 
+    # Weight edits change the baseline while phase and cycle peak continue.
+    # The reset is bounded by actual 100 - step 7, then snapped to the 7 kg grid.
     for week, driver_weight, supplementary_reps, driver_reps, expected_state in (
-        (1, 80.0, 10, 7, (105.0, 6, 1, 107.04356430622721)),
-        (2, 60.0, None, 5, (105.0, 4, 2, 107.04356430622721)),
-        (3, 100.0, 10, 3, (98.0, 8, 0, None)),
+        (1, 80.0, 10, 7, (80.0, 6, 1, 107.04356430622721)),
+        (2, 60.0, None, 5, (60.0, 4, 2, 107.04356430622721)),
+        (3, 100.0, 10, 3, (91.0, 8, 0, None)),
     ):
         with app.test_client() as client:
             if supplementary_reps is not None:
@@ -374,7 +376,7 @@ def test_loadable_t2_keeps_one_peak_through_the_complete_reset_cycle(tmp_path):
             "WHERE slot_id = ?",
             (slot_id,),
         ).fetchone() == pytest.approx(
-            (105.0, 8, 0, 100.92693780842751)
+            (87.0, 8, 0, 100.92693780842751)
         )
 
 

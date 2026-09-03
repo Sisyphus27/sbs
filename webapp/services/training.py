@@ -315,7 +315,7 @@ class _DriverHistory(list):
 def _validate_progression_driver(row):
     if row["actual_added_weight"] is None or not math.isfinite(
         row["actual_added_weight"]
-    ):
+    ) or row["actual_added_weight"] < 0:
         raise TrainingInputError("progression driver actual weight is unconfirmed")
     mode = row["mode"]
     if mode is None:
@@ -324,7 +324,7 @@ def _validate_progression_driver(row):
         raise TrainingInputError("training mode changed after draft save")
     required = {
         "sbs": ("state_tm", "rounding", "planned_intensity", "planned_reps",
-                "planned_repout"),
+                "planned_repout", "planned_added_weight"),
         "linear_t2": ("state_weight", "state_target", "state_streak", "increment",
                       "t2_reset_pct", "t2_fail"),
         "linear_t3": ("state_weight", "increment", "t3_target"),
@@ -332,6 +332,13 @@ def _validate_progression_driver(row):
     }
     if mode not in required or any(row[name] is None for name in required[mode]):
         raise TrainingInputError("progression driver snapshot is incomplete")
+    if mode == "sbs" and (
+        not math.isfinite(row["planned_intensity"])
+        or row["planned_intensity"] <= 0
+        or any(not math.isfinite(row[name]) or row[name] < 0
+               for name in ("state_tm", "planned_added_weight"))
+    ):
+        raise TrainingInputError("SBS progression baseline is invalid")
     return mode
 
 
@@ -401,7 +408,8 @@ def _progression_models(row, expected_week: int, canonical_e1rm,
         name=row["name"],
         mode=mode,
         tm=row["state_tm"],
-        weight=row["state_weight"],
+        weight=(row["actual_added_weight"]
+                if mode in ("linear_t2", "linear_t3") else row["state_weight"]),
         target=row["state_target"],
         streak=row["state_streak"] or 0,
         est1rm=prior_e1rm,
@@ -410,6 +418,11 @@ def _progression_models(row, expected_week: int, canonical_e1rm,
             row["actual_added_weight"] if projection_available else None,
         ),
     )
+    if mode == "sbs" and row["actual_added_weight"] != row["planned_added_weight"]:
+        # Rebase only an override; normal plate rounding must not erase TM gains.
+        state.tm = row["actual_added_weight"] / row["planned_intensity"]
+        if not math.isfinite(state.tm):
+            raise TrainingInputError("SBS progression baseline is invalid")
     return profile, lift, state, prior_e1rm
 
 

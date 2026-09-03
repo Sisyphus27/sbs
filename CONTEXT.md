@@ -22,6 +22,9 @@ The internal reference ceiling for an sbs lift, from which each week's working w
 (or back-calculated as `repout_target / 0.9` when a rep-out target is supplied instead), then
 auto-regulated weekly by the rep-out delta. A bookkeeping value — never loaded onto the bar,
 kept at full float precision.
+For current-week actual-weight overrides, the progression driver rebases TM to its actual
+weight divided by the original prescribed percentage, then applies the same rep-out rule.
+Following the planned rounded weight retains the original TM, including fractional gains.
 _Avoid_: 1RM, max (the lift's `max` is the seed, not the TM itself)
 
 **Working Weight**:
@@ -111,6 +114,10 @@ Which progression rule a lift follows: `sbs` (TM autoregulation by rep-out), `li
 switched between modes within the same load-model family; history is preserved across switches.
 Replaces the old `tier` + `progression` pair (which overlapped: `progression="none"` was a
 patch on top of tier). See ADR 0005.
+In the live training workflow, confirmed driver weight supplies the progression baseline;
+the mode's week, target, phase, step and reset rules remain in force. Bodyweight T2 retains
+the confirmed added weight and mirrors last-set reps clamped to 4–10. Drafts and previews
+do not advance state; settled history is not replayed when a current weight changes.
 _Avoid_: tier (the old field, which conflated progression rule with load bookkeeping), level
 
 **Load Model (load_model)**:
@@ -224,6 +231,8 @@ drives the loading action. Exactly one per lift to keep sweaty-glance reading un
 bar weight for barbell, the added weight (`+15 kg`) for a bodyweight lift, none for a
 pure-bodyweight lift. Rendered at full precision (`95.0`/`57.5`) because the 2.5 kg rounding-quantum
 grid points must stay visible — never trailing-zero-stripped.
+The export uses confirmed non-warmup work-set weight when present (including zero), otherwise
+planned weight. Re-exporting captures current facts; an existing offline file stays unchanged.
 _Avoid_: dual weight display (added + working-total together invites mis-loading)
 
 **Day progress tri-state (Day 进度三态)**:

@@ -216,6 +216,13 @@ def _v1_plan_by_day(conn):
             load_model=slot["load_model"],
             day=slot["day"],
             weight=slot["planned_added_weight"],
+            export_added_weight=next((
+                fact["actual_added_weight"] for fact in facts.values()
+                if fact["slot_id"] == slot["slot_id"]
+                and fact["mode"] == slot["mode"]
+                and not fact["warmup"]
+                and fact["actual_added_weight"] is not None
+            ), slot["planned_added_weight"]),
             working_weight=slot["planned_working_weight"],
             actual_added_weight=actual_added_weight,
             current_working_weight=current_working_weight,

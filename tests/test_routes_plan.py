@@ -56,6 +56,126 @@ def test_plan_view_empty(client):
     assert b"Week" in rv.data
 
 
+@pytest.mark.parametrize(
+    "tm, actual_weight, reps, next_tm, next_weight",
+    [(100.0, 90.0, 8, 120.0, 95.0),
+     (100.0, 90.0, 6, 114.0, 90.0),
+     (100.5, 75.0, 9, 101.0025, 80.0),
+     (100.0, 0.0, 0, 0.0, 0.0)],
+)
+def test_sbs_actual_weight_rebases_preview_and_settlement_only_when_changed(
+        client, make_lift, db_conn, tm, actual_weight, reps, next_tm, next_weight):
+    lid = make_lift(name="Squat", mode="sbs", max=tm, lift_kind="main", sets=5)
+    db_conn.execute("UPDATE settings SET week = 8")
+    db_conn.execute(
+        "UPDATE sbs_schedule SET intensity = .75, repout = 8 "
+        "WHERE kind = 'main' AND week = 8"
+    )
+    db_conn.execute(
+        "UPDATE sbs_schedule SET intensity = .8 WHERE kind = 'main' AND week = 9"
+    )
+    db_conn.commit()
+    before = client.get("/training/plan").get_json()
+
+    saved = _save_set(client, lid, 5, reps, week=8, actual_added_weight=actual_weight)
+    assert saved.status_code == 200
+    assert f"下一周 Working Weight {next_weight} kg" in saved.get_data(as_text=True)
+    assert client.get("/training/plan").get_json() == before
+    review = client.post("/log/review", data={"expected_week": "8"})
+    assert review.status_code == 200
+    assert f"下一周 Working Weight {next_weight} kg" in review.get_data(as_text=True)
+    assert client.post("/training/finalize", data={"expected_week": "8"}).status_code == 200
+    after = client.get("/training/plan").get_json()
+    assert after["expected_week"] == 9
+    assert after["slots"][0]["planned_added_weight"] == next_weight
+    assert repo.get_training_state(db_conn, lid)["tm"] == next_tm
+
+
+@pytest.mark.parametrize(
+    "weights, next_tm", [([90, 95, 90, 90], 120.0), ([90, 75, 75], 100.5)],
+)
+def test_sbs_editing_and_undo_use_original_prescription(
+        client, make_lift, db_conn, weights, next_tm):
+    lid = make_lift(mode="sbs", max=100.5, lift_kind="main")
+    db_conn.execute(
+        "UPDATE sbs_schedule SET intensity = .75, repout = 8 WHERE kind = 'main' AND week = 1"
+    )
+    db_conn.commit()
+    before = client.get("/training/plan").get_json()
+    for weight in weights:
+        data = _set_data(lid, 3, 8, actual_added_weight=weight)
+        preview = client.post(f"/log/preview?lid={lid}", data=data)
+        assert preview.status_code == 200
+        saved = _save_set(client, lid, 3, 8, actual_added_weight=weight)
+        assert saved.status_code == 200
+        assert client.get("/training/plan").get_json() == before
+    assert f"Training Max 100.5 → {next_tm}" in saved.get_data(as_text=True)
+    assert client.post("/training/finalize", data={"expected_week": "1"}).status_code == 200
+    assert repo.get_training_state(db_conn, lid)["tm"] == next_tm
+
+
+@pytest.mark.parametrize("intensity", [None, float("inf")])
+def test_invalid_sbs_snapshot_cannot_rebase_or_finalize(
+        client, make_lift, db_conn, intensity):
+    lid = make_lift(mode="sbs", max=100, lift_kind="main")
+    assert _save_set(client, lid, 3, 8, actual_added_weight=90).status_code == 200
+    before = client.get("/training/plan").get_json()
+    db_conn.execute("UPDATE progression_event SET planned_intensity = ?", (intensity,))
+    db_conn.commit()
+    preview = client.post(
+        f"/log/preview?lid={lid}", data=_set_data(lid, 3, 8, actual_added_weight=95),
+    )
+    assert preview.status_code == 200
+    assert "Training Max" not in preview.get_data(as_text=True)
+    assert client.post("/training/finalize", data={"expected_week": "1"}).status_code == 400
+    assert client.get("/training/plan").get_json() == before
+    assert client.get("/training/history").get_json()[0]["actual_added_weight"] == 90
+
+
+@pytest.mark.parametrize(
+    "mode, load_model, target, streak, actual_weight, reps, next_weight, next_target, next_streak",
+    [
+        ("linear_t2", "barbell", 8, 0, 60, 8, 63, 8, 0),
+        ("linear_t2", "barbell", 8, 0, 60, 7, 60, 6, 1),
+        ("linear_t2", "barbell", 6, 1, 60, 6, 63, 6, 0),
+        ("linear_t2", "barbell", 6, 1, 60, 5, 60, 4, 2),
+        ("linear_t2", "barbell", 4, 2, 60, 3, 57, 8, 0),
+        ("linear_t2", "bodyweight", 8, 0, 7.5, 2, 7.5, 4, 0),
+        ("linear_t2", "bodyweight", 8, 0, 7.5, 12, 7.5, 10, 0),
+        ("linear_t3", "barbell", None, 0, 40, 15, 43, None, 0),
+        ("linear_t3", "barbell", None, 0, 40, 14, 40, None, 0),
+        ("linear_t3", "barbell", None, 0, 0, 0, 0, None, 0),
+    ],
+)
+def test_actual_weight_keeps_each_linear_modes_progression(
+        client, make_lift, db_conn, mode, load_model, target, streak,
+        actual_weight, reps, next_weight, next_target, next_streak):
+    lid = make_lift(mode=mode, load_model=load_model, start=30, incr=3,
+                    bodyweight_pct=1.0 if load_model == "bodyweight" else 0.0)
+    db_conn.execute(
+        "UPDATE strength_state SET target = ?, streak = ?, est1rm = 200 WHERE slot_id = ?",
+        (target, streak, lid),
+    )
+    db_conn.commit()
+    before = client.get("/training/plan").get_json()
+    for _ in range(2):
+        saved = _save_set(client, lid, 3, reps, actual_added_weight=actual_weight)
+        assert saved.status_code == 200, saved.get_data(as_text=True)
+        assert client.get("/training/plan").get_json() == before
+    review = client.post("/log/review", data={"expected_week": "1"})
+    assert review.status_code == 200
+    assert client.post("/training/finalize", data={"expected_week": "1"}).status_code == 200
+    state = repo.get_training_state(db_conn, lid)
+    assert (state["weight"], state["target"], state["streak"]) == (
+        next_weight, next_target, next_streak,
+    )
+    if mode == "linear_t2" and load_model == "barbell":
+        assert state["est1rm"] == (None if target == 4 and reps < 4 else 200)
+    next_slot = client.get("/training/plan").get_json()["slots"][0]
+    assert next_slot["planned_added_weight"] == next_weight
+    assert next_slot["planned_target"] == (15 if mode == "linear_t3" else next_target)
+
+
 def test_live_week_pages_load_app_script_once_without_changing_offline_export(
         client):
     app_script = '<script src="/static/app.js"></script>'
@@ -925,7 +1045,8 @@ def test_sbs_supplement_updates_session_best_but_not_the_driver(
     assert "↘-28.66 kg" in second_preview
     assert client.post("/log", data={"expected_week": "2"}).status_code == 302
     second_state = repo.get_training_state(db_conn, lid)
-    assert second_state["tm"] == pytest.approx(90.25)
+    # Week 2 planned 67.5; actual 65 rebases TM, then the driver's failure applies.
+    assert second_state["tm"] == pytest.approx(65 / .7 * .95)
     assert second_state["est1rm"] == pytest.approx(93.6631187679488)
 
 
@@ -1051,6 +1172,43 @@ def test_export_week_bodyweight_shows_added_only(client, make_lift, db_conn):
     html = client.get("/export/week.html").get_data(as_text=True)
     assert "+15" in html          # 加重
     assert "(90." not in html     # 工作重量括号已砍 (15 + 75*1.0 = 90.0); dot avoids CSS rotate(90deg)
+
+
+@pytest.mark.parametrize(
+    "load_model, mode, set_number, actual_weight, warmup, expected_weight",
+    [
+        ("barbell", "linear_t3", 3, 42.5, False, "42.5"),
+        ("barbell", "linear_t3", 1, 42.5, False, "42.5"),
+        ("barbell", "linear_t3", 4, 42.5, False, "42.5"),
+        ("barbell", "linear_t3", 1, 0, False, "0.0"),
+        ("barbell", "linear_t3", 1, 10, True, "30.0"),
+        ("bodyweight", "linear_t2", 1, 7.5, False, "+7.5"),
+        ("pure_bodyweight", "none", 3, 0, False, None),
+    ],
+)
+def test_export_uses_confirmed_work_weight_without_changing_completion(
+        client, make_lift, load_model, mode, set_number, actual_weight, warmup,
+        expected_weight):
+    lid = make_lift(name="Logged", load_model=load_model, mode=mode,
+                    start=0 if mode == "none" else 30,
+                    bodyweight_pct=0.0 if load_model == "barbell" else 1.0)
+    original_export = client.get("/export/week.html").get_data(as_text=True)
+    saved = client.post("/training/sets/full", data={
+        "expected_week": "1", "slot_id": lid, "set_number": set_number,
+        "actual_added_weight": actual_weight, "reps": 8,
+        "warmup": int(warmup), "drives_progression": int(set_number == 3),
+    })
+    assert saved.status_code == 200
+    html = client.get("/export/week.html").get_data(as_text=True)
+    if expected_weight is None:
+        assert '<span class="wt">' not in html
+    else:
+        assert f'<span class="wt">{expected_weight}<span class="unit">kg</span>' in html
+    done = set_number == 3
+    assert ('class="name done">✓ Logged' in html) == done
+    assert f'class="st-{"full" if done else "empty"}"' in html
+    assert "<script" not in html
+    assert 'class="name done"' not in original_export
 
 
 def test_export_week_day_tristate_and_default_open(client, make_lift, db_conn):

@@ -73,7 +73,7 @@ def test_web_finalize_uses_only_driver_for_progression_and_canonical_e1rm(tmp_pa
             "SELECT finalized_at FROM training_session WHERE program_week = 1"
         ).fetchone()
         week = conn.execute("SELECT week FROM settings WHERE id = 1").fetchone()[0]
-    assert state[0] == 32.5
+    assert state[0] == 35.0  # Actual 32.5 + the saved 2.5 step.
     assert state[1] == pytest.approx(estimate_1rm(32.5, 10))
     assert session[0] is not None
     assert week == 2
@@ -113,7 +113,7 @@ def test_cli_finalize_uses_the_same_domain_command(tmp_path, capsys):
             (slot_id,),
         ).fetchone()
         week = conn.execute("SELECT week FROM settings WHERE id = 1").fetchone()[0]
-    assert state[0] == 32.5
+    assert state[0] == 33.5  # The CLI command also advances from actual 31 + step 2.5.
     assert state[1] == pytest.approx(estimate_1rm(31.0, 10))
     assert week == 2
     assert list(backup_dir.glob("sbs-w1-*.db.bak"))
@@ -400,7 +400,7 @@ def test_finalize_uses_saved_progression_parameters_not_current_configuration(tm
     with sqlite3.connect(db_path) as conn:
         assert conn.execute(
             "SELECT weight FROM strength_state WHERE slot_id = ?", (slot_id,)
-        ).fetchone()[0] == 32.5
+        ).fetchone()[0] == 35.0  # Actual 32.5 + saved step 2.5, not current step 5.
 
 
 def test_rough_driver_progresses_mode_without_updating_canonical_e1rm(tmp_path):
@@ -427,7 +427,7 @@ def test_rough_driver_progresses_mode_without_updating_canonical_e1rm(tmp_path):
     assert state == (32.5, None)
 
 
-def test_t2_reset_uses_saved_state_baseline_and_clears_cycle_peak(tmp_path):
+def test_t2_reset_uses_actual_weight_anchor_and_clears_cycle_peak(tmp_path):
     db_path = tmp_path / "t2-reset.db"
     app = create_app(
         db_path=str(db_path),
@@ -469,7 +469,7 @@ def test_t2_reset_uses_saved_state_baseline_and_clears_cycle_peak(tmp_path):
             "SELECT weight, target, streak, est1rm FROM strength_state WHERE slot_id = ?",
             (slot_id,),
         ).fetchone()
-    assert state == (97.5, 8, 0, None)
+    assert state == (57.5, 8, 0, None)  # Anchor below actual 60, retaining saved phase.
 
 
 @pytest.mark.parametrize(
@@ -493,9 +493,9 @@ def test_t2_reset_without_cycle_peak_falls_back_one_step(
             day=1,
             sort_order=0,
             sets=3,
-            start_weight=failing_weight,
+            start_weight=120.0,
             increment=7.0,
-            weight=failing_weight,
+            weight=120.0,
             target=4,
             streak=2,
             est1rm=None,
@@ -517,7 +517,7 @@ def test_t2_reset_without_cycle_peak_falls_back_one_step(
         preview_html = preview.get_data(as_text=True)
         assert "目标 4 → 8" in preview_html
         assert (
-            f"Working Weight {failing_weight} → {expected_weight} kg"
+            f"Working Weight 120.0 → {expected_weight} kg"
             in preview_html
         )
         assert client.post(
@@ -569,7 +569,7 @@ def test_loadable_t2_keeps_cached_peak_until_next_complete_reset(tmp_path):
             weight=100.0,
             target=4,
             streak=2,
-            est1rm=80.0,
+            est1rm=60.0,
         )
         conn.commit()
 
@@ -597,7 +597,8 @@ def test_loadable_t2_keeps_cached_peak_until_next_complete_reset(tmp_path):
             },
         )
         assert preview.status_code == 200
-        assert "Working Weight 100.0 → 60.0 kg" in preview.get_data(as_text=True)
+        # Cached 60, above this week's 50, still supplies the 45 kg reset.
+        assert "Working Weight 100.0 → 45.0 kg" in preview.get_data(as_text=True)
         assert client.post(
             "/training/sets/quick",
             data={
@@ -618,7 +619,7 @@ def test_loadable_t2_keeps_cached_peak_until_next_complete_reset(tmp_path):
             "SELECT weight, target, streak, est1rm FROM strength_state "
             "WHERE slot_id = ?",
             (slot_id,),
-        ).fetchone() == (60.0, 8, 0, None)
+        ).fetchone() == (45.0, 8, 0, None)
 
 
 def test_finalize_rejects_a_mode_changed_after_the_snapshot(tmp_path):

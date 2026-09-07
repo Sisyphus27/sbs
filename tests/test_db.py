@@ -110,7 +110,7 @@ def test_connect_sets_wal_and_synchronous_normal(tmp_path):
 
 
 def test_create_app_initializes_schema(tmp_path):
-    """create_app() migrates to v2 once so get_db() need not bootstrap."""
+    """create_app() migrates to v3 once so get_db() need not bootstrap."""
     from webapp.app import create_app
     db_path = str(tmp_path / "app.db")
     app = create_app(db_path=db_path, backup_dir=str(tmp_path / "bk"),
@@ -121,10 +121,10 @@ def test_create_app_initializes_schema(tmp_path):
         "SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
     assert {
         "settings", "sbs_schedule", "exercise", "program_slot",
-        "strength_state", "training_session", "set_log", "progression_event",
+        "strength_state", "training_session", "set_log", "progression_event", "week_skip",
     } <= tables
     assert {"lifts", "lift_state", "history", "week_log"}.isdisjoint(tables)
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 2
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 3
     conn.close()
 
 

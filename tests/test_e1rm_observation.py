@@ -75,7 +75,7 @@ def test_sbs_work_sets_automatically_keep_the_historical_peak(
     )
 
     with sqlite3.connect(db_path) as upgraded:
-        assert upgraded.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert upgraded.execute("PRAGMA user_version").fetchone()[0] == 3
         old_set = upgraded.execute(
             "SELECT e1rm_qualified FROM set_log WHERE session_id = ?",
             (old_session_id,),

@@ -9,7 +9,7 @@
 </div>
 {% endif %}
 <p class="meta">以整个 Program week 为工作单元；跨 Day 待处理 Lift 始终保留。</p>
-<p><a class="btn" href="{{ url_for('plan.export_week') }}" download>📱 导出本周计划(手机看)</a></p>
+<p><a class="btn" href="{{ url_for('plan.export_week') }}" data-export-week download>📱 导出本周计划(手机看)</a></p>
 <div class="week-workspace" data-week-settlement>
 <div class="week-ledger-panel">
   {# Client-side disable gives immediate feedback; expected_week is the server guard (ADR 0010). #}

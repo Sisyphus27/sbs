@@ -237,18 +237,31 @@ _Avoid_: dual weight display (added + working-total together invites mis-loading
 
 **Day progress tri-state (Day 进度三态)**:
 How the offline list decides which Day to expand and how to mark it: a Day is *empty* (no lift
-logged — not yet trained), *partial* (some logged — cut short by fatigue or time, an owed debt to
-finish later, marked ◐), or *full* (all logged — trained, collapses with a ✓). The lowest-numbered
+logged or skipped — not yet handled), *partial* (some handled, with an owed debt to
+finish later, marked ◐), or *full* (all logged or skipped — nothing owed, collapses by default).
+An entirely trained Day shows ✓; a full Day containing skips says 无待办 and distinguishes
+completed from skipped counts. The lowest-numbered
 non-full Day (partial or empty) is the next-to-train and expands by default, so an owed Day
-surfaces first rather than hiding. All Days stay expandable — collapse never hides a Day.
-Derived from logged data, never from a real-time calendar.
+surfaces first rather than hiding. If all Days are full, all start collapsed.
+All Days stay expandable — collapse never hides a Day.
+Derived from logged data and week skips, never from a real-time calendar.
 _Avoid_: today (the offline file has no reliable clock), skipping partial days (an owed Day is
 exactly what the lifter wants to find)
 
 **Card done-mark (卡片进度标记)**:
 Per-lift progress on an offline card: a lift whose last-set reps are already logged for the week
 (`logged` non-empty) renders its name with a leading ✓ and the `done` class (green). Unlogged
-lifts have no mark. Within a partially-trained Day this lets the lifter see at a glance which
+lifts have no mark unless explicitly skipped; those show 已跳过, never a completion tick.
+Within a partially-trained Day this lets the lifter see at a glance which
 lifts are done and which still to train — without recalling from memory. It carries only the
 done/not-done signal, never the logged value or any est1RM/tonnage state (those stay cut).
 _Avoid_: full logged-status block (that would re-introduce the cut state fields)
+
+**Week skip (本周跳过)**:
+A saved, revocable decision not to finish one Lift in the current Program week. It survives
+reopening the plan and appears in newly exported offline lists. It removes that Lift from
+the week's pending work without claiming completed training or changing progression.
+Existing set records remain intact. A Lift with a confirmed progression driver cannot be
+skipped; a skipped Lift must be resumed before further set recording. The next week starts
+without inheriting this decision. An already exported file remains its original snapshot.
+_Avoid_: zero-rep failure, completed training, permanent removal of the exercise

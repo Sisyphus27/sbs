@@ -5,19 +5,19 @@ def day_states(by_day):
     """Day progress tri-state for the offline export (ADR 0007).
 
     Returns (days, first_open). days = [(day, state, filled, items)] where state
-    is 'full' (all logged), 'part' (some logged — an owed debt, surfaced), or
-    'empty' (none logged). first_open = lowest-numbered non-full day (the
-    next-to-train); falls back to the last day when all are full. Pure Python,
+    is 'full' (all logged or skipped), 'part' (some handled), or
+    'empty' (none handled). filled counts logged lifts only.
+    first_open = lowest-numbered non-full day, or None when nothing is owed. Pure Python,
     no I/O — unit-testable without a request context."""
     days = []
     first_open = None
     for day, items in by_day:
-        filled = sum(1 for it in items if it.is_logged)
+        filled = sum(it.is_logged and not it.is_skipped for it in items)
+        skipped = sum(it.is_skipped for it in items)
         total = len(items)
-        state = "full" if filled == total else ("part" if filled > 0 else "empty")
+        handled = filled + skipped
+        state = "full" if handled == total else ("part" if handled > 0 else "empty")
         if first_open is None and state != "full":
             first_open = day
         days.append((day, state, filled, items))
-    if first_open is None and days:
-        first_open = days[-1][0]
     return days, first_open

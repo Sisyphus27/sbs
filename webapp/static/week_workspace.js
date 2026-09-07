@@ -11,8 +11,8 @@
   "use strict";
 
   // Public seam: createWeekWorkspace(snapshot) returns handle(event). Events are
-  // bootstrap, change, focus, skip, resume, nextUnresolved, saveResult, and
-  // inspectorResult. The only effects are request(save|inspector) and
+  // bootstrap, change, focus, skip, resume, nextUnresolved, saveResult,
+  // inspectorResult, settlementResult. Effects are request(save|inspector|settlement) and
   // render(workspace|persistent|inspector|reload); all mutable state stays here.
 
   function copyValue(value) {
@@ -70,6 +70,8 @@
         draft: copyDraft(source.draft || {}),
         serverSnapshot: server,
         settlementIntent: source.settlementIntent || "record",
+        intentRequest: null,
+        intentError: null,
         fieldRevisions: {
           addedWeight: 0,
           driverReps: 0,
@@ -84,7 +86,7 @@
     });
 
     function pendingCount(lift) {
-      return lift.queue.length + (lift.inFlight ? 1 : 0);
+      return lift.queue.length + (lift.inFlight ? 1 : 0) + (lift.intentRequest ? 1 : 0);
     }
 
     function attemptAffectsSettlement(attempt) {
@@ -97,6 +99,7 @@
     }
 
     function relevantError(lift) {
+      if (lift.intentError) return lift.intentError;
       if (lift.settlementIntent !== "record" || pendingCount(lift) > 0) {
         return null;
       }
@@ -127,6 +130,7 @@
     }
 
     function settlementState(lift) {
+      if (lift.intentRequest || lift.intentError) return "unresolved";
       if (hasSettlementSavePending(lift)) return "unresolved";
       if (lift.settlementIntent === "skip") {
         return lift.serverSnapshot.hasDriverFact ? "logged" : "skipped";
@@ -165,6 +169,8 @@
           saving: pendingCount(lift) > 0,
           error: relevantError(lift),
           settlementIntent: lift.settlementIntent,
+          intentSaving: Boolean(lift.intentRequest),
+          hasDriverFact: Boolean(lift.serverSnapshot.hasDriverFact),
         };
       });
       var handled = projected.filter(function (lift) {
@@ -172,7 +178,7 @@
       }).length;
       var allSavesSettled = order.every(function (key) {
         var lift = liftsBySlotId[key];
-        if (pendingCount(lift) > 0) return false;
+        if (pendingCount(lift) > 0 || lift.intentError) return false;
         if (lift.settlementIntent === "skip") return true;
         return allDraftIsCovered(lift) && !relevantError(lift);
       });
@@ -268,17 +274,39 @@
     }
 
     function focusEvent(lift) {
+      if (lift.intentRequest) return [workspaceRender()];
       focusLift(lift);
-      return [workspaceRender(), inspectorRequest(lift)];
+      return [workspaceRender(), inspectorRequest(lift, lift.settlementIntent)];
     }
 
     function settlementIntentEvent(lift, intent) {
-      lift.settlementIntent = intent;
+      if (pendingCount(lift) > 0 || lift.serverSnapshot.hasDriverFact) {
+        return [workspaceRender()];
+      }
       focusLift(lift);
+      lift.intentError = null;
+      lift.intentRequest = Object.freeze({
+        expectedWeek: expectedWeek, slotId: lift.slotId,
+        focusSequence: focus.sequence, intent: intent,
+      });
       return [
         workspaceRender(),
-        inspectorRequest(lift, intent === "skip" ? "skip" : "record"),
+        {type: "request", role: "settlement", payload: lift.intentRequest},
       ];
+    }
+
+    function settlementResult(lift, event) {
+      if (!lift.intentRequest
+          || Number(event.focusSequence) !== lift.intentRequest.focusSequence) return [];
+      if (event.staleWeek) return stopForStaleWeek();
+      if (event.success) {
+        lift.settlementIntent = lift.intentRequest.intent;
+      } else {
+        lift.intentError = event.error || "请求失败";
+      }
+      lift.intentRequest = null;
+      var effects = inspectorResult(lift, event);
+      return effects.length ? effects : [workspaceRender()];
     }
 
     function nextUnresolvedEvent() {
@@ -291,6 +319,8 @@
     }
 
     function change(lift, event) {
+      if (lift.intentRequest || lift.settlementIntent === "skip") return [];
+      lift.intentError = null;
       var setNumber;
       if (event.field === "addedWeight" || event.field === "driverReps") {
         lift.draft[event.field] = event.value;
@@ -433,6 +463,9 @@
       }
       if (event.type === "saveResult") {
         return lift ? saveResult(lift, event) : [];
+      }
+      if (event.type === "settlementResult") {
+        return lift ? settlementResult(lift, event) : [];
       }
       if (event.type === "inspectorResult") {
         return lift ? inspectorResult(lift, event) : [];

@@ -30,6 +30,7 @@
     .lift .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
     .lift .name{font-weight:600;font-size:1.05em;word-break:break-word}
     .lift .name.done{color:var(--up)}
+    .lift .name.skipped{color:var(--muted)}
     .lift .wt{font-family:var(--mono);font-weight:bold;font-size:1.6em;white-space:nowrap}
     .lift .wt .unit{font-size:.5em;font-weight:normal;color:var(--muted);margin-left:2px}
     .lift .scheme{font-size:1.05em;margin-top:3px;font-family:var(--mono)}
@@ -41,21 +42,22 @@
 </head>
 <body>
 <h1>Week {{ week }} 计划</h1>
-<p class="sub">离线装片清单。练完回家在 app 填末组次数。</p>
+<p class="sub">离线装片清单。练完回家在 app 填末组次数。保存或撤销跳过后，请重新导出。</p>
 
 {# 日三态 / first_open / logged 均在 Python 算好。#}
 {% for day, state, filled, items in days %}
+  {% set skipped = items|selectattr('is_skipped')|list|length %}
   <details data-day="{{ day }}" class="st-{{ state }}"{% if day==first_open %} open{% endif %}>
     <summary>
       <span class="caret">▶</span>Day {{ day }}
-      <span style="font-weight:normal;color:var(--muted);font-size:.85em">{{ filled }}/{{ items|length }}</span>
-      <span class="mark">{% if state=='full' %}✓{% elif state=='part' %}◐{% endif %}</span>
+      <span style="font-weight:normal;color:var(--muted);font-size:.85em">{% if skipped %}已完成 {{ filled }} · 已跳过 {{ skipped }}{% else %}{{ filled }}/{{ items|length }}{% endif %}</span>
+      <span class="mark">{% if state=='full' %}{{ '无待办' if skipped else '✓' }}{% elif state=='part' %}◐{% endif %}</span>
     </summary>
     <div class="cards">
       {% for it in items %}
       <div class="lift">
         <div class="top">
-          <span class="name{% if it.is_logged %} done{% endif %}">{% if it.is_logged %}✓ {% endif %}{{ it.name }}</span>
+          <span class="name{% if it.is_skipped %} skipped{% elif it.is_logged %} done{% endif %}">{% if it.is_logged and not it.is_skipped %}✓ {% endif %}{{ it.name }}{% if it.is_skipped %} · 已跳过{% endif %}</span>
           {% if it.is_bodyweight and it.mode != 'none' %}
             <span class="wt">+{{ it.export_added_weight }}<span class="unit">kg</span></span>
           {% elif it.mode == 'none' %}

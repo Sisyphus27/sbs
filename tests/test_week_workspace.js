@@ -203,8 +203,9 @@ test("same-lift saves are FIFO with frozen payloads and attempt-owned errors", f
     expectedWeek: 7,
     slotId: 11,
   });
-  assert.equal(liftView(skippedAfterFailure, 11).state, "logged");
-  assert.equal(liftView(skippedAfterFailure, 11).error, null);
+  assert.equal(requestEffect(skippedAfterFailure, "settlement"), undefined);
+  assert.equal(liftView(skippedAfterFailure, 11).state, "unresolved");
+  assert.equal(liftView(skippedAfterFailure, 11).error, "third failed");
 });
 
 
@@ -330,7 +331,7 @@ test("cross-lift saves run in parallel while obsolete inspectors are discarded",
 });
 
 
-test("pending skip and resume keep saves intact while next and review stay derived", function () {
+test("skip and resume persist before changing state and cannot race set saves", function () {
   const handle = createWeekWorkspace({
     expectedWeek: 7,
     focusedSlotId: 12,
@@ -373,12 +374,7 @@ test("pending skip and resume keep saves intact while next and review stay deriv
     expectedWeek: 7,
     slotId: 11,
   });
-  assert.deepEqual(requestEffect(skippedPending, "inspector").payload, {
-    expectedWeek: 7,
-    slotId: 11,
-    focusSequence: 2,
-    intent: "skip",
-  });
+  assert.equal(requestEffect(skippedPending, "settlement"), undefined);
   assert.equal(liftView(skippedPending, 11).state, "unresolved");
   assert.equal(liftView(skippedPending, 11).saving, true);
 
@@ -387,13 +383,7 @@ test("pending skip and resume keep saves intact while next and review stay deriv
     expectedWeek: 7,
     slotId: 11,
   });
-  assert.deepEqual(requestEffect(resumedPending, "inspector").payload, {
-    expectedWeek: 7,
-    slotId: 11,
-    focusSequence: 3,
-    actualAddedWeight: 30,
-    driverReps: 9,
-  });
+  assert.equal(requestEffect(resumedPending, "settlement"), undefined);
   assert.equal(liftView(resumedPending, 11).state, "unresolved");
 
   const moved = handle({type: "nextUnresolved", expectedWeek: 7});
@@ -416,20 +406,46 @@ test("pending skip and resume keep saves intact while next and review stay deriv
     expectedWeek: 7,
     slotId: 11,
   });
-  assert.equal(liftView(skippedEleven, 11).state, "skipped");
+  const skipRequest = requestEffect(skippedEleven, "settlement");
+  assert.equal(skipRequest.payload.intent, "skip");
+  assert.equal(liftView(skippedEleven, 11).state, "unresolved");
+  assert.equal(liftView(skippedEleven, 11).intentSaving, true);
   assert.equal(liftView(skippedEleven, 11).error, null);
-  assert.equal(workspaceView(skippedEleven).handled, 2);
-  assert.equal(workspaceView(skippedEleven).pending, 1);
+  assert.equal(workspaceView(skippedEleven).reviewEligible, false);
+  assert.deepEqual(handle({
+    type: "change", expectedWeek: 7, slotId: 11, field: "driverReps", value: 10,
+  }), []);
+  assert.equal(requestEffect(handle({
+    type: "resume", expectedWeek: 7, slotId: 11,
+  }), "settlement"), undefined);
+  assert.equal(requestEffect(handle({
+    type: "focus", expectedWeek: 7, slotId: 11,
+  }), "inspector"), undefined);
+
+  // A different focused lift must not discard the persisted skip acknowledgement.
+  handle({type: "focus", expectedWeek: 7, slotId: 13});
+  const skipAck = handle({
+    type: "settlementResult", ...skipRequest.payload, success: true,
+    inspectorFragment: "old focus",
+  });
+  assert.equal(renderEffect(skipAck, "inspector"), undefined);
+  assert.equal(liftView(skipAck, 11).state, "skipped");
+  assert.equal(workspaceView(skipAck).handled, 2);
+  assert.equal(workspaceView(skipAck).pending, 1);
 
   const skippedThirteen = handle({
     type: "skip",
     expectedWeek: 7,
     slotId: 13,
   });
-  assert.equal(workspaceView(skippedThirteen).handled, 3);
-  assert.equal(workspaceView(skippedThirteen).pending, 0);
-  assert.equal(workspaceView(skippedThirteen).nextUnresolvedSlotId, null);
-  assert.equal(workspaceView(skippedThirteen).reviewEligible, true);
+  const allHandled = handle({
+    type: "settlementResult",
+    ...requestEffect(skippedThirteen, "settlement").payload, success: true,
+  });
+  assert.equal(workspaceView(allHandled).handled, 3);
+  assert.equal(workspaceView(allHandled).pending, 0);
+  assert.equal(workspaceView(allHandled).nextUnresolvedSlotId, null);
+  assert.equal(workspaceView(allHandled).reviewEligible, true);
 
   const resumedEleven = handle({
     type: "resume",
@@ -437,8 +453,24 @@ test("pending skip and resume keep saves intact while next and review stay deriv
     slotId: 11,
   });
   assert.equal(liftView(resumedEleven, 11).state, "unresolved");
-  assert.equal(liftView(resumedEleven, 11).error, "save failed");
+  assert.equal(liftView(resumedEleven, 11).settlementIntent, "skip");
   assert.equal(workspaceView(resumedEleven).reviewEligible, false);
+  const resumeFailure = handle({
+    type: "settlementResult",
+    ...requestEffect(resumedEleven, "settlement").payload,
+    success: false, error: "resume failed",
+  });
+  assert.equal(liftView(resumeFailure, 11).settlementIntent, "skip");
+  assert.equal(liftView(resumeFailure, 11).error, "resume failed");
+  assert.equal(workspaceView(resumeFailure).reviewEligible, false);
+  const retry = handle({type: "resume", expectedWeek: 7, slotId: 11});
+  const resumed = handle({
+    type: "settlementResult", ...requestEffect(retry, "settlement").payload,
+    success: true,
+  });
+  assert.equal(liftView(resumed, 11).settlementIntent, "record");
+  assert.equal(liftView(resumed, 11).error, "save failed");
+  assert.equal(workspaceView(resumed).reviewEligible, false);
 });
 
 

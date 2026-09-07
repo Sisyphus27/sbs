@@ -654,3 +654,29 @@ def migrate_to_v2(
 
     _upgrade_v1_to_v2(conn)
     logger.info("migrated v1 to v2")
+
+
+def migrate_to_v3(
+    conn: sqlite3.Connection, *, db_path: str, backup_dir: str
+) -> None:
+    """Add week-scoped skip decisions without creating training facts."""
+    version = conn.execute("PRAGMA user_version").fetchone()[0]
+    if version == 3:
+        return
+    if version == 2:
+        snapshot(
+            db_path, dest_dir=backup_dir, week=_snapshot_week(conn),
+            ts=datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S"),
+        )
+    else:
+        migrate_to_v2(conn, db_path=db_path, backup_dir=backup_dir)
+    with conn:
+        conn.execute("BEGIN IMMEDIATE")
+        conn.execute(
+            "CREATE TABLE week_skip ("
+            "program_week INTEGER NOT NULL CHECK (program_week > 0), "
+            "slot_id INTEGER NOT NULL REFERENCES program_slot(id) ON DELETE CASCADE, "
+            "PRIMARY KEY (program_week, slot_id))"
+        )
+        conn.execute("PRAGMA user_version = 3")
+    logger.info("migrated v2 to v3")

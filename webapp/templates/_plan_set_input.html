@@ -1,6 +1,7 @@
 <input type="number" name="set_{{ it.id }}_{{ entry.number }}"
        value="{{ entry.reps if entry.reps is not none else '' }}"
        min="0"
+       {% if it.is_skipped %}disabled{% endif %}
        data-week-field="{{ 'driverReps' if entry.number == it.driver_set_number else 'earlierSetReps' }}"
        data-set-number="{{ entry.number }}">
 <span id="save-{{ it.id }}-{{ entry.number }}" class="save-ok num">{% if entry.reps is not none %}{{ '已保存' if entry.confirmed else '待确认' }}{% endif %}</span>

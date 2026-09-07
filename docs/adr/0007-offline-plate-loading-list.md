@@ -21,10 +21,13 @@ state fields are dropped. The page is pure template + inline CSS, **zero JavaScr
   Weights render at full precision (`95.0`/`57.5`) because the 2.5 kg rounding-quantum grid
   points must stay visible; never trailing-zero-stripped.
 - **Progress-driven day location, not a calendar.** Which Day expands by default is derived from
-  logged data, because the offline single file has no reliable real-time clock. The
+  logged data and saved week skips, because the offline single file has no reliable real-time clock. The
   lowest-numbered non-full Day expands; a *partial* Day (cut short by fatigue or time) is an owed
   debt, marked ◐ and surfaced first so the lifter can find and finish it later — never treated as
-  done, never hidden by collapse. Trained Days collapse with a ✓; all Days stay expandable.
+  done, never hidden by collapse. Trained Days collapse with a ✓; Days resolved partly or
+  entirely through skips collapse with 无待办 and separate completed/skipped counts.
+  Skipped cards remain visible on expansion with 已跳过, never a completion tick.
+  When nothing remains pending, all Days start collapsed; all stay expandable.
 - **No dark mode, no sticky day tabs.** The gym is bright, so the investment goes to light-mode
   contrast and large type instead. Day navigation is a plain `<details>/<summary>` collapse
   list — a sticky tab bar costs vertical space on a narrow phone and pure `#anchor` links do not
@@ -43,6 +46,6 @@ state fields are dropped. The page is pure template + inline CSS, **zero JavaScr
 ## Consequences
 
 - `week_export.html` stays self-contained and offline-capable (ADR 0006), now with zero JS.
-- The template computes the day tri-state in Jinja from the same `logged` data `_by_day`
-  already supplies — no new fields, no route/Python changes.
+- The shared presentation helper computes the day tri-state from logged facts and saved
+  week skips. Export stays read-only; a new export captures changes, old files do not sync.
 - The mode tag footnote keeps the ADR 0006 rule: only `sbs` is accent-highlighted, others neutral.

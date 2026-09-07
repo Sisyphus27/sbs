@@ -5,7 +5,7 @@ from webapp.services.plan import day_states as _day_states
 
 
 def _item(is_logged):
-    return SimpleNamespace(is_logged=is_logged)
+    return SimpleNamespace(is_logged=is_logged, is_skipped=False)
 
 
 def test_empty_day_state():
@@ -29,13 +29,13 @@ def test_full_day_collapses_and_yields_open_to_next():
     assert first_open == 2  # owed partial day surfaces before the empty one
 
 
-def test_all_full_falls_back_to_last_day():
+def test_all_full_days_stay_collapsed():
     days, first_open = _day_states([
         (1, [_item(True)]),
         (2, [_item(True)]),
     ])
     assert all(d[1] == "full" for d in days)
-    assert first_open == 2  # nothing owed -> stay on the last day
+    assert first_open is None
 
 
 def test_empty_input():

@@ -1,19 +1,20 @@
 <tr id="ledger-row-{{ it.id }}"
     data-slot-id="{{ it.id }}"
     data-save-url="{{ url_for('plan.save_log', lid=it.id) }}"
+    data-settlement-url="{{ url_for('plan.save_intent', lid=it.id) }}"
     data-inspector-url="{{ url_for('plan.preview_log', lid=it.id) }}"
-    class="week-ledger-row {{ 'is-logged' if it.is_settlement_ready else 'is-unresolved' }}{{ ' is-zero' if it.is_zero else '' }}">
+    class="week-ledger-row {{ 'is-skipped' if it.is_skipped else 'is-logged' if it.is_settlement_ready else 'is-unresolved' }}{{ ' is-zero' if it.is_zero else '' }}">
   <td>
     <div class="ledger-state">
     {% include '_plan_lift_status.html' %}
     <span class="save-error num" data-workspace-error role="alert"></span>
     <div class="ledger-actions">
-    <input type="hidden" name="skipped_slot_ids" value="{{ it.id }}" disabled>
+    <input type="hidden" name="skipped_slot_ids" value="{{ it.id }}"{% if not it.is_skipped %} disabled{% endif %}>
     <button type="button" class="btn-ghost settlement-skip"
             data-skip-lift
-            {% if it.is_settlement_ready %}hidden disabled{% endif %}>本周跳过</button>
+            {% if it.is_settlement_ready or it.is_skipped %}hidden disabled{% endif %}>本周跳过</button>
     <button type="button" class="btn-ghost settlement-skip"
-            data-resume-lift hidden>恢复补录</button>
+            data-resume-lift{% if not it.is_skipped %} hidden{% endif %}>恢复补录</button>
     </div>
     </div>
   </td>
@@ -42,6 +43,7 @@
              value="{{ it.actual_added_weight }}"
              min="0" step="0.5"
              data-week-field="addedWeight"
+             {% if it.is_skipped %}disabled{% endif %}
              data-set-number="{{ it.driver_set_number }}">
     </label>
     {% endif %}

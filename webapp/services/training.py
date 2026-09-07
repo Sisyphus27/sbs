@@ -203,6 +203,28 @@ def training_plan(conn: sqlite3.Connection) -> dict:
     return {"expected_week": expected_week, "slots": slots}
 
 
+def save_week_skip(conn: sqlite3.Connection, *, expected_week: int,
+                   slot_id: int, skipped: bool) -> None:
+    """Save or revoke a current-week decision, independently of training facts."""
+    if expected_week < 1 or slot_id < 1 or not isinstance(skipped, bool):
+        raise TrainingInputError("invalid week skip")
+    with conn:
+        if not repo.lock_week_if_current(conn, expected_week):
+            raise StaleTrainingWeekError("stale week")
+        slot = repo.get_training_slot(conn, slot_id)
+        if slot is None or repo.get_training_state(conn, slot_id) is None:
+            raise TrainingInputError("unknown training slot")
+        validate_slot(slot, days_per_week=repo.get_settings(conn)["days_per_week"])
+        if skipped and any(
+            row["slot_id"] == slot_id and _is_valid_progression_driver(row)
+            for row in repo.list_progression_drivers(conn, program_week=expected_week)
+        ):
+            raise TrainingInputError("skipped training slot is already logged")
+        repo.set_week_skip(
+            conn, program_week=expected_week, slot_id=slot_id, skipped=skipped
+        )
+
+
 def save_draft_set(conn: sqlite3.Connection, *, expected_week: int, slot_id: int,
                    set_number: int, actual_added_weight: float, reps: int,
                    warmup: bool = False, drives_progression: bool = False,
@@ -230,6 +252,8 @@ def save_draft_set(conn: sqlite3.Connection, *, expected_week: int, slot_id: int
                 raise TrainingInputError("unknown training slot")
             settings = repo.get_settings(conn)
             validate_slot(slot, days_per_week=settings["days_per_week"])
+            if slot_id in repo.get_week_skips(conn, expected_week):
+                raise TrainingInputError("请先恢复补录，再保存训练记录")
             session = repo.get_training_session(
                 conn, program_week=expected_week, day=slot["day"]
             )
@@ -471,6 +495,7 @@ def _settlement_drivers(conn: sqlite3.Connection, *, expected_week: int,
         raise TrainingInputError("duplicate skipped training slot")
     if skipped - set(planned_ids):
         raise TrainingInputError("unknown skipped training slot")
+    skipped |= repo.get_week_skips(conn, expected_week)
 
     drivers = {}
     for row in repo.list_progression_drivers(
@@ -701,7 +726,8 @@ def review_week_settlement(conn: sqlite3.Connection, *, expected_week: int,
         skipped_slot_ids=skipped_ids,
     )
     driver_by_slot = {row["slot_id"]: row for row in drivers}
-    skipped = set(skipped_ids)
+    skipped = set(skipped_ids) | repo.get_week_skips(conn, expected_week)
+    skipped_ids = tuple(sorted(skipped))
     settings = repo.get_settings(conn)
     planned = [
         slot for slot in training_plan(conn)["slots"]

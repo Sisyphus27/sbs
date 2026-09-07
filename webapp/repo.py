@@ -360,6 +360,32 @@ def get_training_session(conn: sqlite3.Connection, *, program_week: int, day: in
     ).fetchone()
 
 
+def get_week_skips(conn: sqlite3.Connection, program_week: int) -> set[int]:
+    return {
+        row[0] for row in conn.execute(
+            "SELECT ws.slot_id FROM week_skip ws "
+            "JOIN program_slot ps ON ps.id = ws.slot_id "
+            "WHERE ws.program_week = ? "
+            "AND ps.day BETWEEN 1 AND (SELECT days_per_week FROM settings WHERE id = 1)",
+            (program_week,),
+        )
+    }
+
+
+def set_week_skip(conn: sqlite3.Connection, *, program_week: int,
+                  slot_id: int, skipped: bool) -> None:
+    if skipped:
+        conn.execute(
+            "INSERT OR IGNORE INTO week_skip (program_week, slot_id) VALUES (?, ?)",
+            (program_week, slot_id),
+        )
+    else:
+        conn.execute(
+            "DELETE FROM week_skip WHERE program_week = ? AND slot_id = ?",
+            (program_week, slot_id),
+        )
+
+
 def create_training_session(conn: sqlite3.Connection, *, program_week: int, day: int,
                             training_date, bodyweight_kg) -> int:
     return conn.execute(

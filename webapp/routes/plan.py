@@ -21,6 +21,7 @@ from ..services.training import (
     preview_progression,
     review_week_settlement,
     save_draft_set,
+    save_week_skip,
     training_history,
     training_plan,
     uses_historical_peak,
@@ -153,6 +154,7 @@ def _v1_plan_by_day(conn):
     days_per_week = repo.get_settings(conn)["days_per_week"]
     history = training_history(conn)
     facts = _v1_current_facts(history, expected_week)
+    skipped_ids = repo.get_week_skips(conn, expected_week)
     rows_by_day = {}
     for slot in plan["slots"]:
         if not 1 <= slot["day"] <= days_per_week:
@@ -244,6 +246,7 @@ def _v1_plan_by_day(conn):
                 None if progression_driver is None else progression_driver.reps
             ),
             is_logged=final_entry.reps is not None,
+            is_skipped=slot["slot_id"] in skipped_ids,
             is_settlement_ready=progression_driver is not None,
             is_zero=(
                 progression_driver is not None
@@ -290,7 +293,7 @@ def _week_workspace_snapshot(expected_week, items):
                 "serverSnapshot": _workspace_server_snapshot(
                     item, item.workspace_coverage
                 ),
-                "settlementIntent": "record",
+                "settlementIntent": "skip" if item.is_skipped else "record",
             }
             for item in items
         ],
@@ -314,7 +317,7 @@ def view():
     conn = get_db()
     week, by_day = _v1_plan_by_day(conn)
     items = [item for _day, day_items in by_day for item in day_items]
-    handled_count = sum(item.is_settlement_ready for item in items)
+    handled_count = sum(item.is_settlement_ready or item.is_skipped for item in items)
     due, _cyc = due_lifts(conn)
     return render_template(
         "plan.html",
@@ -435,6 +438,35 @@ def save_log():
         it=item,
         set_number=set_number,
         preview=preview,
+    )
+
+
+@bp.route("/log/intent", methods=["POST"])
+def save_intent():
+    lid = request.args.get("lid", type=int)
+    expected_week = request.form.get("expected_week", type=int)
+    slot_id = request.form.get("slot_id", type=int)
+    focus_sequence = request.form.get("focus_sequence", type=int)
+    intent = request.form.get("intent")
+    if (lid is None or slot_id != lid or expected_week is None
+            or focus_sequence is None or focus_sequence < 1
+            or intent not in ("skip", "record")):
+        return ("bad settlement identity", 400)
+    conn = get_db()
+    try:
+        save_week_skip(
+            conn, expected_week=expected_week, slot_id=lid, skipped=intent == "skip"
+        )
+    except StaleTrainingWeekError:
+        return ("stale week", 409)
+    except TrainingInputError as error:
+        return (str(error), 400)
+    slot = repo.get_training_slot(conn, lid)
+    return render_template(
+        "_week_workspace_response.html", response_role="settlement",
+        expected_week=expected_week, slot_id=lid, focus_sequence=focus_sequence,
+        preview={"name": slot["name"], "mode": slot["mode"],
+                 "skipped": intent == "skip", "awaiting_input": intent == "record"},
     )
 
 

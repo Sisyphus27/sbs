@@ -163,27 +163,39 @@
       var skippedInput = row.querySelector('[name="skipped_slot_ids"]');
       if (skippedInput) skippedInput.disabled = lift.state !== 'skipped';
       row.querySelectorAll('input[data-week-field]').forEach(function (input) {
-        input.disabled = lift.state === 'skipped';
+        input.disabled = lift.settlementIntent === 'skip' || lift.intentSaving;
       });
 
       var skip = row.querySelector('[data-skip-lift]');
       var resume = row.querySelector('[data-resume-lift]');
+      var focusButton = row.querySelector('[data-focus-lift]');
+      if (focusButton) focusButton.disabled = lift.intentSaving;
       if (skip) {
-        skip.hidden = lift.state === 'logged'
+        skip.hidden = lift.hasDriverFact
           || lift.settlementIntent === 'skip';
-        skip.disabled = lift.state === 'logged';
+        skip.disabled = lift.hasDriverFact || lift.saving;
       }
       if (resume) {
         resume.hidden = lift.state === 'logged'
           || lift.settlementIntent !== 'skip';
-        resume.disabled = lift.state === 'logged';
+        resume.disabled = lift.state === 'logged' || lift.saving;
       }
     });
     handled.textContent = effect.view.handled;
     pending.textContent = effect.view.pending;
     review.disabled = !effect.view.reviewEligible;
     next.disabled = effect.view.nextUnresolvedSlotId === null;
+    var exportLink = document.querySelector('[data-export-week]');
+    if (exportLink) exportLink.setAttribute('aria-disabled', String(
+      effect.view.lifts.some(function (lift) { return lift.saving; })
+    ));
   }
+
+  document.addEventListener('click', function (event) {
+    if (event.target.closest('[data-export-week][aria-disabled="true"]')) {
+      event.preventDefault();
+    }
+  });
 
   function replaceTopLevelElements(fragment) {
     var container = document.createElement('template');
@@ -281,7 +293,7 @@
     }
     var identity = envelope || payload;
     var event = {
-      type: effect.role === 'save' ? 'saveResult' : 'inspectorResult',
+      type: effect.role + 'Result',
       expectedWeek: identity.expectedWeek,
       slotId: identity.slotId,
       focusSequence: identity.focusSequence,
@@ -312,7 +324,7 @@
   function transportFailureEvent(effect) {
     var payload = effect.payload;
     return {
-      type: effect.role === 'save' ? 'saveResult' : 'inspectorResult',
+      type: effect.role + 'Result',
       expectedWeek: payload.expectedWeek,
       slotId: payload.slotId,
       saveSequence: payload.saveSequence,
@@ -344,6 +356,9 @@
       if (Object.prototype.hasOwnProperty.call(payload, 'actualAddedWeight')) {
         values.actual_added_weight = payload.actualAddedWeight;
       }
+    } else if (effect.role === 'settlement') {
+      url = row.dataset.settlementUrl;
+      values.intent = payload.intent;
     } else {
       url = row.dataset.inspectorUrl;
       values.intent = payload.intent === 'skip' ? 'skip' : 'focus';

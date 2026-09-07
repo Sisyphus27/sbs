@@ -14,10 +14,11 @@ TRAINING_TABLES = {
     "training_session",
     "set_log",
     "progression_event",
+    "week_skip",
 }
 
 
-def test_fresh_database_starts_at_v2_with_six_training_tables(tmp_path):
+def test_fresh_database_starts_at_v3_with_training_tables_and_week_skips(tmp_path):
     db_path = tmp_path / "fresh.db"
 
     create_app(
@@ -80,7 +81,7 @@ def test_fresh_database_starts_at_v2_with_six_training_tables(tmp_path):
             conn.commit()
         conn.rollback()
 
-    assert user_version == 2
+    assert user_version == 3
     assert "e1rm_qualified" in set_log_columns
     assert TRAINING_TABLES <= tables
     assert {"settings", "sbs_schedule"} <= tables
@@ -150,7 +151,7 @@ def test_production_v0_uses_owner_confirmed_legacy_set_backfill(
 
     with sqlite3.connect(db_path) as migrated:
         migrated.row_factory = sqlite3.Row
-        assert migrated.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert migrated.execute("PRAGMA user_version").fetchone()[0] == 3
         tables = {
             row[0]
             for row in migrated.execute(
@@ -414,8 +415,8 @@ def test_nonpositive_legacy_planned_reps_roll_back_migration(tmp_path, mode):
         ).fetchone()[0] == 0
 
 
-def test_v2_startup_is_a_no_op(tmp_path):
-    db_path = tmp_path / "already-v2.db"
+def test_v3_startup_is_a_no_op(tmp_path):
+    db_path = tmp_path / "already-v3.db"
     backup_dir = tmp_path / "backups"
     config = {"TESTING": True}
     create_app(
@@ -440,13 +441,38 @@ def test_v2_startup_is_a_no_op(tmp_path):
     )
 
     with sqlite3.connect(db_path) as conn:
-        assert conn.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 3
         assert conn.execute("SELECT name FROM exercise").fetchall() == [("User row",)]
         assert conn.execute(
             "SELECT type, name, sql FROM sqlite_master "
             "WHERE type IN ('table', 'index') ORDER BY type, name"
         ).fetchall() == schema_before
     assert not backup_dir.exists()
+
+
+def test_v2_upgrade_keeps_existing_data_and_snapshots_before_adding_skips(tmp_path):
+    from webapp.migration import migrate_to_v2
+
+    db_path = str(tmp_path / "v2.db")
+    backup_dir = tmp_path / "backups"
+    conn = db.connect(db_path)
+    migrate_to_v2(conn, db_path=db_path, backup_dir=str(backup_dir))
+    with conn:
+        conn.execute("INSERT INTO exercise (name, load_model) VALUES ('Existing', 'barbell')")
+    conn.close()
+
+    create_app(db_path=db_path, backup_dir=str(backup_dir), test_config={"TESTING": True})
+
+    with sqlite3.connect(db_path) as upgraded:
+        assert upgraded.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert upgraded.execute("SELECT name FROM exercise").fetchall() == [("Existing",)]
+        assert upgraded.execute("SELECT COUNT(*) FROM week_skip").fetchone()[0] == 0
+        assert upgraded.execute("PRAGMA foreign_key_check").fetchall() == []
+    backups = list(backup_dir.glob("*.db.bak"))
+    assert len(backups) == 1
+    with sqlite3.connect(backups[0]) as backup:
+        assert backup.execute("PRAGMA user_version").fetchone()[0] == 2
+        assert backup.execute("SELECT name FROM exercise").fetchall() == [("Existing",)]
 
 
 def test_structural_migration_failure_rolls_back_and_keeps_snapshot(tmp_path):

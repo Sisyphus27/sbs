@@ -2,7 +2,6 @@ import re
 
 import pytest
 
-from tests.v1_helpers import mirror_legacy_lift
 from webapp import repo
 
 
@@ -88,7 +87,7 @@ def test_reseed_page_uses_cycle_skip_language(client, app):
 
         conn = connect(app.config["DB_PATH"])
         repo.set_week(conn, 22)
-        lift_id = repo.create_lift(
+        repo.create_training_slot(
             conn,
             name="Squat",
             load_model="barbell",
@@ -103,7 +102,6 @@ def test_reseed_page_uses_cycle_skip_language(client, app):
             start=None,
             lift_kind="main",
         )
-        mirror_legacy_lift(conn, lift_id)
         conn.close()
 
     response = client.get("/reseed")

@@ -24,7 +24,8 @@ class Mode:
     def initial_state(self, lift, settings) -> LiftState:
         raise NotImplementedError
 
-    def advance(self, profile, lift, state, actual, week) -> None:
+    def advance(self, profile, lift, state, actual, week, *, record_history=True) -> None:
+        """Progress state; legacy CLI callers also record and estimate history."""
         raise NotImplementedError
 
     def plan_fields(self, profile, lift, state, week) -> dict:
@@ -54,10 +55,11 @@ class SbsMode(Mode):
     def initial_state(self, lift, settings):
         return LiftState(name=lift.name, mode="sbs", tm=lift.max)
 
-    def advance(self, profile, lift, state, actual, week):
+    def advance(self, profile, lift, state, actual, week, *, record_history=True):
         sc = lookup_schedule(profile.schedule, lift.lift_kind, week)
-        w = round_weight((state.tm or 0) * sc.intensity, profile.rounding)
-        self._record(profile, lift, state, actual, week, w)
+        if record_history:
+            w = round_weight((state.tm or 0) * sc.intensity, profile.rounding)
+            self._record(profile, lift, state, actual, week, w)
         state.tm = sbs_next(state.tm, sc.repout, actual)
 
     def plan_fields(self, profile, lift, state, week):
@@ -78,9 +80,9 @@ class LinearT2Mode(Mode):
         return LiftState(name=lift.name, mode="linear_t2", weight=lift.start,
                          target=8, streak=0)
 
-    def advance(self, profile, lift, state, actual, week):
-        w = state.weight
-        self._record(profile, lift, state, actual, week, w)
+    def advance(self, profile, lift, state, actual, week, *, record_history=True):
+        if record_history:
+            self._record(profile, lift, state, actual, week, state.weight)
         if lift.load_model == "bodyweight":
             # 自重 t2: 无重量可降，不 reset/级联。目标次数镜像上次实做，夹在 4~10。
             if actual is not None:
@@ -112,9 +114,9 @@ class LinearT3Mode(Mode):
     def initial_state(self, lift, settings):
         return LiftState(name=lift.name, mode="linear_t3", weight=lift.start)
 
-    def advance(self, profile, lift, state, actual, week):
-        w = state.weight
-        self._record(profile, lift, state, actual, week, w)
+    def advance(self, profile, lift, state, actual, week, *, record_history=True):
+        if record_history:
+            self._record(profile, lift, state, actual, week, state.weight)
         eff_incr = lift.incr if lift.incr is not None else profile.incr
         state.weight = t3_next(state.weight, actual,
                                target=profile.t3_target, incr=eff_incr)
@@ -138,10 +140,10 @@ class RecordOnlyMode(Mode):
     def initial_state(self, lift, settings):
         return LiftState(name=lift.name, mode="none", weight=lift.start)
 
-    def advance(self, profile, lift, state, actual, week):
+    def advance(self, profile, lift, state, actual, week, *, record_history=True):
         # added weight stays 0 for pure bodyweight; only record + est1rm.
-        w = state.weight or 0.0
-        self._record(profile, lift, state, actual, week, w)
+        if record_history:
+            self._record(profile, lift, state, actual, week, state.weight or 0.0)
         # no weight/target mutation — record only
 
     def plan_fields(self, profile, lift, state, week):

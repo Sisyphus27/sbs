@@ -577,16 +577,6 @@ def submit():
     plan = training_plan(conn)
     if plan["expected_week"] != expected_week:
         return ("stale week", 409)
-    try:
-        review_week_settlement(
-            conn,
-            expected_week=expected_week,
-            skipped_slot_ids=skipped_ids,
-        )
-    except StaleTrainingWeekError:
-        return ("stale week", 409)
-    except TrainingInputError as error:
-        return (str(error), 400)
     from datetime import datetime, timezone
     snapshot_before_advance = make_snapshot_before_advance(
         current_app.config["DB_PATH"],

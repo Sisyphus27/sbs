@@ -1,6 +1,3 @@
-from webapp import repo
-
-
 def insert_v1_slot(conn, *, name, mode, day, sort_order, sets,
                    load_model="barbell", slot_id=None, max_seed=None,
                    start_weight=None, lift_kind=None, intensity=None, reps=None,
@@ -44,35 +41,3 @@ def insert_v1_slot(conn, *, name, mode, day, sort_order, sets,
         ),
     )
     return inserted_slot_id
-
-
-def mirror_legacy_lift(conn, lift_id):
-    """Give a legacy test lift the v1 slot/state pair used by migrated routes."""
-    lift = repo.get_lift(conn, lift_id)
-    state = repo.get_lift_state(conn, lift_id)
-    slot_id = insert_v1_slot(
-        conn,
-        slot_id=lift_id,
-        name=lift["name"],
-        load_model=lift["load_model"],
-        mode=lift["mode"],
-        day=lift["day"],
-        sort_order=lift["sort_order"],
-        sets=lift["sets"],
-        max_seed=lift["max"],
-        start_weight=lift["start"],
-        lift_kind=lift["lift_kind"],
-        intensity=lift["intensity"],
-        reps=lift["reps"],
-        repout=lift["repout"],
-        increment=lift["incr"],
-        bodyweight_pct=lift["bodyweight_pct"],
-        tm=state["tm"],
-        weight=state["weight"],
-        target=state["target"],
-        streak=state["streak"],
-        est1rm=state["est1rm"],
-        reseeded_cycle=state["reseeded_cycle"],
-    )
-    conn.commit()
-    return slot_id

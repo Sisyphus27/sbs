@@ -1,12 +1,11 @@
 """Commands and projections for the v1 per-set training facts."""
 
 import math
-import os
 import sqlite3
-import tempfile
+from contextlib import closing
 from datetime import datetime, timezone
 
-from sbs_cli.data.schema import Lift, LiftState, Profile, ScheduleRow, SetEntry
+from sbs_cli.data.schema import Lift, LiftState, Profile, ScheduleRow
 from sbs_cli.engine.modes import get_mode
 from sbs_cli.engine.onerm import estimate_1rm
 from sbs_cli.engine.progression import (
@@ -17,6 +16,7 @@ from sbs_cli.engine.progression import (
 )
 
 from .. import repo
+from ..db import connect
 from .rows import lift_from_row, profile_from_rows, state_from_rows
 from .training_validation import (
     TrainingInputError,
@@ -318,24 +318,6 @@ def save_draft_set(conn: sqlite3.Connection, *, expected_week: int, slot_id: int
         raise
 
 
-class _DriverHistory(list):
-    """Present the projected driver load to unchanged Mode handlers."""
-
-    def __init__(self, entries, actual_added_weight):
-        super().__init__(entries)
-        self._actual_added_weight = actual_added_weight
-
-    def append(self, entry):
-        if self._actual_added_weight is not None:
-            super().append(
-                SetEntry(
-                    week=entry.week,
-                    weight=self._actual_added_weight,
-                    reps=entry.reps,
-                )
-            )
-
-
 def _validate_progression_driver(row):
     if row["actual_added_weight"] is None or not math.isfinite(
         row["actual_added_weight"]
@@ -374,8 +356,7 @@ def _is_valid_progression_driver(row):
     return True
 
 
-def _progression_models(row, expected_week: int, canonical_e1rm,
-                        projection_available: bool):
+def _progression_models(row, expected_week: int):
     mode = _validate_progression_driver(row)
 
     bodyweight_pct = row["bodyweight_pct"]
@@ -383,18 +364,6 @@ def _progression_models(row, expected_week: int, canonical_e1rm,
         bodyweight_pct = 0.0 if row["load_model"] == "barbell" else 1.0
     session_bodyweight = row["bodyweight_kg"] or 0.0
     prior_e1rm = row["state_est1rm"]
-    history = []
-    if prior_e1rm is not None and (
-        canonical_e1rm is None or prior_e1rm > canonical_e1rm
-    ):
-        history.append(
-            SetEntry(
-                week=max(expected_week - 1, 1),
-                weight=prior_e1rm - session_bodyweight * bodyweight_pct,
-                reps=1,
-            )
-        )
-
     schedule = []
     if mode == "sbs":
         schedule = [
@@ -437,10 +406,6 @@ def _progression_models(row, expected_week: int, canonical_e1rm,
         target=row["state_target"],
         streak=row["state_streak"] or 0,
         est1rm=prior_e1rm,
-        history=_DriverHistory(
-            history,
-            row["actual_added_weight"] if projection_available else None,
-        ),
     )
     if mode == "sbs" and row["actual_added_weight"] != row["planned_added_weight"]:
         # Rebase only an override; normal plate rounding must not erase TM gains.
@@ -548,18 +513,8 @@ def finalize_week(conn: sqlite3.Connection, *, expected_week: int,
                     and row["load_model"] == "barbell"
                 )
                 projected_driver = _project_training_fact(row)
-                working_weight = projected_driver["actual_working_weight"]
                 canonical_e1rm = projected_driver["canonical_e1rm"]
-                models = _progression_models(
-                    row,
-                    expected_week,
-                    None if keeps_historical_peak else canonical_e1rm,
-                    projection_available=(
-                        working_weight is not None
-                        and not keeps_historical_peak
-                        and not is_loadable_t2
-                    ),
-                )
+                models = _progression_models(row, expected_week)
                 profile, lift, state, prior_e1rm = models
                 if is_loadable_t2:
                     current_peak_e1rm = t2_observation_peaks.get(row["slot_id"])
@@ -591,8 +546,10 @@ def finalize_week(conn: sqlite3.Connection, *, expected_week: int,
                     if row["state_target"] == 4 and row["reps"] < 4:
                         state.est1rm = None
                 else:
+                    # Per-set facts own history and e1RM; only progress the state here.
                     get_mode(state.mode).advance(
-                        profile, lift, state, row["reps"], expected_week
+                        profile, lift, state, row["reps"], expected_week,
+                        record_history=False,
                     )
                     aggregate_e1rm = (
                         historical_peaks.get(row["slot_id"])
@@ -641,66 +598,54 @@ def preview_progression(source_conn: sqlite3.Connection, *, expected_week: int,
     if set_number < 1 or set_number > slot["sets"]:
         raise TrainingInputError("preview set is outside the prescription")
 
-    with tempfile.TemporaryDirectory(prefix="sbs-preview-") as temp_dir:
-        preview_path = os.path.join(temp_dir, "preview.db")
-        target = sqlite3.connect(preview_path)
-        try:
-            source_conn.backup(target)
-        finally:
-            target.close()
-
-        from ..db import connect
-
-        preview_conn = connect(preview_path)
-        try:
-            save_draft_set(
-                preview_conn,
-                expected_week=expected_week,
-                slot_id=slot_id,
-                set_number=set_number,
-                actual_added_weight=actual_added_weight,
-                reps=reps,
-                warmup=warmup,
-                drives_progression=drives_progression,
-                e1rm_qualified=e1rm_qualified,
+    with closing(connect(":memory:")) as preview_conn:
+        source_conn.backup(preview_conn)
+        save_draft_set(
+            preview_conn,
+            expected_week=expected_week,
+            slot_id=slot_id,
+            set_number=set_number,
+            actual_added_weight=actual_added_weight,
+            reps=reps,
+            warmup=warmup,
+            drives_progression=drives_progression,
+            e1rm_qualified=e1rm_qualified,
+        )
+        performance_rows = [
+            row for row in training_history(preview_conn)
+            if row["slot_id"] == slot_id
+            and row["program_week"] in (expected_week - 1, expected_week)
+        ]
+        settings = repo.get_settings(preview_conn)
+        driver_ids = {
+            row["slot_id"] for row in repo.list_progression_drivers(
+                preview_conn, program_week=expected_week
             )
-            performance_rows = [
-                row for row in training_history(preview_conn)
-                if row["slot_id"] == slot_id
-                and row["program_week"] in (expected_week - 1, expected_week)
-            ]
-            settings = repo.get_settings(preview_conn)
-            driver_ids = {
-                row["slot_id"] for row in repo.list_progression_drivers(
-                    preview_conn, program_week=expected_week
-                )
-                if _is_valid_progression_driver(row)
+            if _is_valid_progression_driver(row)
+        }
+        if slot_id not in driver_ids:
+            return {
+                "slot_id": slot_id,
+                "name": slot["name"],
+                "mode": slot["mode"],
+                "awaiting_input": True,
+                "performance_rows": performance_rows,
             }
-            if slot_id not in driver_ids:
-                return {
-                    "slot_id": slot_id,
-                    "name": slot["name"],
-                    "mode": slot["mode"],
-                    "awaiting_input": True,
-                    "performance_rows": performance_rows,
-                }
-            skipped_slot_ids = [
-                item["slot_id"] for item in training_plan(preview_conn)["slots"]
-                if item["slot_id"] not in driver_ids
-                and 1 <= item["day"] <= settings["days_per_week"]
-            ]
-            finalize_week(
-                preview_conn,
-                expected_week=expected_week,
-                skipped_slot_ids=skipped_slot_ids,
-            )
-            after = repo.get_training_state(preview_conn, slot_id)
-            next_slot = next(
-                item for item in training_plan(preview_conn)["slots"]
-                if item["slot_id"] == slot_id
-            )
-        finally:
-            preview_conn.close()
+        skipped_slot_ids = [
+            item["slot_id"] for item in training_plan(preview_conn)["slots"]
+            if item["slot_id"] not in driver_ids
+            and 1 <= item["day"] <= settings["days_per_week"]
+        ]
+        finalize_week(
+            preview_conn,
+            expected_week=expected_week,
+            skipped_slot_ids=skipped_slot_ids,
+        )
+        after = repo.get_training_state(preview_conn, slot_id)
+        next_slot = next(
+            item for item in training_plan(preview_conn)["slots"]
+            if item["slot_id"] == slot_id
+        )
 
     return {
         "slot_id": slot_id,
@@ -716,54 +661,69 @@ def preview_progression(source_conn: sqlite3.Connection, *, expected_week: int,
 
 def review_week_settlement(conn: sqlite3.Connection, *, expected_week: int,
                            skipped_slot_ids=()) -> dict:
-    """Validate and project one read-only, explicit Week settlement request."""
-    if repo.get_settings(conn)["week"] != expected_week:
-        raise StaleTrainingWeekError("stale week")
-    skipped_ids = tuple(skipped_slot_ids)
-    drivers = _settlement_drivers(
-        conn,
-        expected_week=expected_week,
-        skipped_slot_ids=skipped_ids,
-    )
-    driver_by_slot = {row["slot_id"]: row for row in drivers}
-    skipped = set(skipped_ids) | repo.get_week_skips(conn, expected_week)
-    skipped_ids = tuple(sorted(skipped))
-    settings = repo.get_settings(conn)
-    planned = [
-        slot for slot in training_plan(conn)["slots"]
-        if 1 <= slot["day"] <= settings["days_per_week"]
-    ]
-    rows = []
-    for slot in planned:
-        slot_id = slot["slot_id"]
-        if slot_id in skipped:
+    """Project every slot from one isolated, canonical week settlement."""
+    with closing(connect(":memory:")) as preview_conn:
+        conn.backup(preview_conn)
+        if repo.get_settings(preview_conn)["week"] != expected_week:
+            raise StaleTrainingWeekError("stale week")
+        skipped_ids = tuple(skipped_slot_ids)
+        drivers = _settlement_drivers(
+            preview_conn,
+            expected_week=expected_week,
+            skipped_slot_ids=skipped_ids,
+        )
+        driver_by_slot = {row["slot_id"]: row for row in drivers}
+        skipped = set(skipped_ids) | repo.get_week_skips(preview_conn, expected_week)
+        skipped_ids = tuple(sorted(skipped))
+        settings = repo.get_settings(preview_conn)
+        planned = [
+            slot for slot in training_plan(preview_conn)["slots"]
+            if 1 <= slot["day"] <= settings["days_per_week"]
+        ]
+        before = {
+            slot_id: dict(repo.get_training_state(preview_conn, slot_id))
+            for slot_id in driver_by_slot
+        }
+        performance = {}
+        for row in training_history(preview_conn):
+            if row["program_week"] in (expected_week - 1, expected_week):
+                performance.setdefault(row["slot_id"], []).append(row)
+        finalize_week(
+            preview_conn,
+            expected_week=expected_week,
+            skipped_slot_ids=skipped_ids,
+        )
+        next_plan = {
+            slot["slot_id"]: slot for slot in training_plan(preview_conn)["slots"]
+        }
+        rows = []
+        for slot in planned:
+            slot_id = slot["slot_id"]
+            if slot_id in skipped:
+                rows.append({
+                    "slot_id": slot_id,
+                    "name": slot["name"],
+                    "status": "skipped",
+                    "failed_zero": False,
+                    "preview": None,
+                })
+                continue
             rows.append({
                 "slot_id": slot_id,
                 "name": slot["name"],
-                "status": "skipped",
-                "failed_zero": False,
-                "preview": None,
+                "status": "logged",
+                "failed_zero": driver_by_slot[slot_id]["reps"] == 0,
+                "preview": {
+                    "slot_id": slot_id,
+                    "name": slot["name"],
+                    "mode": slot["mode"],
+                    "next_week": expected_week + 1,
+                    "before": before[slot_id],
+                    "after": dict(repo.get_training_state(preview_conn, slot_id)),
+                    "next_plan": next_plan[slot_id],
+                    "performance_rows": performance.get(slot_id, []),
+                },
             })
-            continue
-        driver = driver_by_slot[slot_id]
-        preview = preview_progression(
-            conn,
-            expected_week=expected_week,
-            slot_id=slot_id,
-            set_number=driver["set_number"],
-            actual_added_weight=driver["actual_added_weight"],
-            reps=driver["reps"],
-            warmup=False,
-            drives_progression=True,
-            e1rm_qualified=bool(driver["e1rm_qualified"]),
-        )
-        rows.append({
-            "slot_id": slot_id,
-            "name": slot["name"],
-            "status": "logged",
-            "failed_zero": driver["reps"] == 0,
-            "preview": preview,
-        })
     return {
         "expected_week": expected_week,
         "new_week": expected_week + 1,

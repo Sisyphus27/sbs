@@ -78,61 +78,73 @@ def create_lift(conn: sqlite3.Connection, *, name: str,
     return lid
 
 
-def create_pure_bodyweight_training_slot(
-        conn: sqlite3.Connection, *, name: str, day: int,
-        sort_order: int, sets: int, bodyweight_pct: float = 1.0) -> int:
-    """Create one current-schema pure-bodyweight record-only Lift."""
+def create_training_slot(
+        conn: sqlite3.Connection, *, name: str, load_model: str, mode: str,
+        day: int, sort_order: int, sets: int, max=None, intensity=None,
+        reps=None, repout=None, start=None, lift_kind=None, incr=None,
+        bodyweight_pct: float = 0.0) -> int:
+    """Create a current-schema exercise, slot and initial state atomically."""
     from math import isfinite
-
-    from sbs_cli.data.schema import Lift
+    from sbs_cli.data.schema import Lift, is_legal_combo
     from sbs_cli.engine.modes import get_mode
 
-    if not isfinite(bodyweight_pct) or bodyweight_pct <= 0:
-        raise ValueError("pure bodyweight percentage must be positive and finite")
-    lift = Lift(
-        name=name,
-        load_model="pure_bodyweight",
-        mode="none",
-        day=day,
-        sets=sets,
-        start=0.0,
-        bodyweight_pct=bodyweight_pct,
-    )
-    state = get_mode("none").initial_state(lift, None)
+    if not is_legal_combo(load_model, mode):
+        raise ValueError(f"illegal load_model/mode: {load_model}/{mode}")
+    if not isfinite(bodyweight_pct) or (
+        bodyweight_pct != 0 if load_model == "barbell" else bodyweight_pct <= 0
+    ):
+        raise ValueError("invalid bodyweight percentage for load model")
+    if load_model == "pure_bodyweight":
+        start = 0.0
+    lift = Lift(name=name, day=day, load_model=load_model, mode=mode,
+                max=max, start=start)
+    state = get_mode(mode).initial_state(lift, None)
     with conn:
         exercise_id = conn.execute(
             "INSERT INTO exercise (name, load_model) VALUES (?, ?)",
-            (name, "pure_bodyweight"),
+            (name, load_model),
         ).lastrowid
         slot_id = conn.execute(
             "INSERT INTO program_slot "
-            "(exercise_id, day, sort_order, mode, sets, start_weight, "
-            "bodyweight_pct) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (
-                exercise_id,
-                day,
-                sort_order,
-                "none",
-                sets,
-                0.0,
-                bodyweight_pct,
-            ),
+            "(exercise_id, day, sort_order, mode, sets, max_seed, intensity, "
+            "reps, repout, start_weight, lift_kind, increment, bodyweight_pct) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (exercise_id, day, sort_order, mode, sets, max, intensity,
+             reps, repout, start, lift_kind, incr, bodyweight_pct),
         ).lastrowid
         conn.execute(
             "INSERT INTO strength_state "
             "(slot_id, mode, tm, weight, target, streak, est1rm) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (
-                slot_id,
-                state.mode,
-                state.tm,
-                state.weight,
-                state.target,
-                state.streak,
-                state.est1rm,
-            ),
+            (slot_id, state.mode, state.tm, state.weight, state.target,
+             state.streak, state.est1rm),
         )
     return slot_id
+
+
+def create_pure_bodyweight_training_slot(
+        conn: sqlite3.Connection, *, name: str, day: int,
+        sort_order: int, sets: int, bodyweight_pct: float = 1.0) -> int:
+    return create_training_slot(
+        conn, name=name, day=day, sort_order=sort_order, sets=sets,
+        load_model="pure_bodyweight", mode="none", bodyweight_pct=bodyweight_pct,
+    )
+
+
+def delete_training_slot(conn: sqlite3.Connection, slot_id: int) -> None:
+    """Delete an unused slot; foreign keys protect recorded sets and snapshots."""
+    with conn:
+        slot = conn.execute(
+            "SELECT exercise_id FROM program_slot WHERE id = ?", (slot_id,)
+        ).fetchone()
+        if slot is None:
+            return
+        conn.execute("DELETE FROM program_slot WHERE id = ?", (slot_id,))
+        conn.execute(
+            "DELETE FROM exercise WHERE id = ? AND NOT EXISTS "
+            "(SELECT 1 FROM program_slot WHERE exercise_id = ?)",
+            (slot["exercise_id"], slot["exercise_id"]),
+        )
 
 
 def _init_lift_state(conn, lid, mode, max, start):

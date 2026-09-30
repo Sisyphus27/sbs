@@ -422,13 +422,13 @@ def test_plan_submit_allows_only_one_concurrent_expected_week(app, make_lift, db
                     reps=5, repout=10, start=None, lift_kind="main")
     with app.test_client() as setup_client:
         assert _save_set(setup_client, lid, 5, 13).status_code == 200
-    both_reviewed = threading.Barrier(2)
-    real_review = plan_routes.review_week_settlement
+        assert setup_client.post("/log/review", data={"expected_week": "1"}).status_code == 200
+    both_submitting = threading.Barrier(2)
+    real_finalize = plan_routes.finalize_week
 
-    def synchronized_review(*args, **kwargs):
-        result = real_review(*args, **kwargs)
-        both_reviewed.wait(timeout=5)
-        return result
+    def synchronized_finalize(*args, **kwargs):
+        both_submitting.wait(timeout=5)
+        return real_finalize(*args, **kwargs)
 
     snapshot_calls = []
     snapshot_lock = threading.Lock()
@@ -448,7 +448,7 @@ def test_plan_submit_allows_only_one_concurrent_expected_week(app, make_lift, db
             second_snapshot.set()
         return "unused.db.bak"
 
-    monkeypatch.setattr(plan_routes, "review_week_settlement", synchronized_review)
+    monkeypatch.setattr(plan_routes, "finalize_week", synchronized_finalize)
     monkeypatch.setattr(backup, "snapshot", recording_snapshot)
 
     def submit():
@@ -624,7 +624,7 @@ def test_plan_view_shows_week2_schedule_values(client, make_lift, db_conn):
     """
     lid = make_lift(name="Squat", mode="sbs", sets=5, max=100.0, intensity=0.7,
                     reps=5, repout=10, start=None, lift_kind="main")
-    repo.save_lift_state(db_conn, lid, mode="sbs", tm=100.0, weight=None,
+    repo.save_training_state(db_conn, lid, mode="sbs", tm=100.0, weight=None,
                          target=None, streak=0, est1rm=None)
     repo.set_week(db_conn, 2)
     db_conn.commit()

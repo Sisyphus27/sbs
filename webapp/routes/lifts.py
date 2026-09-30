@@ -1,4 +1,5 @@
 """Lift CRUD: list, create, edit (rename/params/day), delete."""
+import sqlite3
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from ..db import get_db
 from .. import repo
@@ -75,34 +76,23 @@ def new():
     if err is not None:
         flash(err, "error")
         return render_template("_lift_row.html", lift=None, error="bad incr"), 400
-    # pct 按载荷模型: barbell=0；pure_bodyweight 手填默认 1.0；bodyweight 手填。
-    if load_model == "barbell":
-        pct = 0.0
-    elif load_model == "pure_bodyweight":
-        pct = _f("bodyweight_pct", 1.0, float) or 1.0
-    else:
-        pct = _f("bodyweight_pct", 0.0, float) or 0.0
     try:
-        if load_model == "pure_bodyweight":
-            lid = repo.create_pure_bodyweight_training_slot(
-                conn,
-                name=name,
-                day=_f("day", 1, int),
-                sort_order=999,
-                sets=_f("sets", 3, int),
-                bodyweight_pct=pct,
-            )
-            lift = repo.get_training_slot(conn, lid)
+        # pct 按载荷模型: barbell=0；pure_bodyweight 手填默认 1.0；bodyweight 手填。
+        if load_model == "barbell":
+            pct = 0.0
+        elif load_model == "pure_bodyweight":
+            pct = _f("bodyweight_pct", 1.0, float) or 1.0
         else:
-            lid = repo.create_lift(
-                conn, name=name, load_model=load_model, mode=mode,
-                day=_f("day", 1, int), sort_order=999,
-                sets=_f("sets", 3, int), max=_f("max", cast=float),
-                intensity=_f("intensity", cast=float), reps=_f("reps", cast=int),
-                repout=_f("repout", cast=int), start=_f("start", cast=float),
-                lift_kind=_f("lift_kind") if mode == "sbs" else None,
-                incr=incr, bodyweight_pct=pct)
-            lift = repo.get_lift(conn, lid)
+            pct = _f("bodyweight_pct", 0.0, float) or 0.0
+        lid = repo.create_training_slot(
+            conn, name=name, load_model=load_model, mode=mode,
+            day=_f("day", 1, int), sort_order=999,
+            sets=_f("sets", 3, int), max=_f("max", cast=float),
+            intensity=_f("intensity", cast=float), reps=_f("reps", cast=int),
+            repout=_f("repout", cast=int), start=_f("start", cast=float),
+            lift_kind=(_f("lift_kind") or "main") if mode == "sbs" else None,
+            incr=incr, bodyweight_pct=pct)
+        lift = repo.get_training_slot(conn, lid)
     except Exception as e:
         flash(f"创建 Lift 失败: {e}", "error")
         return render_template("_lift_row.html", lift=None, error=str(e)), 400
@@ -145,7 +135,17 @@ def edit(lid):
 @bp.route("/lifts/<int:lid>/delete", methods=["POST"])
 def delete(lid):
     conn = get_db()
-    repo.delete_lift(conn, lid)
+    lift = repo.get_training_slot(conn, lid)
+    if lift is None:
+        return ("not found", 404)
+    try:
+        repo.delete_training_slot(conn, lid)
+    except sqlite3.IntegrityError:
+        # Return the edit card so HTMX displays the refusal without removing it.
+        return render_template(
+            "_lift_edit.html", lift=lift,
+            error="This Lift has training records and cannot be deleted.",
+        )
     return ("", 200)
 
 

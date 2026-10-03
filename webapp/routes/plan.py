@@ -26,7 +26,7 @@ from ..services.training import (
     training_plan,
     uses_historical_peak,
 )
-from ._forms import skipped_slot_ids
+from ._forms import calibrate_tm_slot_ids, skipped_slot_ids
 
 
 bp = Blueprint("plan", __name__)
@@ -572,6 +572,7 @@ def submit():
         return ("bad expected week", 400)
     try:
         skipped_ids = skipped_slot_ids()
+        calibration_ids = calibrate_tm_slot_ids()
     except TrainingInputError as error:
         return (str(error), 400)
     plan = training_plan(conn)
@@ -590,6 +591,7 @@ def submit():
             conn,
             expected_week=expected_week,
             skipped_slot_ids=skipped_ids,
+            calibrate_tm_slot_ids=calibration_ids,
             before_advance=snapshot_before_advance,
         )
     except StaleTrainingWeekError:
@@ -613,6 +615,7 @@ def review_settlement():
             conn,
             expected_week=expected_week,
             skipped_slot_ids=skipped_ids,
+            calibrate_tm_slot_ids=calibrate_tm_slot_ids(),
         )
     except StaleTrainingWeekError:
         return ("stale week", 409)

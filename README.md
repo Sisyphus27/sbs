@@ -43,6 +43,10 @@ conda run -n sbs python -m webapp
 
 空白表示尚未处理；实际 `0` 次会保存为失败 Training Fact；“本周跳过”不生成 Training Fact，也不改变该 Lift 的 Progression。最终确认受 `expected_week` 保护，并在同一事务推进前自动把 `sbs.db` 快照到 `backups/`。不再导出 JSON、不再传文件、不再开终端。
 
+SBS 默认保留原 TM 基准，按末组次数调整；记录实际重量不会自动校准 TM。
+需要主动校准时，在「最终复核」勾选该 Lift 的「用实际重量校准 TM」，点击「更新预览」后确认。
+这会以 progression-driver 实际重量 ÷ 本周强度重设 TM 基准，再按末组次数调整；选择仅对本次结算生效。
+
 ---
 
 ## 三层进阶规则

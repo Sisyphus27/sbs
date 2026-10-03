@@ -16,7 +16,7 @@ from ..services.training import (
     training_history,
     training_plan,
 )
-from ._forms import skipped_slot_ids
+from ._forms import calibrate_tm_slot_ids, skipped_slot_ids
 
 
 bp = Blueprint("training", __name__, url_prefix="/training")
@@ -129,6 +129,7 @@ def finalize():
     try:
         expected_week = _integer("expected_week")
         skipped_ids = skipped_slot_ids()
+        calibration_ids = calibrate_tm_slot_ids()
     except TrainingInputError as error:
         return (str(error), 400)
     conn = get_db()
@@ -150,6 +151,7 @@ def finalize():
             conn,
             expected_week=expected_week,
             skipped_slot_ids=skipped_ids,
+            calibrate_tm_slot_ids=calibration_ids,
             before_advance=snapshot_before_advance,
         )
     except StaleTrainingWeekError:

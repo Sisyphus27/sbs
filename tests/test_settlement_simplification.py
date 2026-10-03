@@ -41,7 +41,9 @@ def test_rep_boundaries_finalize_without_legacy_history(tmp_path, monkeypatch,
         assert fact["finalized_at"] is not None
 
 
-def test_review_copies_and_settles_once_without_changing_source(tmp_path, monkeypatch):
+@pytest.mark.parametrize("calibrate", [False, True])
+def test_review_copies_and_settles_once_without_changing_source(tmp_path, monkeypatch,
+                                                               calibrate):
     class CountedConnection(sqlite3.Connection):
         copies = 0
 
@@ -75,8 +77,10 @@ def test_review_copies_and_settles_once_without_changing_source(tmp_path, monkey
             return real_finalize(preview_conn, **kwargs)
 
         monkeypatch.setattr(training, "finalize_week", count_finalize)
+        calibration_ids = [slots[1]] if calibrate else []
         review = training.review_week_settlement(
             conn, expected_week=1, skipped_slot_ids=[slots[2]],
+            calibrate_tm_slot_ids=calibration_ids,
         )
         assert conn.copies == 1
         assert len(settlements) == 1
@@ -85,7 +89,8 @@ def test_review_copies_and_settles_once_without_changing_source(tmp_path, monkey
                 review["failed_zero_count"]) == (2, 1, 1)
         assert [row["status"] for row in review["rows"]] == ["logged", "logged", "skipped"]
 
-        assert real_finalize(conn, expected_week=1, skipped_slot_ids=[slots[2]]) == 2
+        assert real_finalize(conn, expected_week=1, skipped_slot_ids=[slots[2]],
+                             calibrate_tm_slot_ids=calibration_ids) == 2
         for row in review["rows"][:2]:
             assert row["preview"]["after"] == dict(repo.get_training_state(conn, row["slot_id"]))
         assert [row["preview"]["next_plan"] for row in review["rows"][:2]] == (

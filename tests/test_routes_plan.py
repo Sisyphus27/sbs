@@ -58,12 +58,13 @@ def test_plan_view_empty(client):
 
 @pytest.mark.parametrize(
     "tm, actual_weight, reps, next_tm, next_weight",
-    [(100.0, 90.0, 8, 120.0, 95.0),
-     (100.0, 90.0, 6, 114.0, 90.0),
+    [(100.0, 90.0, 8, 100.0, 80.0),
+     (100.0, 90.0, 6, 95.0, 75.0),
+     (100.0, 70.0, 8, 100.0, 80.0),
      (100.5, 75.0, 9, 101.0025, 80.0),
-     (100.0, 0.0, 0, 0.0, 0.0)],
+     (100.0, 0.0, 0, 95.0, 75.0)],
 )
-def test_sbs_actual_weight_rebases_preview_and_settlement_only_when_changed(
+def test_sbs_actual_weight_does_not_rebase_default_preview_or_settlement(
         client, make_lift, db_conn, tm, actual_weight, reps, next_tm, next_weight):
     lid = make_lift(name="Squat", mode="sbs", max=tm, lift_kind="main", sets=5)
     db_conn.execute("UPDATE settings SET week = 8")
@@ -89,13 +90,12 @@ def test_sbs_actual_weight_rebases_preview_and_settlement_only_when_changed(
     assert after["expected_week"] == 9
     assert after["slots"][0]["planned_added_weight"] == next_weight
     assert repo.get_training_state(db_conn, lid)["tm"] == next_tm
+    assert _slot_facts(db_conn, lid)[0]["actual_added_weight"] == actual_weight
 
 
-@pytest.mark.parametrize(
-    "weights, next_tm", [([90, 95, 90, 90], 120.0), ([90, 75, 75], 100.5)],
-)
+@pytest.mark.parametrize("weights", [[90, 95, 90, 90], [90, 75, 75]])
 def test_sbs_editing_and_undo_use_original_prescription(
-        client, make_lift, db_conn, weights, next_tm):
+        client, make_lift, db_conn, weights):
     lid = make_lift(mode="sbs", max=100.5, lift_kind="main")
     db_conn.execute(
         "UPDATE sbs_schedule SET intensity = .75, repout = 8 WHERE kind = 'main' AND week = 1"
@@ -109,9 +109,83 @@ def test_sbs_editing_and_undo_use_original_prescription(
         saved = _save_set(client, lid, 3, 8, actual_added_weight=weight)
         assert saved.status_code == 200
         assert client.get("/training/plan").get_json() == before
-    assert f"Training Max 100.5 → {next_tm}" in saved.get_data(as_text=True)
+    assert "Training Max 100.5 → 100.5" in saved.get_data(as_text=True)
     assert client.post("/training/finalize", data={"expected_week": "1"}).status_code == 200
-    assert repo.get_training_state(db_conn, lid)["tm"] == next_tm
+    assert repo.get_training_state(db_conn, lid)["tm"] == 100.5
+
+
+@pytest.mark.parametrize("endpoint", ["/log", "/training/finalize"])
+@pytest.mark.parametrize(
+    "actual_weight,reps,next_tm,next_weight",
+    [(90.0, 8, 120.0, 95.0), (90.0, 6, 114.0, 90.0),
+     (70.0, 8, 70 / .75, 75.0), (75.0, 8, 100.0, 80.0)],
+)
+def test_sbs_explicit_calibration_preview_matches_commit(
+        client, make_lift, db_conn, endpoint, actual_weight, reps, next_tm, next_weight):
+    lid = make_lift(name="Squat", mode="sbs", max=100.5, lift_kind="main")
+    other_id = make_lift(name="Bench", mode="sbs", max=100.5, lift_kind="main")
+    with db_conn:
+        db_conn.execute("UPDATE settings SET week = 8")
+        db_conn.execute(
+            "UPDATE sbs_schedule SET intensity = .75, repout = 8 "
+            "WHERE kind = 'main' AND week = 8"
+        )
+        db_conn.execute(
+            "UPDATE sbs_schedule SET intensity = .8, repout = 8 "
+            "WHERE kind = 'main' AND week = 9"
+        )
+    for slot_id in (lid, other_id):
+        assert _save_set(client, slot_id, 3, reps, week=8,
+                         actual_added_weight=actual_weight).status_code == 200
+    before = client.get("/training/plan").get_json()
+    default_html = client.post("/log/review", data={"expected_week": "8"}).get_data(as_text=True)
+    assert 'name="calibrate_tm_slot_ids"' in default_html
+    assert "checked" not in default_html
+    data = {"expected_week": "8", "calibrate_tm_slot_ids": str(lid)}
+    review = client.post("/log/review", data=data)
+    assert review.status_code == 200
+    html = review.get_data(as_text=True)
+    assert "checked" in html
+    assert f"下一周 Working Weight {next_weight} kg" in html
+    assert client.get("/training/plan").get_json() == before
+    # Clearing the selection previews the original rule without changing the draft.
+    assert client.post("/log/review", data={"expected_week": "8"}).get_data(as_text=True) == default_html
+    assert client.post(endpoint, data=data).status_code in (200, 302)
+    assert repo.get_training_state(db_conn, lid)["tm"] == pytest.approx(next_tm)
+    assert repo.get_training_state(db_conn, other_id)["tm"] == pytest.approx(
+        100.5 * (.95 if reps == 6 else 1)
+    )
+    assert _slot_facts(db_conn, lid)[0]["actual_added_weight"] == actual_weight
+    # Calibration is a choice for this settlement, never a saved preference.
+    for slot_id in (lid, other_id):
+        assert _save_set(client, slot_id, 3, 8, week=9,
+                         actual_added_weight=50).status_code == 200
+    next_review = client.post("/log/review", data={"expected_week": "9"})
+    assert "checked" not in next_review.get_data(as_text=True)
+    assert client.post(endpoint, data={"expected_week": "9"}).status_code in (200, 302)
+    assert repo.get_training_state(db_conn, lid)["tm"] == pytest.approx(next_tm)
+
+
+@pytest.mark.parametrize("endpoint", ["/log/review", "/log", "/training/finalize"])
+@pytest.mark.parametrize("selection", ["bad", "unknown", "non_sbs", "skipped"])
+def test_invalid_tm_calibration_selection_does_not_settle(
+        client, make_lift, db_conn, app, endpoint, selection):
+    lid = make_lift(mode="sbs", max=100, lift_kind="main")
+    other_id = make_lift(mode="linear_t3", start=30)
+    skipped_id = make_lift(mode="sbs", max=100, lift_kind="main")
+    for slot_id in (lid, other_id):
+        assert _save_set(client, slot_id, 3, 8, actual_added_weight=90).status_code == 200
+    invalid_id = {"bad": "not-an-id", "unknown": "99999",
+                  "non_sbs": str(other_id), "skipped": str(skipped_id)}[selection]
+    before = client.get("/training/plan").get_json()
+    response = client.post(endpoint, data={
+        "expected_week": "1", "skipped_slot_ids": str(skipped_id),
+        "calibrate_tm_slot_ids": invalid_id,
+    })
+    assert response.status_code == 400
+    assert client.get("/training/plan").get_json() == before
+    assert all(row["finalized_at"] is None for row in training_history(db_conn))
+    assert not list(Path(app.config["BACKUP_DIR"]).glob("*.db.bak"))
 
 
 @pytest.mark.parametrize("intensity", [None, float("inf")])
@@ -1045,8 +1119,8 @@ def test_sbs_supplement_updates_session_best_but_not_the_driver(
     assert "↘-28.66 kg" in second_preview
     assert client.post("/log", data={"expected_week": "2"}).status_code == 302
     second_state = repo.get_training_state(db_conn, lid)
-    # Week 2 planned 67.5; actual 65 rebases TM, then the driver's failure applies.
-    assert second_state["tm"] == pytest.approx(65 / .7 * .95)
+    # Different actual weight is a recorded fact; the driver's failure adjusts old TM.
+    assert second_state["tm"] == pytest.approx(95 * .95)
     assert second_state["est1rm"] == pytest.approx(93.6631187679488)
 
 

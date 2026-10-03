@@ -356,7 +356,7 @@ def _is_valid_progression_driver(row):
     return True
 
 
-def _progression_models(row, expected_week: int):
+def _progression_models(row, expected_week: int, *, calibrate_tm=False):
     mode = _validate_progression_driver(row)
 
     bodyweight_pct = row["bodyweight_pct"]
@@ -407,8 +407,8 @@ def _progression_models(row, expected_week: int):
         streak=row["state_streak"] or 0,
         est1rm=prior_e1rm,
     )
-    if mode == "sbs" and row["actual_added_weight"] != row["planned_added_weight"]:
-        # Rebase only an override; normal plate rounding must not erase TM gains.
+    if mode == "sbs" and calibrate_tm:
+        # Recording a different load alone must not reset the original TM.
         state.tm = row["actual_added_weight"] / row["planned_intensity"]
         if not math.isfinite(state.tm):
             raise TrainingInputError("SBS progression baseline is invalid")
@@ -485,7 +485,8 @@ def _settlement_drivers(conn: sqlite3.Connection, *, expected_week: int,
 
 
 def finalize_week(conn: sqlite3.Connection, *, expected_week: int,
-                  skipped_slot_ids=(), before_advance=None) -> int:
+                  skipped_slot_ids=(), calibrate_tm_slot_ids=(),
+                  before_advance=None) -> int:
     """Atomically progress explicit drivers, finalize sessions, and advance week."""
     timestamp = datetime.now(timezone.utc).isoformat()
     try:
@@ -497,6 +498,11 @@ def finalize_week(conn: sqlite3.Connection, *, expected_week: int,
                 expected_week=expected_week,
                 skipped_slot_ids=skipped_slot_ids,
             )
+            calibration_ids = set(calibrate_tm_slot_ids)
+            if calibration_ids - {
+                row["slot_id"] for row in drivers if row["mode"] == "sbs"
+            }:
+                raise TrainingInputError("TM calibration requires a logged SBS training slot")
             if before_advance is not None:
                 before_advance()
             historical_peaks, t2_observation_peaks = _observation_peaks(
@@ -514,7 +520,9 @@ def finalize_week(conn: sqlite3.Connection, *, expected_week: int,
                 )
                 projected_driver = _project_training_fact(row)
                 canonical_e1rm = projected_driver["canonical_e1rm"]
-                models = _progression_models(row, expected_week)
+                models = _progression_models(
+                    row, expected_week, calibrate_tm=row["slot_id"] in calibration_ids,
+                )
                 profile, lift, state, prior_e1rm = models
                 if is_loadable_t2:
                     current_peak_e1rm = t2_observation_peaks.get(row["slot_id"])
@@ -660,13 +668,14 @@ def preview_progression(source_conn: sqlite3.Connection, *, expected_week: int,
 
 
 def review_week_settlement(conn: sqlite3.Connection, *, expected_week: int,
-                           skipped_slot_ids=()) -> dict:
+                           skipped_slot_ids=(), calibrate_tm_slot_ids=()) -> dict:
     """Project every slot from one isolated, canonical week settlement."""
     with closing(connect(":memory:")) as preview_conn:
         conn.backup(preview_conn)
         if repo.get_settings(preview_conn)["week"] != expected_week:
             raise StaleTrainingWeekError("stale week")
         skipped_ids = tuple(skipped_slot_ids)
+        calibration_ids = tuple(calibrate_tm_slot_ids)
         drivers = _settlement_drivers(
             preview_conn,
             expected_week=expected_week,
@@ -692,6 +701,7 @@ def review_week_settlement(conn: sqlite3.Connection, *, expected_week: int,
             preview_conn,
             expected_week=expected_week,
             skipped_slot_ids=skipped_ids,
+            calibrate_tm_slot_ids=calibration_ids,
         )
         next_plan = {
             slot["slot_id"]: slot for slot in training_plan(preview_conn)["slots"]
@@ -731,5 +741,6 @@ def review_week_settlement(conn: sqlite3.Connection, *, expected_week: int,
         "skipped_count": len(skipped),
         "failed_zero_count": sum(row["failed_zero"] for row in rows),
         "skipped_slot_ids": skipped_ids,
+        "calibrate_tm_slot_ids": calibration_ids,
         "rows": rows,
     }

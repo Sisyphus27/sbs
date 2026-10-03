@@ -17,6 +17,14 @@ def skipped_slot_ids():
         raise TrainingInputError("bad skipped training slot") from error
 
 
+def calibrate_tm_slot_ids():
+    """Parse the explicit, per-settlement SBS TM calibration selection."""
+    try:
+        return [int(value) for value in request.form.getlist("calibrate_tm_slot_ids")]
+    except (TypeError, ValueError) as error:
+        raise TrainingInputError("bad TM calibration training slot") from error
+
+
 def present_fields(casts):
     """Walk a {col: cast} table over the submitted form; return (fields, bad_col).
 

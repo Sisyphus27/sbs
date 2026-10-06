@@ -723,6 +723,10 @@ def review_week_settlement(conn: sqlite3.Connection, *, expected_week: int,
                 "name": slot["name"],
                 "status": "logged",
                 "failed_zero": driver_by_slot[slot_id]["reps"] == 0,
+                "actual_load_changed": (
+                    driver_by_slot[slot_id]["actual_added_weight"]
+                    != driver_by_slot[slot_id]["planned_added_weight"]
+                ),
                 "preview": {
                     "slot_id": slot_id,
                     "name": slot["name"],
@@ -744,3 +748,37 @@ def review_week_settlement(conn: sqlite3.Connection, *, expected_week: int,
         "calibrate_tm_slot_ids": calibration_ids,
         "rows": rows,
     }
+
+
+def review_week_settlement_choices(conn: sqlite3.Connection, *, expected_week: int,
+                                   skipped_slot_ids=(), calibrate_tm_slot_ids=()) -> dict:
+    """Pair canonical SBS outcomes from one frozen source for instant UI choices."""
+    with closing(connect(":memory:")) as snapshot:
+        conn.backup(snapshot)
+        review = review_week_settlement(
+            snapshot, expected_week=expected_week, skipped_slot_ids=skipped_slot_ids,
+        )
+        sbs_rows = [
+            row for row in review["rows"]
+            if row["preview"] is not None and row["preview"]["mode"] == "sbs"
+        ]
+        sbs_ids = {row["slot_id"] for row in sbs_rows}
+        selected_ids = tuple(calibrate_tm_slot_ids)
+        if set(selected_ids) - sbs_ids:
+            raise TrainingInputError("TM calibration requires a logged SBS training slot")
+        review["calibrate_tm_slot_ids"] = selected_ids
+        review["calibration_slot_count"] = len(sbs_rows)
+        review["changed_load_count"] = sum(row["actual_load_changed"] for row in sbs_rows)
+        if sbs_rows:
+            calibrated = review_week_settlement(
+                snapshot, expected_week=expected_week,
+                skipped_slot_ids=review["skipped_slot_ids"],
+                calibrate_tm_slot_ids=sbs_ids,
+            )
+            calibrated_by_slot = {row["slot_id"]: row for row in calibrated["rows"]}
+            for row in sbs_rows:
+                row["normal_preview"] = row["preview"]
+                row["calibrated_preview"] = calibrated_by_slot[row["slot_id"]]["preview"]
+                if row["slot_id"] in selected_ids:
+                    row["preview"] = row["calibrated_preview"]
+    return review

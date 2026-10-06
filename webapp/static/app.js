@@ -43,6 +43,35 @@
 })();
 
 (function () {
+  var form = document.querySelector('[data-calibration-review]');
+  if (!form) return;
+  var choices = form.querySelectorAll('[name="calibrate_tm_slot_ids"]');
+  if (!choices.length) return;
+
+  function showChoices() {
+    choices.forEach(function (choice) {
+      var row = choice.closest('tr');
+      row.querySelector('[data-normal-preview]').hidden = choice.checked;
+      row.querySelector('[data-calibrated-preview]').hidden = !choice.checked;
+    });
+  }
+  form.addEventListener('change', function (event) {
+    if (event.target.name === 'calibrate_tm_slot_ids') showChoices();
+  });
+  form.querySelector('[data-select-changed-calibration]').addEventListener('click', function () {
+    choices.forEach(function (choice) {
+      if (choice.dataset.loadChanged === 'true') choice.checked = true;
+    });
+    showChoices();
+  });
+  form.querySelector('[data-clear-calibration]').addEventListener('click', function () {
+    choices.forEach(function (choice) { choice.checked = false; });
+    showChoices();
+  });
+  showChoices();
+})();
+
+(function () {
   document.querySelectorAll('form[data-disable-submit]').forEach(function (form) {
     form.addEventListener('submit', function () {
       form.querySelectorAll('[type="submit"]').forEach(function (button) {

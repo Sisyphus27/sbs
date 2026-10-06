@@ -8,12 +8,16 @@
   <strong>本周跳过 {{ review.skipped_count }}</strong>
   <strong>0 次失败 {{ review.failed_zero_count }}</strong>
 </div>
-<form method="post" action="{{ url_for('plan.submit') }}" data-disable-submit>
+<form method="post" action="{{ url_for('plan.submit') }}" data-disable-submit data-calibration-review>
   <input type="hidden" name="expected_week" value="{{ review.expected_week }}">
   {% for slot_id in review.skipped_slot_ids %}
   <input type="hidden" name="skipped_slot_ids" value="{{ slot_id }}">
   {% endfor %}
-  <p class="meta">SBS 默认按原版规则调整 TM。主动校准会先用实际重量 ÷ 本周强度重设基准，再按次数调整。更改选项后请更新预览，选择仅对本次结算生效。</p>
+  {% if review.calibration_slot_count %}
+  <p class="meta">SBS 默认按原版规则调整 TM。校准会先用实际重量 ÷ 本周强度重设基准，再按次数调整。勾选后立即显示预览，最终确认后才保存。</p>
+  <button type="button" data-select-changed-calibration {% if not review.changed_load_count %}disabled{% endif %}>校准所有已改重量的 SBS 动作（{{ review.changed_load_count }}）</button>
+  <button type="button" data-clear-calibration>取消所有校准</button>
+  {% endif %}
 <table class="table settlement-review-table">
   <thead><tr><th>Lift</th><th>处理结果</th><th>预计 Progression</th></tr></thead>
   <tbody>
@@ -25,7 +29,7 @@
         <label>
           <input type="checkbox" name="calibrate_tm_slot_ids" value="{{ item.slot_id }}"
                  {% if item.slot_id in review.calibrate_tm_slot_ids %}checked{% endif %}
-                 onchange="this.form.querySelector('[data-confirm-settlement]').disabled = true">
+                 data-load-changed="{{ 'true' if item.actual_load_changed else 'false' }}">
           用实际重量校准 TM
         </label>
         {% endif %}
@@ -38,6 +42,15 @@
       <td>
         {% if item.status == 'skipped' %}
           不生成 Training Fact；Progression 不变
+        {% elif item.preview.mode == 'sbs' %}
+          <div data-normal-preview {% if item.slot_id in review.calibrate_tm_slot_ids %}hidden{% endif %}>
+            {% set preview = item.normal_preview %}
+            {% include '_progression_outcome.html' %}
+          </div>
+          <div data-calibrated-preview {% if item.slot_id not in review.calibrate_tm_slot_ids %}hidden{% endif %}>
+            {% set preview = item.calibrated_preview %}
+            {% include '_progression_outcome.html' %}
+          </div>
         {% else %}
           {% set preview = item.preview %}
           {% include '_progression_outcome.html' %}
@@ -48,7 +61,6 @@
   </tbody>
 </table>
   <a class="btn" href="{{ url_for('plan.view') }}">返回补录</a>
-  <button type="submit" formaction="{{ url_for('plan.review_settlement') }}">更新预览</button>
   <button type="submit" class="btn-primary" data-confirm-settlement>确认并进入 Week {{ review.new_week }}</button>
 </form>
 {% endblock %}

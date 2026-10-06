@@ -19,7 +19,7 @@ from ..services.training import (
     TrainingInputError,
     finalize_week,
     preview_progression,
-    review_week_settlement,
+    review_week_settlement_choices,
     save_draft_set,
     save_week_skip,
     training_history,
@@ -611,7 +611,7 @@ def review_settlement():
         return ("bad expected week", 400)
     try:
         skipped_ids = skipped_slot_ids()
-        review = review_week_settlement(
+        review = review_week_settlement_choices(
             conn,
             expected_week=expected_week,
             skipped_slot_ids=skipped_ids,

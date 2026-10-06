@@ -98,6 +98,76 @@ def test_review_copies_and_settles_once_without_changing_source(tmp_path, monkey
         )
 
 
+@pytest.mark.parametrize("chosen", [(), (0,), (1,), (2,), (0, 1), (0, 2), (1, 2), (0, 1, 2)])
+def test_prepared_choices_share_a_read_only_snapshot_and_match_mixed_settlement(
+        tmp_path, monkeypatch, chosen):
+    class CountedConnection(sqlite3.Connection):
+        copies = 0
+
+        def backup(self, target, **kwargs):
+            self.copies += 1
+            return super().backup(target, **kwargs)
+
+    with closing(sqlite3.connect(":memory:", factory=CountedConnection)) as conn:
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
+        migrate_to_v3(conn, db_path=":memory:", backup_dir=str(tmp_path))
+        slots = [repo.create_training_slot(
+            conn, name=name, mode=mode, load_model="barbell", day=1,
+            sort_order=index, sets=3, start=30, max=100.5,
+            lift_kind="main" if mode == "sbs" else None,
+        ) for index, (name, mode) in enumerate([
+            ("Heavier", "sbs"), ("Lighter", "sbs"), ("Unchanged", "sbs"),
+            ("Curl", "linear_t3"), ("Skipped SBS", "sbs"),
+        ])]
+        with conn:
+            conn.execute("UPDATE settings SET week = 8")
+            conn.execute(
+                "UPDATE sbs_schedule SET intensity = .75, repout = 8 "
+                "WHERE kind = 'main' AND week = 8"
+            )
+        for slot_id, (weight, reps) in zip(slots, [(90, 8), (70, 6), (75, 8), (35, 15)]):
+            training.save_draft_set(
+                conn, expected_week=8, slot_id=slot_id, set_number=3,
+                actual_added_weight=weight, reps=reps, drives_progression=True,
+            )
+        before = conn.serialize()
+        single_review = training.review_week_settlement
+        snapshots = []
+
+        def observe_snapshot(snapshot, **kwargs):
+            assert snapshot is not conn
+            snapshots.append(snapshot)
+            return single_review(snapshot, **kwargs)
+
+        monkeypatch.setattr(training, "review_week_settlement", observe_snapshot)
+        selected = [slots[index] for index in chosen]
+        review = training.review_week_settlement_choices(
+            conn, expected_week=8, skipped_slot_ids=[slots[4]],
+            calibrate_tm_slot_ids=selected,
+        )
+        assert conn.copies == 1
+        assert len(snapshots) == 2 and snapshots[0] is snapshots[1]
+        assert conn.serialize() == before
+        assert review["calibration_slot_count"] == 3
+        assert review["changed_load_count"] == 2
+        assert [row["actual_load_changed"] for row in review["rows"][:3]] == [True, True, False]
+        assert review["rows"][4]["preview"] is None
+        for row, normal_tm, calibrated_tm in zip(
+                review["rows"][:3], [100.5, 100.5 * .95, 100.5], [120, 70 / .75 * .95, 100]):
+            assert row["normal_preview"]["after"]["tm"] == pytest.approx(normal_tm)
+            assert row["calibrated_preview"]["after"]["tm"] == pytest.approx(calibrated_tm)
+        assert training.finalize_week(
+            conn, expected_week=8, skipped_slot_ids=[slots[4]],
+            calibrate_tm_slot_ids=selected,
+        ) == 9
+        for row in review["rows"][:4]:
+            assert row["preview"]["after"] == dict(repo.get_training_state(conn, row["slot_id"]))
+        assert [row["preview"]["next_plan"] for row in review["rows"][:4]] == (
+            training.training_plan(conn)["slots"][:4]
+        )
+
+
 def test_submit_revalidates_changes_after_review_without_another_preview(tmp_path,
                                                                         monkeypatch):
     app = create_app(
@@ -120,7 +190,7 @@ def test_submit_revalidates_changes_after_review_without_another_preview(tmp_pat
         def unexpected_review(*args, **kwargs):
             raise AssertionError("submission must not compute a discarded preview")
 
-        monkeypatch.setattr(plan_routes, "review_week_settlement", unexpected_review)
+        monkeypatch.setattr(plan_routes, "review_week_settlement_choices", unexpected_review)
         response = client.post("/log", data={"expected_week": "1"})
         assert response.status_code == 400
         assert b"unresolved training slots" in response.data

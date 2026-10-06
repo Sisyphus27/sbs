@@ -205,7 +205,10 @@ def test_focus_and_review_share_progression_outcome_contract(
     ).get_data(as_text=True)
 
     assert focus.count('class="progression-outcome"') == 1
-    assert review.count('class="progression-outcome"') == 1
+    assert review.count('class="progression-outcome"') == (2 if lift["mode"] == "sbs" else 1)
+    if lift["mode"] == "sbs":
+        assert '<div data-calibrated-preview hidden>' in review
+        assert "更新预览" not in review
     for marker in markers:
         assert marker in focus
         assert marker in review
